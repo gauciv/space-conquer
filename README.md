@@ -58,14 +58,13 @@ The game includes both sound effects and background music:
 - Sound effects: Shooting, explosions, and power-up collection
 - Background music: Chiptune-style music that loops continuously
 - Both sound effects and music have separate volume controls in the settings menu
-- Music can be toggled on/off in the settings menu
+- Setting music volume to 0% automatically turns off the background music
 
 ## Settings
 
 The game includes a settings menu accessible by clicking the cog icon in the top-right corner:
-- Sound Effects Volume: Adjust the volume of game sound effects
-- Music Volume: Adjust the volume of background music
-- Music Toggle: Turn background music on or off
+- Sound Effects Volume: Adjust the volume of game sound effects (default: 70%)
+- Music Volume: Adjust the volume of background music (default: 50%)
 - Close button: Return to the game
 
 ## Requirements
