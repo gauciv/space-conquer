@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'  # Run when a tag is pushed with format v1.0.0, etc.
 
+# Add explicit permissions for the GITHUB_TOKEN
+permissions:
+  contents: write  # This is required for creating releases and uploading assets
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
@@ -32,23 +36,55 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pygame numpy pyinstaller
+        pip install pygame numpy pyinstaller Pillow
+        
+    - name: Debug directory structure
+      run: |
+        ls -la
+        ls -la images/
         
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --name=SpaceConquer --onefile --windowed --icon=images/player_ship.png --add-data="images;images" --add-data="sounds;sounds" --add-data="music;music" main.py
+        # Use --noconsole instead of --windowed for Windows
+        pyinstaller --name=SpaceConquer --onefile --noconsole --add-data="images;images" --add-data="sounds;sounds" --add-data="music;music" main.py
         
-    - name: Build with PyInstaller (macOS/Linux)
-      if: matrix.os != 'windows-latest'
+        # Create a batch file for one-click running
+        echo "@echo off" > dist/run_game.bat
+        echo "start SpaceConquer.exe" >> dist/run_game.bat
+        
+    - name: Build with PyInstaller (macOS)
+      if: matrix.os == 'macos-latest'
       run: |
-        pyinstaller --name=SpaceConquer --onefile --windowed --icon=images/player_ship.png --add-data="images:images" --add-data="sounds:sounds" --add-data="music:music" main.py
+        # For macOS, use --windowed
+        pyinstaller --name=SpaceConquer --onefile --windowed --add-data="images:images" --add-data="sounds:sounds" --add-data="music:music" main.py
+        
+        # Create a shell script for one-click running
+        echo '#!/bin/bash' > dist/run_game.sh
+        echo 'cd "$(dirname "$0")"' >> dist/run_game.sh
+        echo 'chmod +x ./SpaceConquer' >> dist/run_game.sh
+        echo './SpaceConquer' >> dist/run_game.sh
+        chmod +x dist/run_game.sh
+        
+    - name: Build with PyInstaller (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        # For Linux, don't use --windowed
+        pyinstaller --name=SpaceConquer --onefile --add-data="images:images" --add-data="sounds:sounds" --add-data="music:music" main.py
+        
+        # Create a shell script for one-click running
+        echo '#!/bin/bash' > dist/run_game.sh
+        echo 'cd "$(dirname "$0")"' >> dist/run_game.sh
+        echo 'chmod +x ./SpaceConquer' >> dist/run_game.sh
+        echo './SpaceConquer' >> dist/run_game.sh
+        chmod +x dist/run_game.sh
         
     - name: Create Release Package (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         mkdir -p release
         cp dist/SpaceConquer.exe release/
+        cp dist/run_game.bat release/
         cp README.md LICENSE CHANGELOG.md release/
         cd release
         7z a -tzip "../${{ matrix.asset_name }}.zip" *
@@ -58,10 +94,9 @@ jobs:
       run: |
         mkdir -p release
         cp dist/SpaceConquer release/
+        cp dist/run_game.sh release/
         cp README.md LICENSE CHANGELOG.md release/
-        echo '#!/bin/bash' > release/run_game.sh
-        echo 'chmod +x ./SpaceConquer' >> release/run_game.sh
-        echo './SpaceConquer' >> release/run_game.sh
+        chmod +x release/SpaceConquer
         chmod +x release/run_game.sh
         cd release
         zip -r "../${{ matrix.asset_name }}.zip" *

@@ -18,55 +18,32 @@ Space Conquer is a side-scrolling shooter game where you control a spaceship and
 - Background music with separate volume control
 - Settings menu
 
-## Project Structure
+## How to Play
 
-The project follows a modular structure for better maintainability:
+### Pre-built Executables (Recommended for Non-Technical Users)
 
-```
-space-conquer/
-├── main.py                  # Main entry point
-├── setup.py                 # Setup script for installation
-├── tools/                   # Utility scripts for development
-├── images/                  # Original game images
-├── sounds/                  # Original sound effects
-├── music/                   # Original background music
-└── space_impact/            # Main package
-    ├── __init__.py
-    ├── config.py            # Game configuration
-    ├── game_manager.py      # Main game manager
-    ├── version.py           # Version information
-    ├── assets/              # Game images
-    ├── sounds/              # Sound effects
-    ├── music/               # Background music
-    ├── sprites/             # Game sprites
-    │   ├── __init__.py
-    │   ├── player.py        # Player sprite
-    │   ├── bullet.py        # Bullet sprite
-    │   ├── enemy.py         # Enemy sprites
-    │   ├── powerup.py       # Power-up sprites
-    │   └── star.py          # Background stars
-    └── utils/               # Utility modules
-        ├── __init__.py
-        ├── asset_loader.py  # Asset loading
-        ├── sound_manager.py # Sound management
-        └── ui_manager.py    # UI management
-```
+1. Go to the [Releases](https://github.com/yourusername/space-conquer/releases) page
+2. Download the appropriate package for your operating system:
+   - Windows: `SpaceConquer-Windows.zip`
+   - macOS: `SpaceConquer-macOS.zip`
+   - Linux: `SpaceConquer-Linux.zip`
+3. Extract the ZIP file
+4. Run the game:
+   - Windows: Double-click `run_game.bat` or `SpaceConquer.exe`
+   - macOS/Linux: Double-click `run_game.sh` or run it from terminal
 
-## How to Run the Game
+### From Source Code (One-Click)
 
-### Method 1: Direct Execution
+If you've downloaded the source code, you can use the one-click launchers:
 
-1. Make sure you have Python and Pygame installed
-2. Run the game with:
-   ```
-   python main.py
-   ```
-   or
-   ```
-   python3 main.py
-   ```
+- **Windows**: Double-click `run_game.bat`
+- **macOS/Linux**: Run `./run_game.py` in terminal or make it executable and double-click
 
-### Method 2: Using a Virtual Environment
+These scripts will automatically set up a virtual environment and install dependencies if needed.
+
+### Manual Setup
+
+If you prefer manual setup:
 
 1. Create a virtual environment:
    ```
@@ -85,18 +62,6 @@ space-conquer/
 4. Run the game:
    ```
    python main.py
-   ```
-
-### Method 3: Installation as a Package
-
-1. Install the package in development mode:
-   ```
-   pip install -e .
-   ```
-
-2. Run the game:
-   ```
-   python -m space_impact
    ```
 
 ## Controls
@@ -128,6 +93,42 @@ The game includes both sound effects and background music:
 - Background music: Chiptune-style music that loops continuously
 - Both sound effects and music have separate volume controls in the settings menu
 - Setting music volume to 0% automatically turns off the background music
+
+## Project Structure
+
+The project follows a modular structure for better maintainability:
+
+```
+space-conquer/
+├── main.py                  # Main entry point
+├── run_game.py              # One-click launcher script
+├── run_game.bat             # Windows launcher
+├── setup.py                 # Setup script for installation
+├── tools/                   # Utility scripts for development
+├── images/                  # Original game images
+├── sounds/                  # Original sound effects
+├── music/                   # Original background music
+└── space_impact/            # Main package
+    ├── __init__.py
+    ├── config.py            # Game configuration
+    ├── game_manager.py      # Main game manager
+    ├── version.py           # Version information
+    ├── assets/              # Game images
+    ├── sounds/              # Sound effects
+    ├── music/               # Background music
+    ├── sprites/             # Game sprites
+    │   ├── __init__.py
+    │   ├── player.py        # Player sprite
+    │   ├── bullet.py        # Bullet sprite
+    │   ├── enemy.py         # Enemy sprites
+    │   ├── powerup.py       # Power-up sprites
+    │   └── star.py          # Background stars
+    └── utils/               # Utility modules
+        ├── __init__.py
+        ├── asset_loader.py  # Asset loading
+        ├── sound_manager.py # Sound management
+        └── ui_manager.py    # UI management
+```
 
 ## Development
 
