@@ -237,8 +237,24 @@ class GameManager:
                     elif self.game_over and not self.ui_manager.settings_open:
                         if self.ui_manager.start_button_rect and self.ui_manager.start_button_rect.collidepoint(event.pos):
                             self.start_new_game(testing_mode=False)
-                        elif self.ui_manager.test_button_rect and self.ui_manager.test_button_rect.collidepoint(event.pos):
-                            self.start_new_game(testing_mode=True)
+                        elif hasattr(self.ui_manager, 'main_menu_button_rect') and self.ui_manager.main_menu_button_rect and self.ui_manager.main_menu_button_rect.collidepoint(event.pos):
+                            # Return to main menu with proper reset
+                            self.game_active = False  # Ensure game is not active
+                            self.game_over = False    # Exit game over state
+                            self.score = 0
+                            self.player = None
+                            self.enemies.empty()
+                            self.powerups.empty()
+                            self.all_sprites.empty()
+                            self.mini_boss = None
+                            self.main_boss = None
+                            self.mini_boss_spawned = False
+                            self.main_boss_spawned = False
+                            # Play a menu sound if available
+                            if 'menu' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('menu')
+                            elif 'select' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('select')
                     # Handle phase marker clicks in testing mode
                     elif self.testing_mode and self.game_active:
                         for marker in self.phase_markers:

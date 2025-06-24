@@ -17,6 +17,10 @@ class UIManager:
         # Main menu buttons
         self.start_button_rect = None
         self.test_button_rect = None
+        self.main_menu_button_rect = None
+        
+        # Button hover state
+        self.hovered_button = None
         
         # Settings panel
         self.settings_open = False
@@ -263,7 +267,7 @@ class UIManager:
             pygame.draw.circle(surface, color, (x, y), size)
         
         # Create a semi-transparent panel for the game over message
-        panel_width, panel_height = 500, 300
+        panel_width, panel_height = 500, 340  # Increased height for better padding
         panel_rect = pygame.Rect(SCREEN_WIDTH // 2 - panel_width // 2, SCREEN_HEIGHT // 2 - panel_height // 2, 
                                 panel_width, panel_height)
         
@@ -288,8 +292,8 @@ class UIManager:
                         (panel_rect.left + 20, panel_rect.top + 20), 
                         (panel_rect.left + panel_width - 20, panel_rect.top + 20), 2)
         pygame.draw.line(surface, (200, 50, 50, 150), 
-                        (panel_rect.left + 20, panel_rect.bottom - 20), 
-                        (panel_rect.left + panel_width - 20, panel_rect.bottom - 20), 2)
+                        (panel_rect.left + 20, panel_rect.bottom - 30),  # Moved up to 30px from bottom
+                        (panel_rect.left + panel_width - 20, panel_rect.bottom - 30), 2)
         
         # Draw game over text with glow effect
         game_over_font = pygame.font.SysFont('Arial', 48, bold=True)
@@ -309,17 +313,20 @@ class UIManager:
         restart_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
                                         panel_rect.top + 180, 
                                         restart_button_width, restart_button_height)
-        self._draw_stylized_button(surface, restart_button_rect, "RESTART", (60, 10, 10), (150, 30, 30))
+        is_restart_hovered = restart_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, restart_button_rect, "RESTART", (60, 10, 10), (150, 30, 30), is_restart_hovered)
         
-        # Create test mode button
-        test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
-                                    panel_rect.top + 240, 
+        # Create main menu button with proper padding and gap
+        main_menu_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
+                                    panel_rect.top + 250,  # Increased gap from first button (from 180 to 250 = 70px gap)
                                     restart_button_width, restart_button_height)
-        self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 10, 40), (100, 30, 100))
+        is_menu_hovered = main_menu_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, main_menu_button_rect, "MAIN MENU", (30, 30, 60), (70, 70, 140), is_menu_hovered)
         
         # Store button rectangles for click detection
         self.start_button_rect = restart_button_rect
-        self.test_button_rect = test_button_rect
+        self.main_menu_button_rect = main_menu_button_rect
+        self.test_button_rect = None  # No test button on game over screen
     
     def show_start_screen(self, surface, testing_mode=False):
         """Display an enhanced start screen with mysterious vibe."""
@@ -358,15 +365,17 @@ class UIManager:
         
         # Start Game Button
         start_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 280, button_width, button_height)
-        self._draw_stylized_button(surface, start_button_rect, "START GAME", (30, 30, 80), (80, 80, 180))
+        is_start_hovered = start_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, start_button_rect, "START GAME", (30, 30, 80), (80, 80, 180), is_start_hovered)
         
-        # Test Mode Button (smaller and less prominent)
+        # Test Mode Button (only shown during development if testing_mode is True)
         if testing_mode:
-            test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 350, button_width, button_height)
-            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 20, 60), (120, 80, 140))
+            test_button_rect = pygame.Rect(SCREEN_WIDTH - 120, SCREEN_HEIGHT - 40, 100, 30)
+            is_test_hovered = test_button_rect.collidepoint(pygame.mouse.get_pos())
+            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 20, 60), (120, 80, 140), is_test_hovered)
+            self.test_button_rect = test_button_rect
         else:
-            test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, 350, 200, 40)
-            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (30, 15, 45), (90, 60, 105))
+            self.test_button_rect = None
         
         # Controls section with a semi-transparent background
         controls_overlay = pygame.Surface((400, 80), pygame.SRCALPHA)
@@ -387,9 +396,8 @@ class UIManager:
         
         # Store button rectangles for click detection
         self.start_button_rect = start_button_rect
-        self.test_button_rect = test_button_rect
         
-        # Show testing mode instructions
+        # Show testing mode instructions (only during development)
         if testing_mode:
             test_instructions = [
                 "TESTING MODE CONTROLS:",
@@ -411,20 +419,32 @@ class UIManager:
                 text = self.font_small.render(instruction, True, (200, 200, 100))
                 surface.blit(text, (30, SCREEN_HEIGHT - len(test_instructions) * 20 - 10 + i * 20))
     
-    def _draw_stylized_button(self, surface, rect, text, color_dark, color_light):
+    def _draw_stylized_button(self, surface, rect, text, color_dark, color_light, is_hovered=False):
         """Draw a stylized button with a space theme."""
         # Draw button background with gradient
         for i in range(rect.height):
             progress = i / rect.height
-            color = (
-                int(color_dark[0] + (color_light[0] - color_dark[0]) * progress),
-                int(color_dark[1] + (color_light[1] - color_dark[1]) * progress),
-                int(color_dark[2] + (color_light[2] - color_dark[2]) * progress)
-            )
+            
+            # Brighten colors if hovered
+            if is_hovered:
+                color = (
+                    min(255, int(color_dark[0] + (color_light[0] - color_dark[0]) * progress + 30)),
+                    min(255, int(color_dark[1] + (color_light[1] - color_dark[1]) * progress + 30)),
+                    min(255, int(color_dark[2] + (color_light[2] - color_dark[2]) * progress + 30))
+                )
+            else:
+                color = (
+                    int(color_dark[0] + (color_light[0] - color_dark[0]) * progress),
+                    int(color_dark[1] + (color_light[1] - color_dark[1]) * progress),
+                    int(color_dark[2] + (color_light[2] - color_dark[2]) * progress)
+                )
             pygame.draw.line(surface, color, (rect.left, rect.top + i), (rect.right, rect.top + i))
         
         # Draw button border with glow effect
-        pygame.draw.rect(surface, color_light, rect, 2)
+        border_color = (min(255, color_light[0] + 30 if is_hovered else color_light[0]),
+                        min(255, color_light[1] + 30 if is_hovered else color_light[1]),
+                        min(255, color_light[2] + 30 if is_hovered else color_light[2]))
+        pygame.draw.rect(surface, border_color, rect, 2)
         
         # Add some "tech" details to the button
         pygame.draw.line(surface, (100, 100, 200, 150), 
@@ -436,6 +456,7 @@ class UIManager:
         
         # Draw text
         font = pygame.font.SysFont('Arial', 24, bold=True)
-        text_surface = font.render(text, True, (220, 220, 255))
+        text_color = (240, 240, 255) if is_hovered else (220, 220, 255)
+        text_surface = font.render(text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         surface.blit(text_surface, text_rect)
