@@ -85,7 +85,7 @@ class UIManager:
         surface.blit(sfx_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 - 45))
         
         # Sound effects slider
-        sfx_slider_x = self.panel_x + 180
+        sfx_slider_x = self.panel_x + 130
         sfx_slider_y = SCREEN_HEIGHT // 2 - 40
         
         # Create a local copy of the slider rect for drawing
@@ -115,7 +115,7 @@ class UIManager:
         surface.blit(music_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 + 5))
         
         # Music slider
-        music_slider_x = self.panel_x + 180
+        music_slider_x = self.panel_x + 130
         music_slider_y = SCREEN_HEIGHT // 2 + 10
         
         # Create a local copy of the slider rect for drawing
@@ -247,17 +247,39 @@ class UIManager:
         game_over_text = self.font_large.render('GAME OVER', True, (255, 0, 0))
         score_text = self.font_medium.render(f'Final Score: {score}', True, WHITE)
         restart_text = self.font_medium.render('Press SPACE to restart', True, WHITE)
+        test_text = self.font_medium.render('Press T for test mode', True, WHITE)
         
         surface.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, 200))
         surface.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 300))
         surface.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, 350))
+        surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 380))
     
-    def show_start_screen(self, surface):
+    def show_start_screen(self, surface, testing_mode=False):
         """Display start screen."""
         title_text = self.font_large.render('SPACE CONQUER', True, WHITE)
         instruction_text = self.font_medium.render('Press SPACE to start', True, WHITE)
+        test_text = self.font_medium.render('Press T for test mode', True, WHITE)
         controls_text = self.font_medium.render('Arrow keys to move, SPACE to shoot', True, WHITE)
         
-        surface.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 200))
-        surface.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 300))
-        surface.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 350))
+        surface.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 150))
+        surface.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 250))
+        surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 280))
+        surface.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 320))
+        
+        # Show testing mode instructions
+        if testing_mode:
+            test_instructions = [
+                "TESTING MODE CONTROLS:",
+                "1: Spawn Mini-Boss",
+                "2: Spawn Main Boss",
+                "3: Add 100 Score",
+                "4: Add Health",
+                "5: Toggle Rapid Fire",
+                "6: Increase Speed",
+                "L: Cycle Through Levels",
+                "0: Toggle Debug Info"
+            ]
+            
+            for i, instruction in enumerate(test_instructions):
+                text = self.font_small.render(instruction, True, (200, 200, 100))
+                surface.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 360 + i * 20))
