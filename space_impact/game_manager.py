@@ -53,14 +53,9 @@ class GameManager:
         
         # Map system
         self.maps = [
-            "Starlight's End",
-            "Nebula Frontier",
-            "Asteroid Belt",
-            "Gas Giant Orbit",
-            "Solar Flare Zone"
+            "Starlight's End"
         ]
         self.current_map = 0
-        self.map_thresholds = [0, 500, 1000, 1500, 2000]
         self.map_transition_timer = 0
         self.showing_map_name = False
         self.map_name_duration = 180  # 3 seconds at 60 FPS
@@ -213,12 +208,6 @@ class GameManager:
                     elif event.key == pygame.K_0:
                         # Toggle debug info
                         self.show_debug_info = not self.show_debug_info
-                    elif event.key == pygame.K_m:
-                        # Cycle through maps
-                        self.current_map = (self.current_map + 1) % len(self.maps)
-                        self.showing_map_name = True
-                        self.map_transition_timer = self.map_name_duration
-                        print(f"Switched to Map: {self.maps[self.current_map]}")
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
@@ -232,7 +221,6 @@ class GameManager:
                             if marker_rect.collidepoint(event.pos):
                                 self.score = marker['score']
                                 self.update_enemy_types()
-                                self.update_map()
                                 print(f"Skipped to phase: {marker['name']} (Score: {marker['score']})")
                                 break
             
@@ -269,9 +257,6 @@ class GameManager:
                     self.mini_boss.update()
                 if self.main_boss:
                     self.main_boss.update()
-                
-                # Check for map progression based on score
-                self.update_map()
                 
                 # Check for enemy type progression based on score
                 self.update_enemy_types()
@@ -386,18 +371,6 @@ class GameManager:
                     # Play powerup sound
                     self.sound_manager.play_sound('powerup')
     
-    def update_map(self):
-        """Update the current map based on score."""
-        for i in range(len(self.map_thresholds) - 1, 0, -1):
-            if self.score >= self.map_thresholds[i]:
-                if self.current_map != i:
-                    self.current_map = i
-                    self.enemy_spawn_delay = self.enemy_spawn_rates[i]
-                    self.showing_map_name = True
-                    self.map_transition_timer = self.map_name_duration
-                    print(f"Map changed! Now at: {self.maps[self.current_map]}")
-                break
-    
     def update_enemy_types(self):
         """Update available enemy types based on score."""
         for progression in self.enemy_progression:
@@ -442,8 +415,8 @@ class GameManager:
                 
                 # Show current map name at the top
                 map_font = pygame.font.SysFont('Arial', 22)
-                map_text = map_font.render(f"Map: {self.maps[self.current_map]}", True, (255, 255, 255))
-                self.screen.blit(map_text, (SCREEN_WIDTH - map_text.get_width() - 10, 10))
+                map_text = map_font.render(f"Chapter {self.current_map + 1}: {self.maps[self.current_map]}", True, (255, 255, 255))
+                self.screen.blit(map_text, (SCREEN_WIDTH // 2 - map_text.get_width() // 2, 10))
                 
                 # Show map name during transition
                 if self.showing_map_name:

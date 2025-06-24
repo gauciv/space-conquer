@@ -276,7 +276,6 @@ class UIManager:
                 "4: Add Health",
                 "5: Toggle Rapid Fire",
                 "6: Increase Speed",
-                "M: Cycle Through Maps",
                 "0: Toggle Debug Info"
             ]
             
