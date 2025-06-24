@@ -1,9 +1,11 @@
 import pygame
 import sys
 import random
+import os
 
 # Initialize pygame
 pygame.init()
+pygame.mixer.init()  # Initialize sound mixer
 
 # Game constants
 SCREEN_WIDTH = 800
@@ -21,6 +23,42 @@ BLUE = (0, 0, 255)
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Space Impact")
 clock = pygame.time.Clock()
+
+# Create sounds directory if it doesn't exist
+if not os.path.exists('sounds'):
+    os.makedirs('sounds')
+
+# Create simple sound files
+def create_sound_files():
+    try:
+        # Create a simple shoot sound
+        pygame.mixer.Sound.play = lambda self: None  # Temporarily disable sound playing
+        shoot_sound = pygame.mixer.Sound(buffer=bytes([128] * 4410))  # 0.1s of silence
+        shoot_sound.set_volume(0.3)
+        shoot_sound.save('sounds/shoot.wav')
+        
+        # Create a simple explosion sound
+        explosion_sound = pygame.mixer.Sound(buffer=bytes([128] * 22050))  # 0.5s of silence
+        explosion_sound.set_volume(0.5)
+        explosion_sound.save('sounds/explosion.wav')
+        
+        # Create a simple powerup sound
+        powerup_sound = pygame.mixer.Sound(buffer=bytes([128] * 11025))  # 0.25s of silence
+        powerup_sound.set_volume(0.4)
+        powerup_sound.save('sounds/powerup.wav')
+    except:
+        print("Could not create sound files. Game will run without sound.")
+
+# Try to create sound files
+try:
+    create_sound_files()
+    # Load sounds
+    shoot_sound = pygame.mixer.Sound('sounds/shoot.wav')
+    explosion_sound = pygame.mixer.Sound('sounds/explosion.wav')
+    powerup_sound = pygame.mixer.Sound('sounds/powerup.wav')
+    sound_enabled = True
+except:
+    sound_enabled = False
 
 # Game state
 game_active = False
