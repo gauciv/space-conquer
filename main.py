@@ -64,12 +64,14 @@ try:
     explosion_sound = pygame.mixer.Sound('sounds/explosion.wav')
     powerup_sound = pygame.mixer.Sound('sounds/powerup.wav')
     game_start_sound = pygame.mixer.Sound('sounds/game_start.wav')
+    game_over_sound = pygame.mixer.Sound('sounds/game_over.wav')
     
     # Set volume levels for sound effects
     shoot_sound.set_volume(sfx_volume)
     explosion_sound.set_volume(sfx_volume)
     powerup_sound.set_volume(sfx_volume)
     game_start_sound.set_volume(sfx_volume)
+    game_over_sound.set_volume(sfx_volume)
     
     print("Sound effects loaded successfully!")
 except Exception as e:
@@ -488,6 +490,11 @@ def main():
                 if music_enabled:
                     pygame.mixer.music.set_volume(music_volume)
                 pygame.time.set_timer(pygame.USEREVENT, 0)  # Disable the timer
+            elif event.type == pygame.USEREVENT + 1:
+                # Restore music volume after game over sound finishes
+                if music_enabled:
+                    pygame.mixer.music.set_volume(music_volume)
+                pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Disable the timer
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_active and not settings_open:
                     # Start/restart the game
@@ -634,6 +641,18 @@ def main():
                         explosion_sound.play()
                     if player.health <= 0:
                         game_active = False
+                        # Play game over sound
+                        if sound_enabled:
+                            # Stop any other sounds that might be playing
+                            pygame.mixer.stop()
+                            # Lower music volume for game over sound
+                            if music_enabled:
+                                current_music_vol = pygame.mixer.music.get_volume()
+                                pygame.mixer.music.set_volume(current_music_vol * 0.3)
+                            # Play game over sound
+                            game_over_sound.play()
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 # Check for player collision with power-ups
                 powerup_hits = pygame.sprite.spritecollide(player, powerups, True)
