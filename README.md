@@ -7,6 +7,7 @@ A Python recreation of the classic Space Impact game that was popular on Nokia p
 Space Impact is a side-scrolling shooter game where you control a spaceship and must destroy enemy ships while avoiding collisions. This version includes:
 
 - Multiple enemy types with different behaviors
+- Custom designed spaceship graphics
 - Power-ups to enhance your ship
 - Increasing difficulty over time
 - Score tracking
@@ -34,9 +35,17 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 
 ## Enemy Types
 
-- Normal (red square): Basic enemy
-- Fast (red triangle): Moves quickly but has low health
-- Tank (red circle): Slow but requires multiple hits to destroy
+- Normal (red): Basic enemy
+- Fast (triangular): Moves quickly but has low health
+- Tank (armored): Slow but requires multiple hits to destroy
+
+## Graphics
+
+The game features custom-designed spaceship graphics:
+- Player ship: Blue and green spaceship with engine effects
+- Enemy ships: Different designs for each enemy type
+- Power-ups: Distinct visual indicators for each power-up type
+- Bullets: Yellow projectiles with orange tips
 
 ## Requirements
 
