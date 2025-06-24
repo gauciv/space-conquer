@@ -45,41 +45,27 @@ health_powerup_img = load_image('health_powerup.png')
 speed_powerup_img = load_image('speed_powerup.png')
 rapid_fire_powerup_img = load_image('rapid_fire_powerup.png')
 
-# Create sounds directory if it doesn't exist
-if not os.path.exists('sounds'):
-    os.makedirs('sounds')
-
-# Create simple sound files
-def create_sound_files():
-    try:
-        # Create a simple shoot sound
-        pygame.mixer.Sound.play = lambda self: None  # Temporarily disable sound playing
-        shoot_sound = pygame.mixer.Sound(buffer=bytes([128] * 4410))  # 0.1s of silence
-        shoot_sound.set_volume(0.3)
-        shoot_sound.save('sounds/shoot.wav')
-        
-        # Create a simple explosion sound
-        explosion_sound = pygame.mixer.Sound(buffer=bytes([128] * 22050))  # 0.5s of silence
-        explosion_sound.set_volume(0.5)
-        explosion_sound.save('sounds/explosion.wav')
-        
-        # Create a simple powerup sound
-        powerup_sound = pygame.mixer.Sound(buffer=bytes([128] * 11025))  # 0.25s of silence
-        powerup_sound.set_volume(0.4)
-        powerup_sound.save('sounds/powerup.wav')
-    except:
-        print("Could not create sound files. Game will run without sound.")
-
-# Try to create sound files
+# Load sound effects
+sound_enabled = True
 try:
-    create_sound_files()
-    # Load sounds
     shoot_sound = pygame.mixer.Sound('sounds/shoot.wav')
     explosion_sound = pygame.mixer.Sound('sounds/explosion.wav')
     powerup_sound = pygame.mixer.Sound('sounds/powerup.wav')
-    sound_enabled = True
-except:
+    
+    # Set volume levels
+    shoot_sound.set_volume(0.3)
+    explosion_sound.set_volume(0.5)
+    powerup_sound.set_volume(0.4)
+    
+    print("Sound effects loaded successfully!")
+except Exception as e:
     sound_enabled = False
+    print(f"Error loading sound effects: {e}")
+    print("Game will run without sound.")
+
+# Game state
+game_active = False
+score = 0
 
 # Game state
 game_active = False
