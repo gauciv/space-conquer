@@ -24,6 +24,27 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Space Impact")
 clock = pygame.time.Clock()
 
+# Load images
+def load_image(name):
+    path = os.path.join('images', name)
+    try:
+        image = pygame.image.load(path)
+        return image
+    except pygame.error as e:
+        print(f"Cannot load image: {path}")
+        print(e)
+        return pygame.Surface((30, 30))
+
+# Load all game images
+player_img = load_image('player_ship.png')
+normal_enemy_img = load_image('normal_enemy.png')
+fast_enemy_img = load_image('fast_enemy.png')
+tank_enemy_img = load_image('tank_enemy.png')
+bullet_img = load_image('bullet.png')
+health_powerup_img = load_image('health_powerup.png')
+speed_powerup_img = load_image('speed_powerup.png')
+rapid_fire_powerup_img = load_image('rapid_fire_powerup.png')
+
 # Create sounds directory if it doesn't exist
 if not os.path.exists('sounds'):
     os.makedirs('sounds')
@@ -85,11 +106,8 @@ class Star:
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # Create a simple spaceship shape
-        self.image = pygame.Surface((50, 30))
-        self.image.fill(GREEN)
-        # Draw a triangle for the ship
-        pygame.draw.polygon(self.image, WHITE, [(0, 15), (50, 0), (50, 30)])
+        # Use the player ship image
+        self.image = player_img
         self.rect = self.image.get_rect()
         self.rect.centerx = 100
         self.rect.centery = SCREEN_HEIGHT // 2
@@ -171,8 +189,7 @@ class Player(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface((10, 5))
-        self.image.fill(WHITE)
+        self.image = bullet_img
         self.rect = self.image.get_rect()
         self.rect.left = x
         self.rect.centery = y
@@ -191,22 +208,17 @@ class Enemy(pygame.sprite.Sprite):
         self.enemy_type = enemy_type
         
         if enemy_type == 'normal':
-            self.image = pygame.Surface((40, 40))
-            self.image.fill(RED)
+            self.image = normal_enemy_img
             self.health = 1
             self.speed = random.randint(3, 7)
             self.points = 10
         elif enemy_type == 'fast':
-            self.image = pygame.Surface((30, 20))
-            self.image.fill(RED)
-            pygame.draw.polygon(self.image, WHITE, [(0, 10), (30, 0), (30, 20)])
+            self.image = fast_enemy_img
             self.health = 1
             self.speed = random.randint(8, 12)
             self.points = 15
         elif enemy_type == 'tank':
-            self.image = pygame.Surface((50, 50))
-            self.image.fill(RED)
-            pygame.draw.circle(self.image, WHITE, (25, 25), 15, 3)
+            self.image = tank_enemy_img
             self.health = 3
             self.speed = random.randint(2, 4)
             self.points = 25
@@ -227,17 +239,12 @@ class PowerUp(pygame.sprite.Sprite):
         super().__init__()
         self.type = random.choice(['health', 'speed', 'rapid_fire'])
         
-        self.image = pygame.Surface((20, 20))
         if self.type == 'health':
-            self.image.fill(GREEN)
-            pygame.draw.rect(self.image, WHITE, (8, 3, 4, 14))
-            pygame.draw.rect(self.image, WHITE, (3, 8, 14, 4))
+            self.image = health_powerup_img
         elif self.type == 'speed':
-            self.image.fill(BLUE)
-            pygame.draw.polygon(self.image, WHITE, [(5, 10), (15, 5), (15, 15)])
+            self.image = speed_powerup_img
         elif self.type == 'rapid_fire':
-            self.image.fill(WHITE)
-            pygame.draw.rect(self.image, RED, (5, 5, 10, 10))
+            self.image = rapid_fire_powerup_img
         
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + random.randint(0, 100)
