@@ -13,6 +13,7 @@ from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
+from .sprites.boss import Boss
 
 class GameManager:
     def __init__(self):
@@ -42,6 +43,14 @@ class GameManager:
         self.powerups = pygame.sprite.Group()
         self.player = None
         
+        # Boss variables
+        self.mini_boss = None
+        self.main_boss = None
+        self.mini_boss_spawned = False
+        self.main_boss_spawned = False
+        self.mini_boss_score_threshold = 750
+        self.main_boss_score_threshold = 1500
+        
         # Start background music
         self.sound_manager.play_music()
     
@@ -69,6 +78,12 @@ class GameManager:
         # Create player
         self.player = Player(self.asset_loader.get_image('player'), self.sound_manager)
         self.all_sprites.add(self.player)
+        
+        # Reset boss variables
+        self.mini_boss = None
+        self.main_boss = None
+        self.mini_boss_spawned = False
+        self.main_boss_spawned = False
         
         # Enemy spawn timer
         self.enemy_spawn_delay = ENEMY_SPAWN_DELAY
@@ -134,6 +149,15 @@ class GameManager:
                 self.enemies.update()
                 self.powerups.update()
                 
+                # Update bosses if they exist
+                if self.mini_boss:
+                    self.mini_boss.update()
+                if self.main_boss:
+                    self.main_boss.update()
+                
+                # Check for boss spawning based on score
+                self.check_boss_spawning()
+                
                 # Increase difficulty over time
                 self.difficulty_timer += 1
                 if self.difficulty_timer == 1200:  # After 20 seconds
@@ -143,16 +167,18 @@ class GameManager:
                     if 'tank' not in self.enemy_types:
                         self.enemy_types.append('tank')
                 
-                # Spawn enemies
-                now = pygame.time.get_ticks()
-                if now - self.last_enemy_spawn > self.enemy_spawn_delay:
-                    self.last_enemy_spawn = now
-                    enemy_type = random.choice(self.enemy_types)
-                    enemy = Enemy(enemy_type, self.asset_loader.images)
-                    self.enemies.add(enemy)
-                    self.all_sprites.add(enemy)
+                # Spawn enemies (only if no boss is active)
+                if not self.mini_boss and not self.main_boss:
+                    now = pygame.time.get_ticks()
+                    if now - self.last_enemy_spawn > self.enemy_spawn_delay:
+                        self.last_enemy_spawn = now
+                        enemy_type = random.choice(self.enemy_types)
+                        enemy = Enemy(enemy_type, self.asset_loader.images)
+                        self.enemies.add(enemy)
+                        self.all_sprites.add(enemy)
                 
                 # Spawn power-ups
+                now = pygame.time.get_ticks()
                 if now - self.last_powerup_spawn > self.powerup_spawn_delay:
                     self.last_powerup_spawn = now
                     powerup = PowerUp(self.asset_loader.images)
@@ -169,6 +195,28 @@ class GameManager:
                         # Play explosion sound
                         self.sound_manager.play_sound('explosion')
                 
+                # Check for bullet collisions with mini-boss
+                if self.mini_boss:
+                    mini_boss_hits = pygame.sprite.spritecollide(self.mini_boss, self.player.bullets, True)
+                    if mini_boss_hits:
+                        if self.mini_boss.take_damage(len(mini_boss_hits)):
+                            # Mini-boss defeated
+                            self.score += self.mini_boss.score_value
+                            self.mini_boss = None
+                            # Play explosion sound (could be a special boss explosion)
+                            self.sound_manager.play_sound('explosion')
+                
+                # Check for bullet collisions with main boss
+                if self.main_boss:
+                    main_boss_hits = pygame.sprite.spritecollide(self.main_boss, self.player.bullets, True)
+                    if main_boss_hits:
+                        if self.main_boss.take_damage(len(main_boss_hits)):
+                            # Main boss defeated
+                            self.score += self.main_boss.score_value
+                            self.main_boss = None
+                            # Play explosion sound (could be a special boss explosion)
+                            self.sound_manager.play_sound('explosion')
+                
                 # Check for player collision with enemies
                 if pygame.sprite.spritecollide(self.player, self.enemies, True):
                     # Use the new take_damage method which handles invulnerability and sound
@@ -184,12 +232,51 @@ class GameManager:
                         # Schedule music volume restoration
                         pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
+                # Check for player collision with boss bullets
+                if self.mini_boss:
+                    boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.mini_boss.bullets, True)
+                    if boss_bullet_hits and self.player.take_damage():
+                        if self.player.health <= 0:
+                            self.game_active = False
+                            # Play game over sound
+                            self.sound_manager.play_sound('game_over')
+                            # Lower music volume for game over sound
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.temporarily_lower_music(duration=1500)
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                
+                if self.main_boss:
+                    boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.main_boss.bullets, True)
+                    if boss_bullet_hits and self.player.take_damage():
+                        if self.player.health <= 0:
+                            self.game_active = False
+                            # Play game over sound
+                            self.sound_manager.play_sound('game_over')
+                            # Lower music volume for game over sound
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.temporarily_lower_music(duration=1500)
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                
                 # Check for player collision with power-ups
                 powerup_hits = pygame.sprite.spritecollide(self.player, self.powerups, True)
                 for powerup in powerup_hits:
                     self.player.apply_powerup(powerup.type)
                     # Play powerup sound
                     self.sound_manager.play_sound('powerup')
+    
+    def check_boss_spawning(self):
+        """Check if it's time to spawn a boss based on score."""
+        # Spawn mini-boss at score threshold
+        if self.score >= self.mini_boss_score_threshold and not self.mini_boss_spawned and not self.mini_boss and not self.main_boss:
+            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
+            self.mini_boss_spawned = True
+        
+        # Spawn main boss at score threshold
+        if self.score >= self.main_boss_score_threshold and not self.main_boss_spawned and not self.main_boss and not self.mini_boss:
+            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
+            self.main_boss_spawned = True
     
     def draw(self):
         """Draw the game screen."""
@@ -205,6 +292,12 @@ class GameManager:
                 # Draw game elements
                 self.all_sprites.draw(self.screen)
                 self.player.draw(self.screen)
+                
+                # Draw bosses if they exist
+                if self.mini_boss:
+                    self.mini_boss.draw(self.screen)
+                if self.main_boss:
+                    self.main_boss.draw(self.screen)
                 
                 # Show score and health with max_health
                 self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
