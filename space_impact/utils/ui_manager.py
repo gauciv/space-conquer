@@ -338,21 +338,82 @@ class UIManager:
         return False
     
     def show_score(self, surface, score, health, max_health=3):
-        """Display score and health on screen."""
-        # Display score
-        score_text = self.font_medium.render(f'Score: {score}', True, WHITE)
-        surface.blit(score_text, (10, 10))
+        """Display score and health with enhanced visual styling."""
+        # Create a semi-transparent panel for the score
+        score_panel_width = 150
+        score_panel_height = 40
+        score_panel_rect = pygame.Rect(10, 10, score_panel_width, score_panel_height)
         
-        # Display health as hearts
-        heart_spacing = 40  # Space between hearts
+        # Draw panel background with gradient
+        for i in range(score_panel_height):
+            progress = i / score_panel_height
+            color = (
+                int(20 + 20 * progress),
+                int(20 + 20 * progress),
+                int(40 + 20 * progress),
+                180
+            )
+            panel_surface = pygame.Surface((score_panel_width, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (score_panel_rect.left, score_panel_rect.top + i))
+        
+        # Draw panel border with glow effect
+        pygame.draw.rect(surface, (100, 100, 180), score_panel_rect, 1)
+        
+        # Draw score with glow effect
+        score_font = pygame.font.SysFont('Arial', 24, bold=True)
+        score_text = f"SCORE: {score}"
+        
+        # Glow effect
+        glow_text = score_font.render(score_text, True, (40, 40, 100))
+        surface.blit(glow_text, (20 + 1, 18 + 1))
+        
+        # Main text
+        main_text = score_font.render(score_text, True, (150, 150, 255))
+        surface.blit(main_text, (20, 18))
+        
+        # Create a semi-transparent panel for health
+        health_panel_width = max_health * 45 + 20
+        health_panel_height = 40
+        health_panel_rect = pygame.Rect(10, 60, health_panel_width, health_panel_height)
+        
+        # Draw panel background with gradient
+        for i in range(health_panel_height):
+            progress = i / health_panel_height
+            color = (
+                int(40 + 10 * progress),
+                int(10 + 10 * progress),
+                int(10 + 10 * progress),
+                180
+            )
+            panel_surface = pygame.Surface((health_panel_width, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (health_panel_rect.left, health_panel_rect.top + i))
+        
+        # Draw panel border with glow effect
+        pygame.draw.rect(surface, (180, 100, 100), health_panel_rect, 1)
+        
+        # Draw health hearts with animation effect
+        heart_spacing = 45
         for i in range(max_health):
-            heart_x = 10 + (i * heart_spacing)
-            heart_y = 40
+            heart_x = 20 + i * heart_spacing
+            heart_y = 70
             
-            # Draw full or empty heart based on current health
+            # Use the existing heart images with added effects
             if i < health:
+                # Add pulsing glow effect to full hearts
+                pulse_factor = 0.8 + 0.2 * abs(math.sin(pygame.time.get_ticks() * 0.003 + i * 0.5))
+                glow_size = int(40 * pulse_factor)
+                
+                # Create a glow surface
+                glow_surface = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+                pygame.draw.circle(glow_surface, (255, 100, 100, 50), (glow_size//2, glow_size//2), glow_size//2)
+                
+                # Blit the glow and then the heart
+                surface.blit(glow_surface, (heart_x - 5, heart_y - 5))
                 surface.blit(self.full_heart_img, (heart_x, heart_y))
             else:
+                # Just draw the empty heart
                 surface.blit(self.empty_heart_img, (heart_x, heart_y))
     
     def show_game_over(self, surface, score):
