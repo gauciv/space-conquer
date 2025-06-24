@@ -3,6 +3,7 @@ Enemy sprites for the Space Impact game.
 """
 import pygame
 import random
+import math
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class Enemy(pygame.sprite.Sprite):
@@ -89,7 +90,7 @@ class Enemy(pygame.sprite.Sprite):
         elif self.movement_pattern == "sine":
             self.rect.x -= self.speed
             self.angle += self.frequency
-            self.rect.centery = self.center_y + int(self.amplitude * pygame.math.sin(self.angle))
+            self.rect.centery = self.center_y + int(self.amplitude * math.sin(self.angle))
             
             # Keep within screen bounds
             if self.rect.top < 10:
