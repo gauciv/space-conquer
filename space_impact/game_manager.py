@@ -59,6 +59,7 @@ class GameManager:
         self.map_transition_timer = 0
         self.showing_map_name = False
         self.map_name_duration = 180  # 3 seconds at 60 FPS
+        self.show_chapter_header = False  # Flag to control when to show the chapter name at the top
         
         # Enemy progression
         self.enemy_types_available = ['normal']
@@ -131,6 +132,7 @@ class GameManager:
         self.enemy_types_available = ['normal']
         self.showing_map_name = True
         self.map_transition_timer = self.map_name_duration
+        self.show_chapter_header = False  # Don't show the chapter header until intro is done
         
         # Enemy spawn timer
         self.enemy_spawn_delay = self.enemy_spawn_rates[0]
@@ -246,6 +248,7 @@ class GameManager:
                     self.map_transition_timer -= 1
                     if self.map_transition_timer <= 0:
                         self.showing_map_name = False
+                        self.show_chapter_header = True  # Now show the chapter header at the top
                 
                 # Update player and sprites
                 self.player.update()
@@ -413,10 +416,11 @@ class GameManager:
                 # Show score and health with max_health
                 self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
                 
-                # Show current map name at the top
-                map_font = pygame.font.SysFont('Arial', 22)
-                map_text = map_font.render(f"Chapter {self.current_map + 1}: {self.maps[self.current_map]}", True, (255, 255, 255))
-                self.screen.blit(map_text, (SCREEN_WIDTH // 2 - map_text.get_width() // 2, 10))
+                # Show current map name at the top only after intro
+                if self.show_chapter_header:
+                    map_font = pygame.font.SysFont('Arial', 22)
+                    map_text = map_font.render(f"Chapter {self.current_map + 1}: {self.maps[self.current_map]}", True, (255, 255, 255))
+                    self.screen.blit(map_text, (SCREEN_WIDTH // 2 - map_text.get_width() // 2, 10))
                 
                 # Show map name during transition
                 if self.showing_map_name:
