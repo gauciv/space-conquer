@@ -24,6 +24,11 @@ class Player(pygame.sprite.Sprite):
         self.rapid_fire_timer = 0
         self.sound_manager = sound_manager
         
+        # Score multiplier
+        self.score_multiplier = 1
+        self.score_multiplier_timer = 0
+        self.score_multiplier_duration = 600  # 10 seconds at 60 FPS
+        
         # Invulnerability properties
         self.invulnerable = False
         self.invulnerable_timer = 0
@@ -68,6 +73,12 @@ class Player(pygame.sprite.Sprite):
             if self.rapid_fire_timer <= 0:
                 self.rapid_fire = False
                 self.shoot_delay = PLAYER_SHOOT_DELAY
+        
+        # Check score multiplier timer
+        if self.score_multiplier > 1:
+            self.score_multiplier_timer -= 1
+            if self.score_multiplier_timer <= 0:
+                self.score_multiplier = 1
         
         # Update invulnerability
         current_time = pygame.time.get_ticks()
@@ -116,6 +127,9 @@ class Player(pygame.sprite.Sprite):
             self.rapid_fire = True
             self.shoot_delay = 100
             self.rapid_fire_timer = 300  # Lasts for 300 frames (5 seconds at 60 FPS)
+        elif powerup_type == 'score_multiplier':
+            self.score_multiplier = 2
+            self.score_multiplier_timer = self.score_multiplier_duration
     
     def take_damage(self):
         """Handle player taking damage with invulnerability period."""

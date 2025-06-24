@@ -6,33 +6,30 @@ import random
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class PowerUp(pygame.sprite.Sprite):
-    def __init__(self, images=None):
+    def __init__(self, images):
         super().__init__()
-        self.type = random.choice(['health', 'speed', 'rapid_fire'])
         
-        if images:
-            if self.type == 'health':
-                self.image = images.get('health_powerup')
-            elif self.type == 'speed':
-                self.image = images.get('speed_powerup')
-            elif self.type == 'rapid_fire':
-                self.image = images.get('rapid_fire_powerup')
-        else:
-            self.image = pygame.Surface((20, 20))
-            if self.type == 'health':
-                self.image.fill((0, 255, 0))  # Green
-            elif self.type == 'speed':
-                self.image.fill((0, 0, 255))  # Blue
-            elif self.type == 'rapid_fire':
-                self.image.fill((255, 255, 255))  # White
+        # Randomly select power-up type
+        self.type = random.choice(['health', 'speed', 'rapid_fire', 'score_multiplier'])
+        
+        # Set image based on power-up type
+        if self.type == 'health':
+            self.image = images.get('health_powerup')
+        elif self.type == 'speed':
+            self.image = images.get('speed_powerup')
+        elif self.type == 'rapid_fire':
+            self.image = images.get('rapid_fire_powerup')
+        elif self.type == 'score_multiplier':
+            self.image = images.get('score_multiplier')
         
         self.rect = self.image.get_rect()
-        self.rect.x = SCREEN_WIDTH + random.randint(0, 100)
+        self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
-        self.speed = 3
+        self.speed = random.randint(2, 4)
     
     def update(self):
         self.rect.x -= self.speed
+        
         # Remove if it goes off-screen
         if self.rect.right < 0:
             self.kill()
