@@ -208,10 +208,12 @@ class PowerUp(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
-def show_score(surface, score):
+def show_score(surface, score, health):
     font = pygame.font.SysFont('Arial', 24)
     score_text = font.render(f'Score: {score}', True, WHITE)
+    health_text = font.render(f'Health: {health}', True, WHITE)
     surface.blit(score_text, (10, 10))
+    surface.blit(health_text, (10, 40))
 
 def game_over_screen():
     global game_active, score
@@ -233,6 +235,7 @@ def main():
     # Create sprite groups
     all_sprites = pygame.sprite.Group()
     enemies = pygame.sprite.Group()
+    powerups = pygame.sprite.Group()
     
     # Create player
     player = Player()
@@ -244,6 +247,14 @@ def main():
     # Enemy spawn timer
     enemy_spawn_delay = 1000  # milliseconds
     last_enemy_spawn = pygame.time.get_ticks()
+    
+    # Power-up spawn timer
+    powerup_spawn_delay = 10000  # milliseconds
+    last_powerup_spawn = pygame.time.get_ticks()
+    
+    # Difficulty scaling
+    difficulty_timer = 0
+    enemy_types = ['normal']
     
     # Game loop
     running = True
@@ -260,9 +271,13 @@ def main():
                     # Clear all sprites
                     all_sprites = pygame.sprite.Group()
                     enemies = pygame.sprite.Group()
+                    powerups = pygame.sprite.Group()
                     player = Player()
                     all_sprites.add(player)
                     last_enemy_spawn = pygame.time.get_ticks()
+                    last_powerup_spawn = pygame.time.get_ticks()
+                    difficulty_timer = 0
+                    enemy_types = ['normal']
         
         # Fill the screen with black
         screen.fill(BLACK)
@@ -276,30 +291,58 @@ def main():
             # Update
             player.update()
             enemies.update()
+            powerups.update()
+            
+            # Increase difficulty over time
+            difficulty_timer += 1
+            if difficulty_timer == 1200:  # After 20 seconds
+                if 'fast' not in enemy_types:
+                    enemy_types.append('fast')
+            elif difficulty_timer == 3600:  # After 1 minute
+                if 'tank' not in enemy_types:
+                    enemy_types.append('tank')
             
             # Spawn enemies
             now = pygame.time.get_ticks()
             if now - last_enemy_spawn > enemy_spawn_delay:
                 last_enemy_spawn = now
-                enemy = Enemy()
+                enemy_type = random.choice(enemy_types)
+                enemy = Enemy(enemy_type)
                 enemies.add(enemy)
                 all_sprites.add(enemy)
             
+            # Spawn power-ups
+            if now - last_powerup_spawn > powerup_spawn_delay:
+                last_powerup_spawn = now
+                powerup = PowerUp()
+                powerups.add(powerup)
+                all_sprites.add(powerup)
+            
             # Check for bullet collisions with enemies
-            hits = pygame.sprite.groupcollide(enemies, player.bullets, True, True)
-            for hit in hits:
-                score += 10
+            hits = pygame.sprite.groupcollide(enemies, player.bullets, False, True)
+            for enemy, bullets in hits.items():
+                enemy.health -= len(bullets)
+                if enemy.health <= 0:
+                    score += enemy.points
+                    enemy.kill()
             
             # Check for player collision with enemies
-            if pygame.sprite.spritecollide(player, enemies, False):
-                game_active = False
+            if pygame.sprite.spritecollide(player, enemies, True):
+                player.health -= 1
+                if player.health <= 0:
+                    game_active = False
+            
+            # Check for player collision with power-ups
+            powerup_hits = pygame.sprite.spritecollide(player, powerups, True)
+            for powerup in powerup_hits:
+                player.apply_powerup(powerup.type)
             
             # Draw
             all_sprites.draw(screen)
             player.draw(screen)
             
-            # Show score
-            show_score(screen, score)
+            # Show score and health
+            show_score(screen, score, player.health)
         else:
             if score > 0:
                 game_over_screen()
