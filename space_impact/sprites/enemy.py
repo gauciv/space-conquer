@@ -127,3 +127,85 @@ class Enemy(pygame.sprite.Sprite):
         # Remove if it goes off-screen
         if self.rect.right < 0:
             self.kill()
+            
+    def draw(self, surface):
+        """Draw the enemy with enhanced visual effects."""
+        # Draw the enemy ship
+        surface.blit(self.image, self.rect)
+        
+        # Add engine glow effect based on enemy type
+        engine_x = self.rect.right
+        engine_y = self.rect.centery
+        
+        # Create pulsing effect
+        pulse_factor = 0.7 + 0.3 * abs(math.sin(pygame.time.get_ticks() * 0.01))
+        
+        # Different colors for different enemy types
+        if self.enemy_type == 'normal':
+            glow_color = (255, 50, 50)  # Red
+        elif self.enemy_type == 'fast':
+            glow_color = (255, 150, 0)  # Orange
+        elif self.enemy_type == 'tank':
+            glow_color = (150, 0, 255)  # Purple
+        elif self.enemy_type == 'drone':
+            glow_color = (0, 255, 150)  # Cyan
+        elif self.enemy_type == 'bomber':
+            glow_color = (255, 255, 0)  # Yellow
+        else:
+            glow_color = (255, 0, 0)  # Default red
+        
+        # Draw engine glow
+        glow_radius = int(6 * pulse_factor)
+        glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+        
+        # Create gradient glow
+        for r in range(glow_radius, 0, -1):
+            alpha = int(150 * (r / glow_radius))
+            color = (glow_color[0], glow_color[1], glow_color[2], alpha)
+            pygame.draw.circle(glow_surface, color, (glow_radius, glow_radius), r)
+        
+        # Draw the glow behind the ship
+        surface.blit(glow_surface, (engine_x - glow_radius, engine_y - glow_radius))
+        
+        # Add health indicator for enemies with more than 1 health
+        if self.health > 1:
+            health_width = 20
+            health_height = 3
+            health_x = self.rect.centerx - health_width // 2
+            health_y = self.rect.top - 8
+            
+            # Draw health background
+            pygame.draw.rect(surface, (50, 50, 50, 150), 
+                           (health_x, health_y, health_width, health_height))
+            
+            # Draw health bar
+            health_percent = self.health / 3  # Assuming max health is 3
+            health_fill_width = int(health_width * health_percent)
+            
+            # Health color based on percentage
+            if health_percent > 0.7:
+                health_color = (0, 255, 0)  # Green
+            elif health_percent > 0.3:
+                health_color = (255, 255, 0)  # Yellow
+            else:
+                health_color = (255, 0, 0)  # Red
+                
+            pygame.draw.rect(surface, health_color, 
+                           (health_x, health_y, health_fill_width, health_height))
+            
+        # Add special effects for different movement patterns
+        if self.movement_pattern == "zigzag":
+            # Add motion trail
+            trail_alpha = 100
+            for i in range(3):
+                offset = (i + 1) * self.speed
+                trail_surface = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+                trail_surface.fill((255, 100, 0, trail_alpha // (i + 1)))
+                trail_surface.blit(self.image, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                surface.blit(trail_surface, (self.rect.x + offset, self.rect.y))
+                
+        elif self.movement_pattern == "dive" and self.dive_state == "dive":
+            # Add dive effect
+            pygame.draw.line(surface, (255, 255, 0, 150), 
+                           (self.rect.centerx, self.rect.centery), 
+                           (self.rect.centerx + 20, self.rect.centery), 2)

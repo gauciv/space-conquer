@@ -3,6 +3,7 @@ Player sprite for the Space Impact game.
 """
 import pygame
 import time
+import math
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_INITIAL_HEALTH, PLAYER_INITIAL_SPEED, PLAYER_SHOOT_DELAY
 from .bullet import Bullet
 
@@ -191,8 +192,9 @@ class Player(pygame.sprite.Sprite):
                 surface.blit(shield_surface, 
                             (self.rect.centerx - shield_radius, self.rect.centery - shield_radius))
         
-        # Draw bullets
-        self.bullets.draw(surface)
+        # Draw bullets with enhanced effects
+        for bullet in self.bullets:
+            bullet.draw(surface)
         
         # Draw rapid fire indicator if active
         if self.rapid_fire:

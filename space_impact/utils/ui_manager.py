@@ -4,6 +4,7 @@ Handles UI elements like settings panel, menus, etc.
 """
 import pygame # type: ignore
 import random
+import math
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GRAY, DARK_GRAY
 
 class UIManager:

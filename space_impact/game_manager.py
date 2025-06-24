@@ -449,6 +449,10 @@ class GameManager:
                 self.all_sprites.draw(self.screen)
                 self.player.draw(self.screen)
                 
+                # Draw enemies with enhanced effects
+                for enemy in self.enemies:
+                    enemy.draw(self.screen)
+                
                 # Draw bosses if they exist
                 if self.mini_boss:
                     self.mini_boss.draw(self.screen)
