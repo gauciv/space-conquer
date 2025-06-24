@@ -51,17 +51,30 @@ class GameManager:
         self.mini_boss_score_threshold = 750
         self.main_boss_score_threshold = 1500
         
-        # Level design variables
-        self.current_level = 1
-        self.level_thresholds = [0, 500, 1000, 1500, 2000]  # Score thresholds for levels
-        self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each level
-        self.enemy_types_by_level = [
-            ['normal'],
-            ['normal', 'fast'],
-            ['normal', 'fast', 'tank'],
-            ['normal', 'fast', 'tank', 'drone'],
-            ['normal', 'fast', 'tank', 'drone', 'bomber']
+        # Map system
+        self.maps = [
+            "Starlight's End",
+            "Nebula Frontier",
+            "Asteroid Belt",
+            "Gas Giant Orbit",
+            "Solar Flare Zone"
         ]
+        self.current_map = 0
+        self.map_thresholds = [0, 500, 1000, 1500, 2000]
+        self.map_transition_timer = 0
+        self.showing_map_name = False
+        self.map_name_duration = 180  # 3 seconds at 60 FPS
+        
+        # Enemy progression
+        self.enemy_types_available = ['normal']
+        self.enemy_progression = [
+            {'score': 0, 'types': ['normal']},
+            {'score': 200, 'types': ['normal', 'fast']},
+            {'score': 400, 'types': ['normal', 'fast', 'drone']},
+            {'score': 600, 'types': ['normal', 'fast', 'drone', 'tank']},
+            {'score': 800, 'types': ['normal', 'fast', 'drone', 'tank', 'bomber']}
+        ]
+        self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each map
         self.enemy_points = {
             'normal': 10,
             'fast': 15,
@@ -73,6 +86,15 @@ class GameManager:
         # Testing mode
         self.testing_mode = False
         self.show_debug_info = False
+        self.phase_markers = [
+            {'name': 'Start', 'score': 0},
+            {'name': 'Fast Enemies', 'score': 200},
+            {'name': 'Drone Enemies', 'score': 400},
+            {'name': 'Tank Enemies', 'score': 600},
+            {'name': 'Bomber Enemies', 'score': 800},
+            {'name': 'Mini-Boss', 'score': 750},
+            {'name': 'Main Boss', 'score': 1500}
+        ]
         
         # Start background music
         self.sound_manager.play_music()
@@ -109,8 +131,11 @@ class GameManager:
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
         
-        # Reset level variables
-        self.current_level = 1
+        # Reset map variables
+        self.current_map = 0
+        self.enemy_types_available = ['normal']
+        self.showing_map_name = True
+        self.map_transition_timer = self.map_name_duration
         
         # Enemy spawn timer
         self.enemy_spawn_delay = self.enemy_spawn_rates[0]
@@ -169,6 +194,7 @@ class GameManager:
                     elif event.key == pygame.K_3:
                         # Add 100 score
                         self.score += 100
+                        self.update_enemy_types()
                     elif event.key == pygame.K_4:
                         # Add health
                         if self.player:
@@ -187,14 +213,28 @@ class GameManager:
                     elif event.key == pygame.K_0:
                         # Toggle debug info
                         self.show_debug_info = not self.show_debug_info
-                    elif event.key == pygame.K_l:
-                        # Cycle through levels
-                        self.current_level = (self.current_level % 5) + 1
-                        print(f"Switched to Level {self.current_level}")
+                    elif event.key == pygame.K_m:
+                        # Cycle through maps
+                        self.current_map = (self.current_map + 1) % len(self.maps)
+                        self.showing_map_name = True
+                        self.map_transition_timer = self.map_name_duration
+                        print(f"Switched to Map: {self.maps[self.current_map]}")
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
-                    self.ui_manager.handle_settings_click(event.pos)
+                    # Handle settings button click
+                    if self.ui_manager.handle_settings_click(event.pos):
+                        pass
+                    # Handle phase marker clicks in testing mode
+                    elif self.testing_mode and self.game_active:
+                        for marker in self.phase_markers:
+                            marker_rect = pygame.Rect(SCREEN_WIDTH - 150, 150 + self.phase_markers.index(marker) * 30, 140, 25)
+                            if marker_rect.collidepoint(event.pos):
+                                self.score = marker['score']
+                                self.update_enemy_types()
+                                self.update_map()
+                                print(f"Skipped to phase: {marker['name']} (Score: {marker['score']})")
+                                break
             
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Left mouse button
@@ -213,6 +253,12 @@ class GameManager:
             
         if not self.ui_manager.settings_open:
             if self.game_active and self.player:
+                # Handle map name display
+                if self.showing_map_name:
+                    self.map_transition_timer -= 1
+                    if self.map_transition_timer <= 0:
+                        self.showing_map_name = False
+                
                 # Update player and sprites
                 self.player.update()
                 self.enemies.update()
@@ -224,8 +270,11 @@ class GameManager:
                 if self.main_boss:
                     self.main_boss.update()
                 
-                # Check for level progression based on score
-                self.update_level()
+                # Check for map progression based on score
+                self.update_map()
+                
+                # Check for enemy type progression based on score
+                self.update_enemy_types()
                 
                 # Check for boss spawning based on score
                 if not self.testing_mode:  # Only auto-spawn bosses in normal mode
@@ -236,7 +285,7 @@ class GameManager:
                     now = pygame.time.get_ticks()
                     if now - self.last_enemy_spawn > self.enemy_spawn_delay:
                         self.last_enemy_spawn = now
-                        enemy_type = random.choice(self.enemy_types_by_level[self.current_level - 1])
+                        enemy_type = random.choice(self.enemy_types_available)
                         enemy = Enemy(enemy_type, self.asset_loader.images)
                         enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                         self.enemies.add(enemy)
@@ -337,15 +386,23 @@ class GameManager:
                     # Play powerup sound
                     self.sound_manager.play_sound('powerup')
     
-    def update_level(self):
-        """Update the current level based on score."""
-        for i in range(len(self.level_thresholds) - 1, 0, -1):
-            if self.score >= self.level_thresholds[i]:
-                if self.current_level != i + 1:
-                    self.current_level = i + 1
+    def update_map(self):
+        """Update the current map based on score."""
+        for i in range(len(self.map_thresholds) - 1, 0, -1):
+            if self.score >= self.map_thresholds[i]:
+                if self.current_map != i:
+                    self.current_map = i
                     self.enemy_spawn_delay = self.enemy_spawn_rates[i]
-                    print(f"Level up! Now at Level {self.current_level}")
+                    self.showing_map_name = True
+                    self.map_transition_timer = self.map_name_duration
+                    print(f"Map changed! Now at: {self.maps[self.current_map]}")
                 break
+    
+    def update_enemy_types(self):
+        """Update available enemy types based on score."""
+        for progression in self.enemy_progression:
+            if self.score >= progression['score']:
+                self.enemy_types_available = progression['types']
     
     def check_boss_spawning(self):
         """Check if it's time to spawn a boss based on score."""
@@ -383,21 +440,33 @@ class GameManager:
                 # Show score and health with max_health
                 self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
                 
-                # Show current level
-                level_font = pygame.font.SysFont('Arial', 22)
-                level_text = level_font.render(f"Level: {self.current_level}", True, (255, 255, 255))
-                self.screen.blit(level_text, (SCREEN_WIDTH - level_text.get_width() - 10, 40))
+                # Show current map name at the top
+                map_font = pygame.font.SysFont('Arial', 22)
+                map_text = map_font.render(f"Map: {self.maps[self.current_map]}", True, (255, 255, 255))
+                self.screen.blit(map_text, (SCREEN_WIDTH - map_text.get_width() - 10, 10))
+                
+                # Show map name during transition
+                if self.showing_map_name:
+                    # Create semi-transparent overlay
+                    overlay = pygame.Surface((SCREEN_WIDTH, 80), pygame.SRCALPHA)
+                    overlay.fill((0, 0, 0, 180))
+                    self.screen.blit(overlay, (0, SCREEN_HEIGHT // 2 - 40))
+                    
+                    # Draw map name
+                    big_font = pygame.font.SysFont('Arial', 36)
+                    map_name = big_font.render(self.maps[self.current_map], True, (255, 255, 255))
+                    self.screen.blit(map_name, (SCREEN_WIDTH // 2 - map_name.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
                 
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:
                     multiplier_font = pygame.font.SysFont('Arial', 22)
                     multiplier_text = multiplier_font.render(f"Score x{self.player.score_multiplier}", True, (255, 215, 0))  # Gold color
-                    self.screen.blit(multiplier_text, (SCREEN_WIDTH - multiplier_text.get_width() - 10, 70))
+                    self.screen.blit(multiplier_text, (SCREEN_WIDTH - multiplier_text.get_width() - 10, 40))
                     
                     # Show remaining time
                     time_left = self.player.score_multiplier_timer // 60  # Convert frames to seconds
                     time_text = multiplier_font.render(f"Time: {time_left}s", True, (255, 215, 0))
-                    self.screen.blit(time_text, (SCREEN_WIDTH - time_text.get_width() - 10, 100))
+                    self.screen.blit(time_text, (SCREEN_WIDTH - time_text.get_width() - 10, 70))
                 
                 # Show debug info if enabled
                 if self.show_debug_info and self.testing_mode:
@@ -410,12 +479,39 @@ class GameManager:
                         f"Rapid Fire: {'On' if self.player.rapid_fire else 'Off'}",
                         f"Enemy Spawn Rate: {self.enemy_spawn_delay}ms",
                         f"Mini-Boss: {'Active' if self.mini_boss else 'Inactive'}",
-                        f"Main Boss: {'Active' if self.main_boss else 'Inactive'}"
+                        f"Main Boss: {'Active' if self.main_boss else 'Inactive'}",
+                        f"Enemy Types: {', '.join(self.enemy_types_available)}"
                     ]
                     
                     for i, info in enumerate(debug_info):
                         text = debug_font.render(info, True, (200, 200, 200))
                         self.screen.blit(text, (10, 80 + i * 20))
+                
+                # Draw phase markers in testing mode
+                if self.testing_mode:
+                    marker_font = pygame.font.SysFont('Arial', 16)
+                    marker_title = pygame.font.SysFont('Arial', 18, bold=True)
+                    
+                    # Draw title
+                    title_text = marker_title.render("Phase Markers:", True, (255, 255, 100))
+                    self.screen.blit(title_text, (SCREEN_WIDTH - 150, 120))
+                    
+                    # Draw markers
+                    for i, marker in enumerate(self.phase_markers):
+                        # Create marker rectangle
+                        marker_rect = pygame.Rect(SCREEN_WIDTH - 150, 150 + i * 30, 140, 25)
+                        
+                        # Highlight current phase
+                        if self.score >= marker['score'] and (i == len(self.phase_markers) - 1 or self.score < self.phase_markers[i + 1]['score']):
+                            pygame.draw.rect(self.screen, (100, 100, 50), marker_rect)
+                            pygame.draw.rect(self.screen, (255, 255, 100), marker_rect, 2)
+                        else:
+                            pygame.draw.rect(self.screen, (50, 50, 50), marker_rect)
+                            pygame.draw.rect(self.screen, (150, 150, 150), marker_rect, 1)
+                        
+                        # Draw marker text
+                        text = marker_font.render(f"{marker['name']}", True, (255, 255, 255))
+                        self.screen.blit(text, (SCREEN_WIDTH - 145, 153 + i * 30))
             else:
                 if self.score > 0:
                     self.ui_manager.show_game_over(self.screen, self.score)
