@@ -38,10 +38,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install pygame numpy pyinstaller Pillow
         
-    - name: Debug directory structure
+    - name: Debug directory structure (Unix)
+      if: runner.os != 'Windows'
       run: |
         ls -la
-        ls -la images/
+        ls -la images/ || echo "images directory not found"
+        
+    - name: Debug directory structure (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        dir
+        dir images\ || echo "images directory not found"
         
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
