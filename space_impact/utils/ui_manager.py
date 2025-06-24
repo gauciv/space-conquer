@@ -248,16 +248,78 @@ class UIManager:
                 surface.blit(self.empty_heart_img, (heart_x, heart_y))
     
     def show_game_over(self, surface, score):
-        """Display game over screen."""
-        game_over_text = self.font_large.render('GAME OVER', True, (255, 0, 0))
-        score_text = self.font_medium.render(f'Final Score: {score}', True, WHITE)
-        restart_text = self.font_medium.render('Press SPACE to restart', True, WHITE)
-        test_text = self.font_medium.render('Press T for test mode', True, WHITE)
+        """Display an enhanced game over screen."""
+        # Create a dark overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        surface.blit(overlay, (0, 0))
         
-        surface.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, 200))
-        surface.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 300))
-        surface.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, 350))
-        surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 380))
+        # Add some particle effects
+        for i in range(30):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            size = random.randint(1, 4)
+            color = (random.randint(150, 255), random.randint(0, 100), random.randint(0, 50))
+            pygame.draw.circle(surface, color, (x, y), size)
+        
+        # Create a semi-transparent panel for the game over message
+        panel_width, panel_height = 500, 300
+        panel_rect = pygame.Rect(SCREEN_WIDTH // 2 - panel_width // 2, SCREEN_HEIGHT // 2 - panel_height // 2, 
+                                panel_width, panel_height)
+        
+        # Draw panel background with gradient
+        for i in range(panel_height):
+            progress = i / panel_height
+            color = (
+                int(40 + 20 * progress),
+                int(0 + 10 * progress),
+                int(0 + 30 * progress),
+                200
+            )
+            panel_surface = pygame.Surface((panel_width, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (panel_rect.left, panel_rect.top + i))
+        
+        # Draw panel border
+        pygame.draw.rect(surface, (150, 30, 30), panel_rect, 2)
+        
+        # Add some "tech" details to the panel
+        pygame.draw.line(surface, (200, 50, 50, 150), 
+                        (panel_rect.left + 20, panel_rect.top + 20), 
+                        (panel_rect.left + panel_width - 20, panel_rect.top + 20), 2)
+        pygame.draw.line(surface, (200, 50, 50, 150), 
+                        (panel_rect.left + 20, panel_rect.bottom - 20), 
+                        (panel_rect.left + panel_width - 20, panel_rect.bottom - 20), 2)
+        
+        # Draw game over text with glow effect
+        game_over_font = pygame.font.SysFont('Arial', 48, bold=True)
+        glow_text = game_over_font.render('GAME OVER', True, (100, 0, 0))
+        surface.blit(glow_text, (SCREEN_WIDTH // 2 - glow_text.get_width() // 2 + 2, panel_rect.top + 50 + 2))
+        
+        game_over_text = game_over_font.render('GAME OVER', True, (255, 50, 50))
+        surface.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, panel_rect.top + 50))
+        
+        # Draw score
+        score_font = pygame.font.SysFont('Arial', 32)
+        score_text = score_font.render(f'Final Score: {score}', True, (220, 220, 255))
+        surface.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, panel_rect.top + 120))
+        
+        # Create restart button
+        restart_button_width, restart_button_height = 250, 50
+        restart_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
+                                        panel_rect.top + 180, 
+                                        restart_button_width, restart_button_height)
+        self._draw_stylized_button(surface, restart_button_rect, "RESTART", (60, 10, 10), (150, 30, 30))
+        
+        # Create test mode button
+        test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
+                                    panel_rect.top + 240, 
+                                    restart_button_width, restart_button_height)
+        self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 10, 40), (100, 30, 100))
+        
+        # Store button rectangles for click detection
+        self.start_button_rect = restart_button_rect
+        self.test_button_rect = test_button_rect
     
     def show_start_screen(self, surface, testing_mode=False):
         """Display an enhanced start screen with mysterious vibe."""

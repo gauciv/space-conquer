@@ -462,9 +462,6 @@ class GameManager:
                     self.screen.blit(chapter_text, (SCREEN_WIDTH // 2 - chapter_text.get_width() // 2, SCREEN_HEIGHT // 2 - 40))
                     self.screen.blit(map_name, (SCREEN_WIDTH // 2 - map_name.get_width() // 2, SCREEN_HEIGHT // 2))
                 
-                # Show score and health
-                self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
-                
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:
                     multiplier_font = pygame.font.SysFont('Arial', 22)
@@ -522,6 +519,7 @@ class GameManager:
                         self.screen.blit(text, (SCREEN_WIDTH - 145, 153 + i * 30))
             elif self.game_over:  # Check for game over state
                 # Show game over screen
+                self.ui_manager.show_score(self.screen, self.score, self.player.health if self.player else 0, self.player.max_health if self.player else 3)
                 self.ui_manager.show_game_over(self.screen, self.score)
             else:
                 # Show start screen
