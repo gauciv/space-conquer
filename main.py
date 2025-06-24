@@ -63,11 +63,13 @@ try:
     shoot_sound = pygame.mixer.Sound('sounds/shoot.wav')
     explosion_sound = pygame.mixer.Sound('sounds/explosion.wav')
     powerup_sound = pygame.mixer.Sound('sounds/powerup.wav')
+    game_start_sound = pygame.mixer.Sound('sounds/game_start.wav')
     
     # Set volume levels for sound effects
     shoot_sound.set_volume(sfx_volume)
     explosion_sound.set_volume(sfx_volume)
     powerup_sound.set_volume(sfx_volume)
+    game_start_sound.set_volume(sfx_volume)
     
     print("Sound effects loaded successfully!")
 except Exception as e:
@@ -481,11 +483,29 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.USEREVENT:
+                # Restore music volume after start sound finishes
+                if music_enabled:
+                    pygame.mixer.music.set_volume(music_volume)
+                pygame.time.set_timer(pygame.USEREVENT, 0)  # Disable the timer
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_active and not settings_open:
                     # Start/restart the game
                     game_active = True
                     score = 0
+                    
+                    # Play the game start sound
+                    if sound_enabled:
+                        # Temporarily lower music volume during start sound
+                        if music_enabled:
+                            current_music_vol = pygame.mixer.music.get_volume()
+                            pygame.mixer.music.set_volume(current_music_vol * 0.3)  # Lower to 30% of current
+                        
+                        game_start_sound.play()
+                        
+                        # Schedule music volume restoration after start sound finishes
+                        pygame.time.set_timer(pygame.USEREVENT, 1000)  # 1 second timer
+                    
                     # Clear all sprites
                     all_sprites = pygame.sprite.Group()
                     enemies = pygame.sprite.Group()
