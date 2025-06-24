@@ -3,6 +3,7 @@ UI Manager for the Space Impact game.
 Handles UI elements like settings panel, menus, etc.
 """
 import pygame # type: ignore
+import random
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GRAY, DARK_GRAY
 
 class UIManager:
@@ -12,6 +13,10 @@ class UIManager:
         
         # Settings button
         self.settings_button_rect = pygame.Rect(SCREEN_WIDTH - 40, 10, 30, 30)
+        
+        # Main menu buttons
+        self.start_button_rect = None
+        self.test_button_rect = None
         
         # Settings panel
         self.settings_open = False
@@ -255,16 +260,72 @@ class UIManager:
         surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 380))
     
     def show_start_screen(self, surface, testing_mode=False):
-        """Display start screen."""
-        title_text = self.font_large.render('SPACE CONQUER', True, WHITE)
-        instruction_text = self.font_medium.render('Press SPACE to start', True, WHITE)
-        test_text = self.font_medium.render('Press T for test mode', True, WHITE)
-        controls_text = self.font_medium.render('Arrow keys to move, SPACE to shoot', True, WHITE)
+        """Display an enhanced start screen with mysterious vibe."""
+        # Create a starry background effect
+        for i in range(50):  # Add extra stars for the menu
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            size = random.randint(1, 3)
+            brightness = random.randint(150, 255)
+            pygame.draw.circle(surface, (brightness, brightness, brightness), (x, y), size)
         
+        # Add a mysterious nebula-like effect
+        for i in range(5):
+            nebula_surface = pygame.Surface((300, 200), pygame.SRCALPHA)
+            color = (random.randint(20, 60), random.randint(0, 30), random.randint(40, 80), 15)
+            pygame.draw.ellipse(nebula_surface, color, (0, 0, 300, 200))
+            surface.blit(nebula_surface, (random.randint(0, SCREEN_WIDTH-300), random.randint(0, SCREEN_HEIGHT-200)))
+        
+        # Create a semi-transparent overlay for the title area
+        title_overlay = pygame.Surface((SCREEN_WIDTH, 100), pygame.SRCALPHA)
+        title_overlay.fill((0, 0, 30, 180))
+        surface.blit(title_overlay, (0, 130))
+        
+        # Draw a glowing effect for the title
+        glow_font = pygame.font.SysFont('Arial', 60, bold=True)
+        glow_text = glow_font.render('SPACE CONQUER', True, (60, 60, 120))
+        surface.blit(glow_text, (SCREEN_WIDTH // 2 - glow_text.get_width() // 2 + 2, 152))
+        
+        # Draw the main title
+        title_font = pygame.font.SysFont('Arial', 60, bold=True)
+        title_text = title_font.render('SPACE CONQUER', True, (150, 150, 255))
         surface.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 150))
-        surface.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 250))
-        surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 280))
-        surface.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 320))
+        
+        # Create stylized buttons
+        button_width, button_height = 250, 50
+        
+        # Start Game Button
+        start_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 280, button_width, button_height)
+        self._draw_stylized_button(surface, start_button_rect, "START GAME", (30, 30, 80), (80, 80, 180))
+        
+        # Test Mode Button (smaller and less prominent)
+        if testing_mode:
+            test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - button_width // 2, 350, button_width, button_height)
+            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 20, 60), (120, 80, 140))
+        else:
+            test_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, 350, 200, 40)
+            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (30, 15, 45), (90, 60, 105))
+        
+        # Controls section with a semi-transparent background
+        controls_overlay = pygame.Surface((400, 80), pygame.SRCALPHA)
+        controls_overlay.fill((0, 0, 30, 150))
+        surface.blit(controls_overlay, (SCREEN_WIDTH // 2 - 200, 420))
+        
+        # Draw controls text
+        controls_title = self.font_medium.render('CONTROLS:', True, (200, 200, 255))
+        surface.blit(controls_title, (SCREEN_WIDTH // 2 - 180, 430))
+        
+        controls_text = self.font_small.render('Arrow keys: Move | SPACE: Shoot | ESC: Settings', True, (180, 180, 220))
+        surface.blit(controls_text, (SCREEN_WIDTH // 2 - 180, 460))
+        
+        # Add a mysterious tagline
+        tagline_font = pygame.font.SysFont('Arial', 18, italic=True)
+        tagline_text = tagline_font.render('The void awaits...', True, (150, 150, 200))
+        surface.blit(tagline_text, (SCREEN_WIDTH // 2 - tagline_text.get_width() // 2, 520))
+        
+        # Store button rectangles for click detection
+        self.start_button_rect = start_button_rect
+        self.test_button_rect = test_button_rect
         
         # Show testing mode instructions
         if testing_mode:
@@ -279,6 +340,40 @@ class UIManager:
                 "0: Toggle Debug Info"
             ]
             
+            # Create a semi-transparent background for test instructions
+            test_overlay = pygame.Surface((300, len(test_instructions) * 20 + 20), pygame.SRCALPHA)
+            test_overlay.fill((0, 0, 30, 150))
+            surface.blit(test_overlay, (20, SCREEN_HEIGHT - len(test_instructions) * 20 - 30))
+            
             for i, instruction in enumerate(test_instructions):
                 text = self.font_small.render(instruction, True, (200, 200, 100))
-                surface.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 360 + i * 20))
+                surface.blit(text, (30, SCREEN_HEIGHT - len(test_instructions) * 20 - 10 + i * 20))
+    
+    def _draw_stylized_button(self, surface, rect, text, color_dark, color_light):
+        """Draw a stylized button with a space theme."""
+        # Draw button background with gradient
+        for i in range(rect.height):
+            progress = i / rect.height
+            color = (
+                int(color_dark[0] + (color_light[0] - color_dark[0]) * progress),
+                int(color_dark[1] + (color_light[1] - color_dark[1]) * progress),
+                int(color_dark[2] + (color_light[2] - color_dark[2]) * progress)
+            )
+            pygame.draw.line(surface, color, (rect.left, rect.top + i), (rect.right, rect.top + i))
+        
+        # Draw button border with glow effect
+        pygame.draw.rect(surface, color_light, rect, 2)
+        
+        # Add some "tech" details to the button
+        pygame.draw.line(surface, (100, 100, 200, 150), 
+                        (rect.left + 10, rect.top + 5), 
+                        (rect.left + rect.width - 20, rect.top + 5), 1)
+        pygame.draw.line(surface, (100, 100, 200, 150), 
+                        (rect.left + 10, rect.bottom - 5), 
+                        (rect.left + rect.width - 20, rect.bottom - 5), 1)
+        
+        # Draw text
+        font = pygame.font.SysFont('Arial', 24, bold=True)
+        text_surface = font.render(text, True, (220, 220, 255))
+        text_rect = text_surface.get_rect(center=rect.center)
+        surface.blit(text_surface, text_rect)

@@ -216,6 +216,12 @@ class GameManager:
                     # Handle settings button click
                     if self.ui_manager.handle_settings_click(event.pos):
                         pass
+                    # Handle main menu button clicks
+                    elif not self.game_active and not self.ui_manager.settings_open:
+                        if self.ui_manager.start_button_rect and self.ui_manager.start_button_rect.collidepoint(event.pos):
+                            self.start_new_game(testing_mode=False)
+                        elif self.ui_manager.test_button_rect and self.ui_manager.test_button_rect.collidepoint(event.pos):
+                            self.start_new_game(testing_mode=True)
                     # Handle phase marker clicks in testing mode
                     elif self.testing_mode and self.game_active:
                         for marker in self.phase_markers:
