@@ -2,7 +2,7 @@
 UI Manager for the Space Impact game.
 Handles UI elements like settings panel, menus, etc.
 """
-import pygame
+import pygame # type: ignore
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GRAY, DARK_GRAY
 
 class UIManager:
