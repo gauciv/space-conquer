@@ -148,6 +148,10 @@ class Player(pygame.sprite.Sprite):
             if self.rapid_fire:
                 bullet2 = Bullet(self.rect.right, self.rect.centery - 10)
                 self.bullets.add(bullet2)
+            
+            # Play sound
+            if sound_enabled:
+                shoot_sound.play()
     
     def apply_powerup(self, powerup_type):
         if powerup_type == 'health':
