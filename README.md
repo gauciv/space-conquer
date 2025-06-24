@@ -12,6 +12,7 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 - Increasing difficulty over time
 - Score tracking
 - Sound effects with adjustable volume
+- Background music with separate volume control
 - Settings menu
 
 ## How to Play
@@ -29,7 +30,7 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 - SPACE: Shoot
 - SPACE (at start/game over screen): Start/restart game
 - ESC: Close settings menu
-- Mouse: Interact with settings menu and volume slider
+- Mouse: Interact with settings menu and volume sliders
 
 ## Power-ups
 
@@ -51,10 +52,20 @@ The game features custom-designed spaceship graphics:
 - Power-ups: Distinct visual indicators for each power-up type
 - Bullets: Yellow projectiles with orange tips
 
+## Audio
+
+The game includes both sound effects and background music:
+- Sound effects: Shooting, explosions, and power-up collection
+- Background music: Chiptune-style music that loops continuously
+- Both sound effects and music have separate volume controls in the settings menu
+- Music can be toggled on/off in the settings menu
+
 ## Settings
 
 The game includes a settings menu accessible by clicking the cog icon in the top-right corner:
-- Volume control: Adjust the volume of all game sounds using the slider
+- Sound Effects Volume: Adjust the volume of game sound effects
+- Music Volume: Adjust the volume of background music
+- Music Toggle: Turn background music on or off
 - Close button: Return to the game
 
 ## Requirements
