@@ -282,75 +282,67 @@ class PowerUp(pygame.sprite.Sprite):
 # Draw settings panel
 def draw_settings_panel():
     # Draw semi-transparent background
-    settings_surface = pygame.Surface((400, 350), pygame.SRCALPHA)
+    settings_surface = pygame.Surface((400, 300), pygame.SRCALPHA)
     settings_surface.fill((0, 0, 0, 200))
-    screen.blit(settings_surface, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 175))
+    screen.blit(settings_surface, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 150))
     
     # Draw panel border
-    pygame.draw.rect(screen, WHITE, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 175, 400, 350), 2)
+    pygame.draw.rect(screen, WHITE, (SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 150, 400, 300), 2)
     
     # Draw title
     font_large = pygame.font.SysFont('Arial', 32)
     title_text = font_large.render('Settings', True, WHITE)
-    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 2 - 155))
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 2 - 130))
     
-    # Draw sound effects volume label
+    # Draw sound effects volume label and controls on the same line
     font_medium = pygame.font.SysFont('Arial', 24)
     sfx_text = font_medium.render('Sound Effects', True, WHITE)
-    screen.blit(sfx_text, (SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT // 2 - 80))
+    screen.blit(sfx_text, (SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT // 2 - 60))
     
-    # Draw sound effects volume value
-    sfx_value_text = font_medium.render(f'{int(sfx_volume * 100)}%', True, WHITE)
-    screen.blit(sfx_value_text, (SCREEN_WIDTH // 2 + 120, SCREEN_HEIGHT // 2 - 80))
-    
-    # Draw sound effects slider bar
+    # Draw sound effects slider bar (positioned to the right of the label)
+    sfx_slider_rect.x = SCREEN_WIDTH // 2 - 30
+    sfx_slider_rect.y = SCREEN_HEIGHT // 2 - 55
     screen.blit(slider_bar_img, sfx_slider_rect)
     
     # Draw sound effects slider handle
+    sfx_handle_rect.y = SCREEN_HEIGHT // 2 - 60
     screen.blit(slider_handle_img, sfx_handle_rect)
     
-    # Draw music volume label
+    # Draw sound effects volume value
+    sfx_value_text = font_medium.render(f'{int(sfx_volume * 100)}%', True, WHITE)
+    screen.blit(sfx_value_text, (SCREEN_WIDTH // 2 + 180, SCREEN_HEIGHT // 2 - 60))
+    
+    # Draw music volume label and controls on the same line
     music_text = font_medium.render('Music', True, WHITE)
-    screen.blit(music_text, (SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT // 2 - 30))
+    screen.blit(music_text, (SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT // 2))
     
-    # Draw music volume value
-    music_value_text = font_medium.render(f'{int(music_volume * 100)}%', True, WHITE)
-    screen.blit(music_value_text, (SCREEN_WIDTH // 2 + 120, SCREEN_HEIGHT // 2 - 30))
-    
-    # Draw music slider bar
+    # Draw music slider bar (positioned to the right of the label)
+    music_slider_rect.x = SCREEN_WIDTH // 2 - 30
+    music_slider_rect.y = SCREEN_HEIGHT // 2 + 5
     screen.blit(slider_bar_img, music_slider_rect)
     
     # Draw music slider handle
+    music_handle_rect.y = SCREEN_HEIGHT // 2
     screen.blit(slider_handle_img, music_handle_rect)
     
-    # Draw music status
-    if music_enabled:
-        music_status_text = font_medium.render('Music: On', True, GREEN)
-    else:
-        music_status_text = font_medium.render('Music: Off', True, RED)
-    screen.blit(music_status_text, (SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT // 2 + 80))
+    # Draw music volume value
+    music_value_text = font_medium.render(f'{int(music_volume * 100)}%', True, WHITE)
+    screen.blit(music_value_text, (SCREEN_WIDTH // 2 + 180, SCREEN_HEIGHT // 2))
     
-    # Draw music toggle button
-    music_toggle_rect = pygame.Rect(SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT // 2 + 80, 100, 30)
-    pygame.draw.rect(screen, GRAY, music_toggle_rect)
-    pygame.draw.rect(screen, WHITE, music_toggle_rect, 2)
-    
-    if music_enabled:
-        toggle_text = font_medium.render('Turn Off', True, WHITE)
-    else:
-        toggle_text = font_medium.render('Turn On', True, WHITE)
-    screen.blit(toggle_text, (music_toggle_rect.centerx - toggle_text.get_width() // 2, 
-                             music_toggle_rect.centery - toggle_text.get_height() // 2))
+    # Draw note about music
+    font_small = pygame.font.SysFont('Arial', 16)
+    music_note_text = font_small.render('Set music volume to 0% to turn off music', True, GRAY)
+    screen.blit(music_note_text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 + 40))
     
     # Draw close button
-    close_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 + 130, 100, 40)
+    close_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 + 80, 100, 40)
     pygame.draw.rect(screen, GRAY, close_button_rect)
     pygame.draw.rect(screen, WHITE, close_button_rect, 2)
     
     close_text = font_medium.render('Close', True, WHITE)
-    screen.blit(close_text, (SCREEN_WIDTH // 2 - close_text.get_width() // 2, SCREEN_HEIGHT // 2 + 140))
+    screen.blit(close_text, (SCREEN_WIDTH // 2 - close_text.get_width() // 2, SCREEN_HEIGHT // 2 + 90))
     
-    return close_button_rect, music_toggle_rect
+    return close_button_rect
 
 def update_sfx_volume(new_volume):
     global sfx_volume
@@ -362,20 +354,19 @@ def update_sfx_volume(new_volume):
         powerup_sound.set_volume(sfx_volume)
 
 def update_music_volume(new_volume):
-    global music_volume
+    global music_volume, music_enabled
     music_volume = max(0, min(1, new_volume))
     
-    if music_enabled:
-        pygame.mixer.music.set_volume(music_volume)
-
-def toggle_music():
-    global music_enabled
-    if music_enabled:
-        pygame.mixer.music.pause()
-        music_enabled = False
+    # Turn music on/off based on volume level
+    if music_volume <= 0.01:  # Effectively zero
+        if music_enabled:
+            pygame.mixer.music.pause()
+            music_enabled = False
     else:
-        pygame.mixer.music.unpause()
-        music_enabled = True
+        if not music_enabled:
+            pygame.mixer.music.unpause()
+            music_enabled = True
+        pygame.mixer.music.set_volume(music_volume)
 
 def show_score(surface, score, health):
     font = pygame.font.SysFont('Arial', 24)
@@ -468,13 +459,9 @@ def main():
                         elif music_handle_rect.collidepoint(event.pos):
                             dragging_music_handle = True
                         
-                        # Check if music toggle button was clicked
-                        close_button_rect, music_toggle_rect = draw_settings_panel()
-                        if music_toggle_rect.collidepoint(event.pos):
-                            toggle_music()
-                        
                         # Check if close button was clicked
-                        elif close_button_rect.collidepoint(event.pos):
+                        close_button_rect = draw_settings_panel()
+                        if close_button_rect.collidepoint(event.pos):
                             settings_open = False
             
             elif event.type == pygame.MOUSEBUTTONUP:
