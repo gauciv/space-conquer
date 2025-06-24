@@ -66,9 +66,68 @@ class UIManager:
             self.empty_heart_img = pygame.transform.scale(self.empty_heart_img, (32, 32))
     
     def draw_settings_button(self, surface):
-        """Draw the settings button."""
-        settings_cog_img = self.asset_loader.get_image('settings_cog')
-        surface.blit(settings_cog_img, self.settings_button_rect)
+        """Draw an enhanced settings button with the space theme."""
+        # Create a semi-transparent panel for the button
+        button_size = 40
+        button_rect = pygame.Rect(SCREEN_WIDTH - button_size - 10, 10, button_size, button_size)
+        
+        # Check if mouse is hovering over the button
+        is_hovered = button_rect.collidepoint(pygame.mouse.get_pos())
+        
+        # Draw button background with gradient
+        for i in range(button_size):
+            progress = i / button_size
+            if is_hovered:
+                color = (
+                    int(30 + 40 * progress),
+                    int(30 + 40 * progress),
+                    int(60 + 60 * progress),
+                    200
+                )
+            else:
+                color = (
+                    int(20 + 30 * progress),
+                    int(20 + 30 * progress),
+                    int(40 + 50 * progress),
+                    180
+                )
+            panel_surface = pygame.Surface((button_size, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (button_rect.left, button_rect.top + i))
+        
+        # Draw button border with glow effect
+        border_color = (150, 150, 255) if is_hovered else (100, 100, 180)
+        pygame.draw.rect(surface, border_color, button_rect, 2)
+        
+        # Draw gear icon with glow effect
+        center_x = button_rect.centerx
+        center_y = button_rect.centery
+        radius = 12
+        inner_radius = 6
+        num_teeth = 8
+        
+        # Draw outer gear with glow
+        if is_hovered:
+            # Glow effect
+            pygame.draw.circle(surface, (100, 100, 200, 100), (center_x, center_y), radius + 4)
+        
+        # Draw gear teeth
+        for i in range(num_teeth):
+            angle = 2 * math.pi * i / num_teeth
+            outer_x = center_x + radius * math.cos(angle)
+            outer_y = center_y + radius * math.sin(angle)
+            inner_x = center_x + inner_radius * math.cos(angle + math.pi / num_teeth)
+            inner_y = center_y + inner_radius * math.sin(angle + math.pi / num_teeth)
+            
+            # Draw tooth
+            pygame.draw.line(surface, (180, 180, 255), (outer_x, outer_y), (inner_x, inner_y), 2)
+        
+        # Draw gear center circle
+        pygame.draw.circle(surface, (180, 180, 255), (center_x, center_y), inner_radius)
+        pygame.draw.circle(surface, (100, 100, 180), (center_x, center_y), inner_radius, 1)
+        
+        # Store the button rect for click detection
+        self.settings_button_rect = button_rect
     
     def draw_settings_panel(self, surface):
         """Draw an enhanced settings panel with the same mysterious space theme."""
