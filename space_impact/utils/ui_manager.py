@@ -71,97 +71,201 @@ class UIManager:
         surface.blit(settings_cog_img, self.settings_button_rect)
     
     def draw_settings_panel(self, surface):
-        """Draw the settings panel."""
-        # Draw semi-transparent background
-        settings_surface = pygame.Surface((self.panel_width, 250), pygame.SRCALPHA)
-        settings_surface.fill((0, 0, 0, 200))
-        surface.blit(settings_surface, (self.panel_x, SCREEN_HEIGHT // 2 - 125))
+        """Draw an enhanced settings panel with the same mysterious space theme."""
+        # Create a semi-transparent overlay for the entire screen
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 20, 200))
+        surface.blit(overlay, (0, 0))
         
-        # Draw panel border
-        pygame.draw.rect(surface, WHITE, (self.panel_x, SCREEN_HEIGHT // 2 - 125, self.panel_width, 250), 2)
+        # Add some particle effects (stars) in the background
+        for i in range(20):
+            x = random.randint(0, SCREEN_WIDTH)
+            y = random.randint(0, SCREEN_HEIGHT)
+            size = random.randint(1, 3)
+            brightness = random.randint(150, 255)
+            pygame.draw.circle(surface, (brightness, brightness, brightness), (x, y), size)
         
-        # Draw title with proper padding
-        title_text = self.font_large.render('Settings', True, WHITE)
-        surface.blit(title_text, (self.panel_x + self.panel_width // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 2 - 105))
+        # Create a semi-transparent panel
+        panel_width = self.panel_width
+        panel_height = 300
+        panel_x = self.panel_x
+        panel_y = SCREEN_HEIGHT // 2 - panel_height // 2
         
-        # Draw horizontal separator line
-        pygame.draw.line(surface, GRAY, 
-                        (self.panel_x + 20, SCREEN_HEIGHT // 2 - 70),
-                        (self.panel_x + self.panel_width - 20, SCREEN_HEIGHT // 2 - 70), 1)
+        # Draw panel background with gradient
+        for i in range(panel_height):
+            progress = i / panel_height
+            color = (
+                int(20 + 30 * progress),
+                int(20 + 30 * progress),
+                int(50 + 30 * progress),
+                220
+            )
+            panel_surface = pygame.Surface((panel_width, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (panel_x, panel_y + i))
         
-        # Sound effects label
-        sfx_text = self.font_medium.render('Sound Effects', True, WHITE)
-        surface.blit(sfx_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 - 45))
+        # Draw panel border with glow effect
+        pygame.draw.rect(surface, (100, 100, 180), (panel_x, panel_y, panel_width, panel_height), 2)
+        
+        # Add some "tech" details to the panel
+        pygame.draw.line(surface, (120, 120, 200, 150), 
+                        (panel_x + 20, panel_y + 20), 
+                        (panel_x + panel_width - 20, panel_y + 20), 2)
+        pygame.draw.line(surface, (120, 120, 200, 150), 
+                        (panel_x + 20, panel_y + panel_height - 20), 
+                        (panel_x + panel_width - 20, panel_y + panel_height - 20), 2)
+        
+        # Draw settings title with glow effect
+        settings_font = pygame.font.SysFont('Arial', 36, bold=True)
+        glow_text = settings_font.render('SETTINGS', True, (40, 40, 100))
+        surface.blit(glow_text, (panel_x + panel_width // 2 - glow_text.get_width() // 2 + 2, panel_y + 30 + 2))
+        
+        settings_text = settings_font.render('SETTINGS', True, (150, 150, 255))
+        surface.blit(settings_text, (panel_x + panel_width // 2 - settings_text.get_width() // 2, panel_y + 30))
+        
+        # Draw horizontal separator line with glow
+        pygame.draw.line(surface, (80, 80, 150), 
+                        (panel_x + 20, panel_y + 80),
+                        (panel_x + panel_width - 20, panel_y + 80), 2)
+        
+        # Sound effects label with enhanced styling
+        sfx_font = pygame.font.SysFont('Arial', 22, bold=True)
+        sfx_text = sfx_font.render('SOUND EFFECTS', True, (180, 180, 255))
+        surface.blit(sfx_text, (panel_x + 20, panel_y + 100))
         
         # Sound effects slider
-        sfx_slider_x = self.panel_x + 130
-        sfx_slider_y = SCREEN_HEIGHT // 2 - 40
+        sfx_slider_x = panel_x + 20
+        sfx_slider_y = panel_y + 130
+        sfx_slider_width = panel_width - 40
         
-        # Create a local copy of the slider rect for drawing
-        local_sfx_slider_rect = pygame.Rect(sfx_slider_x, sfx_slider_y, self.slider_width, 10)
-        slider_bar_img = self.asset_loader.get_image('slider_bar')
-        surface.blit(pygame.transform.scale(slider_bar_img, (self.slider_width, 10)), local_sfx_slider_rect)
+        # Draw slider background with gradient
+        slider_height = 10
+        slider_bg_rect = pygame.Rect(sfx_slider_x, sfx_slider_y, sfx_slider_width, slider_height)
+        for i in range(slider_height):
+            progress = i / slider_height
+            color = (
+                int(20 + 20 * progress),
+                int(20 + 20 * progress),
+                int(40 + 20 * progress),
+                220
+            )
+            slider_bg = pygame.Surface((sfx_slider_width, 1), pygame.SRCALPHA)
+            slider_bg.fill(color)
+            surface.blit(slider_bg, (slider_bg_rect.left, slider_bg_rect.top + i))
         
-        # Sound effects handle
-        sfx_handle_x = sfx_slider_x + int(self.sound_manager.sfx_volume * self.slider_width) - 10
-        sfx_handle_y = SCREEN_HEIGHT // 2 - 45
-        local_sfx_handle_rect = pygame.Rect(sfx_handle_x, sfx_handle_y, 20, 20)
-        slider_handle_img = self.asset_loader.get_image('slider_handle')
-        surface.blit(slider_handle_img, local_sfx_handle_rect)
+        # Draw slider border
+        pygame.draw.rect(surface, (100, 100, 180), slider_bg_rect, 1)
+        
+        # Draw slider fill with gradient
+        fill_width = int(sfx_slider_width * self.sound_manager.sfx_volume)
+        fill_rect = pygame.Rect(sfx_slider_x, sfx_slider_y, fill_width, slider_height)
+        for i in range(fill_rect.height):
+            progress = i / fill_rect.height
+            color = (
+                int(40 + 60 * progress),
+                int(40 + 60 * progress),
+                int(120 + 80 * progress),
+                220
+            )
+            fill_bg = pygame.Surface((fill_width, 1), pygame.SRCALPHA)
+            fill_bg.fill(color)
+            surface.blit(fill_bg, (fill_rect.left, fill_rect.top + i))
+        
+        # Draw slider handle with glow effect
+        handle_x = sfx_slider_x + fill_width - 10
+        handle_y = sfx_slider_y + slider_height // 2
+        handle_radius = 10
+        
+        # Glow effect
+        pygame.draw.circle(surface, (100, 100, 200, 150), (handle_x, handle_y), handle_radius + 2)
+        # Main handle
+        pygame.draw.circle(surface, (150, 150, 255), (handle_x, handle_y), handle_radius)
+        # Inner highlight
+        pygame.draw.circle(surface, (200, 200, 255), (handle_x - 2, handle_y - 2), handle_radius // 2)
         
         # Update the handle rect position
-        self.sfx_handle_rect.x = sfx_handle_x
-        self.sfx_handle_rect.y = sfx_handle_y
-        self.sfx_slider_rect.x = sfx_slider_x
-        self.sfx_slider_rect.y = sfx_slider_y
+        self.sfx_handle_rect = pygame.Rect(handle_x - handle_radius, handle_y - handle_radius, handle_radius * 2, handle_radius * 2)
+        self.sfx_slider_rect = slider_bg_rect
         
         # Sound effects percentage
-        sfx_value_text = self.font_medium.render(f'{int(self.sound_manager.sfx_volume * 100)}%', True, WHITE)
-        surface.blit(sfx_value_text, (sfx_slider_x + self.slider_width + 15, SCREEN_HEIGHT // 2 - 45))
+        percent_font = pygame.font.SysFont('Arial', 18)
+        sfx_percent = percent_font.render(f"{int(self.sound_manager.sfx_volume * 100)}%", True, (180, 180, 255))
+        surface.blit(sfx_percent, (sfx_slider_x + sfx_slider_width + 10, sfx_slider_y - 5))
         
-        # Music label
-        music_text = self.font_medium.render('Music', True, WHITE)
-        surface.blit(music_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 + 5))
+        # Music label with enhanced styling
+        music_font = pygame.font.SysFont('Arial', 22, bold=True)
+        music_text = music_font.render('MUSIC', True, (180, 180, 255))
+        surface.blit(music_text, (panel_x + 20, panel_y + 160))
         
         # Music slider
-        music_slider_x = self.panel_x + 130
-        music_slider_y = SCREEN_HEIGHT // 2 + 10
+        music_slider_x = panel_x + 20
+        music_slider_y = panel_y + 190
+        music_slider_width = panel_width - 40
         
-        # Create a local copy of the slider rect for drawing
-        local_music_slider_rect = pygame.Rect(music_slider_x, music_slider_y, self.slider_width, 10)
-        surface.blit(pygame.transform.scale(slider_bar_img, (self.slider_width, 10)), local_music_slider_rect)
+        # Draw slider background with gradient
+        music_slider_bg_rect = pygame.Rect(music_slider_x, music_slider_y, music_slider_width, slider_height)
+        for i in range(slider_height):
+            progress = i / slider_height
+            color = (
+                int(20 + 20 * progress),
+                int(20 + 20 * progress),
+                int(40 + 20 * progress),
+                220
+            )
+            slider_bg = pygame.Surface((music_slider_width, 1), pygame.SRCALPHA)
+            slider_bg.fill(color)
+            surface.blit(slider_bg, (music_slider_bg_rect.left, music_slider_bg_rect.top + i))
         
-        # Music handle
-        music_handle_x = music_slider_x + int(self.sound_manager.music_volume * self.slider_width) - 10
-        music_handle_y = SCREEN_HEIGHT // 2 + 5
-        local_music_handle_rect = pygame.Rect(music_handle_x, music_handle_y, 20, 20)
-        surface.blit(slider_handle_img, local_music_handle_rect)
+        # Draw slider border
+        pygame.draw.rect(surface, (100, 100, 180), music_slider_bg_rect, 1)
+        
+        # Draw slider fill with gradient
+        music_fill_width = int(music_slider_width * self.sound_manager.music_volume)
+        music_fill_rect = pygame.Rect(music_slider_x, music_slider_y, music_fill_width, slider_height)
+        for i in range(music_fill_rect.height):
+            progress = i / music_fill_rect.height
+            color = (
+                int(40 + 60 * progress),
+                int(40 + 60 * progress),
+                int(120 + 80 * progress),
+                220
+            )
+            fill_bg = pygame.Surface((music_fill_width, 1), pygame.SRCALPHA)
+            fill_bg.fill(color)
+            surface.blit(fill_bg, (music_fill_rect.left, music_fill_rect.top + i))
+        
+        # Draw slider handle with glow effect
+        music_handle_x = music_slider_x + music_fill_width - 10
+        music_handle_y = music_slider_y + slider_height // 2
+        
+        # Glow effect
+        pygame.draw.circle(surface, (100, 100, 200, 150), (music_handle_x, music_handle_y), handle_radius + 2)
+        # Main handle
+        pygame.draw.circle(surface, (150, 150, 255), (music_handle_x, music_handle_y), handle_radius)
+        # Inner highlight
+        pygame.draw.circle(surface, (200, 200, 255), (music_handle_x - 2, music_handle_y - 2), handle_radius // 2)
         
         # Update the handle rect position
-        self.music_handle_rect.x = music_handle_x
-        self.music_handle_rect.y = music_handle_y
-        self.music_slider_rect.x = music_slider_x
-        self.music_slider_rect.y = music_slider_y
+        self.music_handle_rect = pygame.Rect(music_handle_x - handle_radius, music_handle_y - handle_radius, handle_radius * 2, handle_radius * 2)
+        self.music_slider_rect = music_slider_bg_rect
         
         # Music percentage
-        music_value_text = self.font_medium.render(f'{int(self.sound_manager.music_volume * 100)}%', True, WHITE)
-        surface.blit(music_value_text, (music_slider_x + self.slider_width + 15, SCREEN_HEIGHT // 2 + 5))
+        music_percent = percent_font.render(f"{int(self.sound_manager.music_volume * 100)}%", True, (180, 180, 255))
+        surface.blit(music_percent, (music_slider_x + music_slider_width + 10, music_slider_y - 5))
         
-        # Draw horizontal separator line
-        pygame.draw.line(surface, GRAY, 
-                        (self.panel_x + 20, SCREEN_HEIGHT // 2 + 50),
-                        (self.panel_x + self.panel_width - 20, SCREEN_HEIGHT // 2 + 50), 1)
+        # Draw horizontal separator line with glow
+        pygame.draw.line(surface, (80, 80, 150), 
+                        (panel_x + 20, panel_y + 230),
+                        (panel_x + panel_width - 20, panel_y + 230), 2)
         
-        # Draw close button
-        close_button_x = self.panel_x + self.panel_width // 2 - 50
-        close_button_y = SCREEN_HEIGHT // 2 + 80
-        close_button_rect = pygame.Rect(close_button_x, close_button_y, 100, 35)
-        pygame.draw.rect(surface, GRAY, close_button_rect)
-        pygame.draw.rect(surface, WHITE, close_button_rect, 2)
+        # Draw close button with the same style as other buttons
+        close_button_width, close_button_height = 120, 40
+        close_button_rect = pygame.Rect(panel_x + panel_width // 2 - close_button_width // 2, 
+                                      panel_y + 250, 
+                                      close_button_width, close_button_height)
         
-        close_text = self.font_medium.render('Close', True, WHITE)
-        surface.blit(close_text, (close_button_rect.centerx - close_text.get_width() // 2, 
-                                close_button_rect.centery - close_text.get_height() // 2))
+        is_close_hovered = close_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, close_button_rect, "CLOSE", (30, 30, 80), (80, 80, 180), is_close_hovered)
         
         return close_button_rect
     
