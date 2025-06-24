@@ -24,7 +24,9 @@ class AssetLoader:
             'rapid_fire_powerup': 'rapid_fire_powerup.png',
             'settings_cog': 'settings_cog.png',
             'slider_bar': 'slider_bar.png',
-            'slider_handle': 'slider_handle.png'
+            'slider_handle': 'slider_handle.png',
+            'full_heart': 'full_heart.png',
+            'empty_heart': 'empty_heart.png'
         }
         
         for name, filename in image_files.items():

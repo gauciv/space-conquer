@@ -2,13 +2,15 @@
 Player sprite for the Space Impact game.
 """
 import pygame
+import time
 from ..config import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_INITIAL_HEALTH, PLAYER_INITIAL_SPEED, PLAYER_SHOOT_DELAY
 from .bullet import Bullet
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, image, sound_manager):
         super().__init__()
-        self.image = image
+        self.original_image = image
+        self.image = self.original_image
         self.rect = self.image.get_rect()
         self.rect.centerx = 100
         self.rect.centery = SCREEN_HEIGHT // 2
@@ -17,9 +19,19 @@ class Player(pygame.sprite.Sprite):
         self.shoot_delay = PLAYER_SHOOT_DELAY
         self.last_shot = pygame.time.get_ticks()
         self.health = PLAYER_INITIAL_HEALTH
+        self.max_health = PLAYER_INITIAL_HEALTH
         self.rapid_fire = False
         self.rapid_fire_timer = 0
         self.sound_manager = sound_manager
+        
+        # Invulnerability properties
+        self.invulnerable = False
+        self.invulnerable_timer = 0
+        self.invulnerable_duration = 1500  # 1.5 seconds in milliseconds
+        self.blink_timer = 0
+        self.blink_interval = 100  # Blink every 100ms
+        self.visible = True
+        self.blink_color = (255, 255, 255)  # White for contrast
     
     def update(self):
         # Get keyboard input
@@ -56,6 +68,28 @@ class Player(pygame.sprite.Sprite):
             if self.rapid_fire_timer <= 0:
                 self.rapid_fire = False
                 self.shoot_delay = PLAYER_SHOOT_DELAY
+        
+        # Update invulnerability
+        current_time = pygame.time.get_ticks()
+        if self.invulnerable:
+            # Check if invulnerability period is over
+            if current_time - self.invulnerable_timer > self.invulnerable_duration:
+                self.invulnerable = False
+                self.visible = True
+                self.image = self.original_image
+            else:
+                # Handle blinking effect
+                if current_time - self.blink_timer > self.blink_interval:
+                    self.blink_timer = current_time
+                    self.visible = not self.visible
+                    
+                    if self.visible:
+                        self.image = self.original_image
+                    else:
+                        # Create a colored version of the image for blinking
+                        colored_image = self.original_image.copy()
+                        colored_image.fill(self.blink_color, special_flags=pygame.BLEND_ADD)
+                        self.image = colored_image
     
     def shoot(self, bullet_image=None):
         now = pygame.time.get_ticks()
@@ -74,7 +108,8 @@ class Player(pygame.sprite.Sprite):
     
     def apply_powerup(self, powerup_type):
         if powerup_type == 'health':
-            self.health += 1
+            if self.health < self.max_health:
+                self.health += 1
         elif powerup_type == 'speed':
             self.speed += 1
         elif powerup_type == 'rapid_fire':
@@ -82,6 +117,21 @@ class Player(pygame.sprite.Sprite):
             self.shoot_delay = 100
             self.rapid_fire_timer = 300  # Lasts for 300 frames (5 seconds at 60 FPS)
     
+    def take_damage(self):
+        """Handle player taking damage with invulnerability period."""
+        if not self.invulnerable:
+            self.health -= 1
+            self.sound_manager.play_sound('explosion')
+            
+            # Start invulnerability period
+            self.invulnerable = True
+            self.invulnerable_timer = pygame.time.get_ticks()
+            self.blink_timer = pygame.time.get_ticks()
+            
+            return True  # Damage was applied
+        return False  # Player was invulnerable, no damage applied
+    
     def draw(self, surface):
-        surface.blit(self.image, self.rect)
+        if self.visible or not self.invulnerable:
+            surface.blit(self.image, self.rect)
         self.bullets.draw(surface)

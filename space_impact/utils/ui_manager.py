@@ -45,6 +45,16 @@ class UIManager:
         self.font_large = pygame.font.SysFont('Arial', 32)
         self.font_medium = pygame.font.SysFont('Arial', 22)
         self.font_small = pygame.font.SysFont('Arial', 16)
+        
+        # Load heart images
+        self.full_heart_img = self.asset_loader.get_image('full_heart')
+        self.empty_heart_img = self.asset_loader.get_image('empty_heart')
+        
+        # Scale heart images if needed
+        if self.full_heart_img.get_width() > 32 or self.full_heart_img.get_height() > 32:
+            self.full_heart_img = pygame.transform.scale(self.full_heart_img, (32, 32))
+        if self.empty_heart_img.get_width() > 32 or self.empty_heart_img.get_height() > 32:
+            self.empty_heart_img = pygame.transform.scale(self.empty_heart_img, (32, 32))
     
     def draw_settings_button(self, surface):
         """Draw the settings button."""
@@ -214,12 +224,23 @@ class UIManager:
         
         return False
     
-    def show_score(self, surface, score, health):
+    def show_score(self, surface, score, health, max_health=3):
         """Display score and health on screen."""
+        # Display score
         score_text = self.font_medium.render(f'Score: {score}', True, WHITE)
-        health_text = self.font_medium.render(f'Health: {health}', True, WHITE)
         surface.blit(score_text, (10, 10))
-        surface.blit(health_text, (10, 40))
+        
+        # Display health as hearts
+        heart_spacing = 40  # Space between hearts
+        for i in range(max_health):
+            heart_x = 10 + (i * heart_spacing)
+            heart_y = 40
+            
+            # Draw full or empty heart based on current health
+            if i < health:
+                surface.blit(self.full_heart_img, (heart_x, heart_y))
+            else:
+                surface.blit(self.empty_heart_img, (heart_x, heart_y))
     
     def show_game_over(self, surface, score):
         """Display game over screen."""
@@ -233,7 +254,7 @@ class UIManager:
     
     def show_start_screen(self, surface):
         """Display start screen."""
-        title_text = self.font_large.render('SPACE IMPACT', True, WHITE)
+        title_text = self.font_large.render('SPACE CONQUER', True, WHITE)
         instruction_text = self.font_medium.render('Press SPACE to start', True, WHITE)
         controls_text = self.font_medium.render('Arrow keys to move, SPACE to shoot', True, WHITE)
         
