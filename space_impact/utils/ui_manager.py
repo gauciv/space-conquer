@@ -266,10 +266,6 @@ class UIManager:
         surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, 280))
         surface.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 320))
         
-        # Show first map name
-        map_name_text = self.font_medium.render("First Map: Starlight's End", True, (200, 200, 255))
-        surface.blit(map_name_text, (SCREEN_WIDTH // 2 - map_name_text.get_width() // 2, 360))
-        
         # Show testing mode instructions
         if testing_mode:
             test_instructions = [
@@ -286,4 +282,4 @@ class UIManager:
             
             for i, instruction in enumerate(test_instructions):
                 text = self.font_small.render(instruction, True, (200, 200, 100))
-                surface.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 390 + i * 20))
+                surface.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, 360 + i * 20))

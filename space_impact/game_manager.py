@@ -448,14 +448,19 @@ class GameManager:
                 # Show map name during transition
                 if self.showing_map_name:
                     # Create semi-transparent overlay
-                    overlay = pygame.Surface((SCREEN_WIDTH, 80), pygame.SRCALPHA)
+                    overlay = pygame.Surface((SCREEN_WIDTH, 120), pygame.SRCALPHA)
                     overlay.fill((0, 0, 0, 180))
-                    self.screen.blit(overlay, (0, SCREEN_HEIGHT // 2 - 40))
+                    self.screen.blit(overlay, (0, SCREEN_HEIGHT // 2 - 60))
                     
-                    # Draw map name
-                    big_font = pygame.font.SysFont('Arial', 36)
-                    map_name = big_font.render(self.maps[self.current_map], True, (255, 255, 255))
-                    self.screen.blit(map_name, (SCREEN_WIDTH // 2 - map_name.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
+                    # Draw chapter and map name
+                    chapter_font = pygame.font.SysFont('Arial', 28)
+                    map_font = pygame.font.SysFont('Arial', 36)
+                    
+                    chapter_text = chapter_font.render(f"Chapter {self.current_map + 1}:", True, (200, 200, 255))
+                    map_name = map_font.render(self.maps[self.current_map], True, (255, 255, 255))
+                    
+                    self.screen.blit(chapter_text, (SCREEN_WIDTH // 2 - chapter_text.get_width() // 2, SCREEN_HEIGHT // 2 - 40))
+                    self.screen.blit(map_name, (SCREEN_WIDTH // 2 - map_name.get_width() // 2, SCREEN_HEIGHT // 2))
                 
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:
