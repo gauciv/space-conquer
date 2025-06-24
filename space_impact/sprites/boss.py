@@ -18,7 +18,7 @@ class Boss(pygame.sprite.Sprite):
         if boss_type == 'mini':
             self.image = asset_loader.get_image('mini_boss')
             self.name = "Vanguard"
-            self.max_health = 50
+            self.max_health = 25  # Reduced from 50 to 25
             self.health = self.max_health
             self.speed = 2
             self.shoot_delay = 1000  # milliseconds
@@ -29,7 +29,7 @@ class Boss(pygame.sprite.Sprite):
         else:  # main boss
             self.image = asset_loader.get_image('main_boss')
             self.name = "Dreadnought"
-            self.max_health = 100
+            self.max_health = 50  # Reduced from 100 to 50
             self.health = self.max_health
             self.speed = 1.5
             self.shoot_delay = 800  # milliseconds
