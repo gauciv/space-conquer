@@ -171,10 +171,10 @@ class GameManager:
                 
                 # Check for player collision with enemies
                 if pygame.sprite.spritecollide(self.player, self.enemies, True):
-                    self.player.health -= 1
-                    # Play explosion sound
-                    self.sound_manager.play_sound('explosion')
-                    if self.player.health <= 0:
+                    # Use the new take_damage method which handles invulnerability and sound
+                    damage_applied = self.player.take_damage()
+                    
+                    if damage_applied and self.player.health <= 0:
                         self.game_active = False
                         # Play game over sound
                         self.sound_manager.play_sound('game_over')
@@ -206,8 +206,8 @@ class GameManager:
                 self.all_sprites.draw(self.screen)
                 self.player.draw(self.screen)
                 
-                # Show score and health
-                self.ui_manager.show_score(self.screen, self.score, self.player.health)
+                # Show score and health with max_health
+                self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
             else:
                 if self.score > 0:
                     self.ui_manager.show_game_over(self.screen, self.score)
