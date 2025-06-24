@@ -11,7 +11,8 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 - Power-ups to enhance your ship
 - Increasing difficulty over time
 - Score tracking
-- Sound effects
+- Sound effects with adjustable volume
+- Settings menu
 
 ## How to Play
 
@@ -20,12 +21,15 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 3. Use the arrow keys to move your ship
 4. Press SPACE to shoot
 5. Avoid enemy ships and collect power-ups
+6. Click the settings (cog) icon in the top-right corner to adjust volume
 
 ## Controls
 
 - Arrow keys: Move your ship
 - SPACE: Shoot
 - SPACE (at start/game over screen): Start/restart game
+- ESC: Close settings menu
+- Mouse: Interact with settings menu and volume slider
 
 ## Power-ups
 
@@ -47,10 +51,17 @@ The game features custom-designed spaceship graphics:
 - Power-ups: Distinct visual indicators for each power-up type
 - Bullets: Yellow projectiles with orange tips
 
+## Settings
+
+The game includes a settings menu accessible by clicking the cog icon in the top-right corner:
+- Volume control: Adjust the volume of all game sounds using the slider
+- Close button: Return to the game
+
 ## Requirements
 
 - Python 3.x
 - Pygame
+- NumPy (for sound generation)
 
 ## Installation
 
@@ -63,9 +74,9 @@ The game features custom-designed spaceship graphics:
    - On Windows: `venv\Scripts\activate`
    - On macOS/Linux: `source venv/bin/activate`
 
-3. Install Pygame:
+3. Install required packages:
    ```
-   pip install pygame
+   pip install pygame numpy
    ```
 
 4. Run the game:
