@@ -1,13 +1,13 @@
-# Space Impact Game
+# Space Conquer
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/space-impact/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/space-conquer/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Python recreation of the classic Space Impact game that was popular on Nokia phones.
 
 ## Description
 
-Space Impact is a side-scrolling shooter game where you control a spaceship and must destroy enemy ships while avoiding collisions. This version includes:
+Space Conquer is a side-scrolling shooter game where you control a spaceship and must destroy enemy ships while avoiding collisions. This version includes:
 
 - Multiple enemy types with different behaviors
 - Custom designed spaceship graphics
@@ -23,7 +23,7 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 The project follows a modular structure for better maintainability:
 
 ```
-space-impact/
+space-conquer/
 ├── main.py                  # Main entry point
 ├── setup.py                 # Setup script for installation
 ├── tools/                   # Utility scripts for development
@@ -150,4 +150,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Credits
 
-Created as a learning project for Python game development with Pygame.
+Created by Gauciv as a learning project for Python game development with Pygame.

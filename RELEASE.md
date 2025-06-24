@@ -28,25 +28,7 @@ Add a new section for the new version at the top of the file:
 - Bug fix 2
 ```
 
-## 3. Build Release Packages
-
-Run the build script to create executable packages for your platform:
-
-```bash
-# Activate virtual environment
-source venv/bin/activate  # On Linux/macOS
-# or
-venv\Scripts\activate     # On Windows
-
-# Run the build script
-python tools/build_executable.py
-```
-
-This will create:
-- A standalone executable in the `dist` directory
-- A ZIP archive in the `releases` directory
-
-## 4. Commit Changes and Create a Tag
+## 3. Commit Changes and Create a Tag
 
 ```bash
 git add .
@@ -56,28 +38,25 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-## 5. Create a GitHub Release
+## 4. Automated Release Process
+
+After pushing the tag, GitHub Actions will automatically:
+
+1. Build executables for Windows, macOS, and Linux
+2. Create ZIP packages for each platform
+3. Create a GitHub Release with the tag name
+4. Upload the ZIP packages to the release
+
+## 5. Verify the Release
 
 1. Go to your repository on GitHub
-2. Click on "Releases" on the right sidebar
-3. Click "Create a new release"
-4. Tag version: vX.Y.Z (should match the tag you pushed)
-5. Release title: "Space Impact vX.Y.Z"
-6. Description: Copy the content from your CHANGELOG.md for this version
-7. Attach the ZIP file(s) from the `releases` directory
-8. Click "Publish release"
+2. Click on "Actions" to monitor the build progress
+3. Once completed, check the "Releases" page to verify:
+   - The release was created
+   - All ZIP packages were uploaded
+   - The release description is correct
 
-## 6. Cross-Platform Builds (Optional)
-
-For a complete release, you may want to build packages for all platforms:
-
-- **Windows**: Build on a Windows machine or use a CI service
-- **macOS**: Build on a Mac or use a CI service
-- **Linux**: Build on a Linux machine or use a CI service
-
-Upload all platform-specific ZIP files to the GitHub release.
-
-## 7. Announce the Release
+## 6. Announce the Release
 
 Announce the new release on relevant channels:
 - Project website

@@ -21,7 +21,7 @@ class GameManager:
         
         # Create the game window
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Space Impact")
+        pygame.display.set_caption("Space Conquer")
         self.clock = pygame.time.Clock()
         
         # Initialize managers

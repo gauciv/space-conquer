@@ -15,11 +15,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            asset_name: SpaceImpact-Linux
+            asset_name: SpaceConquer-Linux
           - os: windows-latest
-            asset_name: SpaceImpact-Windows
+            asset_name: SpaceConquer-Windows
           - os: macos-latest
-            asset_name: SpaceImpact-macOS
+            asset_name: SpaceConquer-macOS
 
     steps:
     - uses: actions/checkout@v3
@@ -37,18 +37,18 @@ jobs:
     - name: Build with PyInstaller (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        pyinstaller --name=SpaceImpact --onefile --windowed --icon=images/player_ship.png --add-data="images;images" --add-data="sounds;sounds" --add-data="music;music" main.py
+        pyinstaller --name=SpaceConquer --onefile --windowed --icon=images/player_ship.png --add-data="images;images" --add-data="sounds;sounds" --add-data="music;music" main.py
         
     - name: Build with PyInstaller (macOS/Linux)
       if: matrix.os != 'windows-latest'
       run: |
-        pyinstaller --name=SpaceImpact --onefile --windowed --icon=images/player_ship.png --add-data="images:images" --add-data="sounds:sounds" --add-data="music:music" main.py
+        pyinstaller --name=SpaceConquer --onefile --windowed --icon=images/player_ship.png --add-data="images:images" --add-data="sounds:sounds" --add-data="music:music" main.py
         
     - name: Create Release Package (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         mkdir -p release
-        cp dist/SpaceImpact.exe release/
+        cp dist/SpaceConquer.exe release/
         cp README.md LICENSE CHANGELOG.md release/
         cd release
         7z a -tzip "../${{ matrix.asset_name }}.zip" *
@@ -57,11 +57,11 @@ jobs:
       if: matrix.os != 'windows-latest'
       run: |
         mkdir -p release
-        cp dist/SpaceImpact release/
+        cp dist/SpaceConquer release/
         cp README.md LICENSE CHANGELOG.md release/
         echo '#!/bin/bash' > release/run_game.sh
-        echo 'chmod +x ./SpaceImpact' >> release/run_game.sh
-        echo './SpaceImpact' >> release/run_game.sh
+        echo 'chmod +x ./SpaceConquer' >> release/run_game.sh
+        echo './SpaceConquer' >> release/run_game.sh
         chmod +x release/run_game.sh
         cd release
         zip -r "../${{ matrix.asset_name }}.zip" *

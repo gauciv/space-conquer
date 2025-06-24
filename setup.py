@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="space_impact",
+    name="space_conquer",
     version="1.0.0",  # Initial release version
     packages=find_packages(),
     install_requires=[
@@ -10,7 +10,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "space-impact=space_impact.game_manager:main",
+            "space-conquer=space_impact.game_manager:main",
         ],
     },
     author="Gauciv",

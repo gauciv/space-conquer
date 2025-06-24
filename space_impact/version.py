@@ -1,5 +1,5 @@
 """
-Version information for Space Impact.
+Version information for Space Conquer.
 """
 
 __version__ = '1.0.0'

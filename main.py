@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Space Impact Game - Main Entry Point
+Space Conquer - Main Entry Point
 
 A Python recreation of the classic Space Impact game that was popular on Nokia phones.
 """
