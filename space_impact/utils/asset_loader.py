@@ -4,7 +4,7 @@ Handles loading images and other assets.
 """
 import pygame
 import os
-from ..config import IMAGES_DIR
+from ..config import get_asset_path
 
 class AssetLoader:
     def __init__(self):
@@ -32,7 +32,11 @@ class AssetLoader:
     
     def load_image(self, name, filename):
         """Load an image and store it by name."""
-        path = os.path.join(IMAGES_DIR, filename)
+        path = get_asset_path('assets', filename)
+        if not os.path.exists(path):
+            # Try the images directory as fallback
+            path = get_asset_path('images', filename)
+            
         try:
             self.images[name] = pygame.image.load(path)
             return self.images[name]

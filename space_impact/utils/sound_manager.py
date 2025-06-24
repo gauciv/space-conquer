@@ -4,7 +4,7 @@ Handles loading, playing, and controlling volume of sound effects and music.
 """
 import pygame
 import os
-from ..config import SOUNDS_DIR, MUSIC_DIR, DEFAULT_SFX_VOLUME, DEFAULT_MUSIC_VOLUME
+from ..config import DEFAULT_SFX_VOLUME, DEFAULT_MUSIC_VOLUME, get_asset_path
 
 class SoundManager:
     def __init__(self):
@@ -45,7 +45,7 @@ class SoundManager:
         }
         
         for name, filename in sound_files.items():
-            path = os.path.join(SOUNDS_DIR, filename)
+            path = get_asset_path('sounds', filename)
             if os.path.exists(path):
                 self.sounds[name] = pygame.mixer.Sound(path)
                 self.sounds[name].set_volume(self.sfx_volume)
@@ -54,7 +54,7 @@ class SoundManager:
     
     def _load_music(self):
         """Load background music."""
-        music_path = os.path.join(MUSIC_DIR, 'background_music.wav')
+        music_path = get_asset_path('music', 'background_music.wav')
         if os.path.exists(music_path):
             pygame.mixer.music.load(music_path)
             pygame.mixer.music.set_volume(self.music_volume)
@@ -87,6 +87,7 @@ class SoundManager:
     def set_sfx_volume(self, volume):
         """Set volume for all sound effects."""
         self.sfx_volume = max(0, min(1, volume))
+        
         if self.sound_enabled:
             for sound in self.sounds.values():
                 sound.set_volume(self.sfx_volume)

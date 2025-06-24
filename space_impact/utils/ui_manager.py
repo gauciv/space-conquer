@@ -75,7 +75,7 @@ class UIManager:
         surface.blit(sfx_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 - 45))
         
         # Sound effects slider
-        sfx_slider_x = self.panel_x + 130
+        sfx_slider_x = self.panel_x + 180
         sfx_slider_y = SCREEN_HEIGHT // 2 - 40
         
         # Create a local copy of the slider rect for drawing
@@ -105,7 +105,7 @@ class UIManager:
         surface.blit(music_text, (self.panel_x + 20, SCREEN_HEIGHT // 2 + 5))
         
         # Music slider
-        music_slider_x = self.panel_x + 130
+        music_slider_x = self.panel_x + 180
         music_slider_y = SCREEN_HEIGHT // 2 + 10
         
         # Create a local copy of the slider rect for drawing

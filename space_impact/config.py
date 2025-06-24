@@ -21,11 +21,24 @@ BLUE = (0, 0, 255)
 GRAY = (150, 150, 150)
 DARK_GRAY = (80, 80, 80)
 
-# Asset paths
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
-IMAGES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "images")
-SOUNDS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "sounds")
-MUSIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "music")
+# Base directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Asset paths - try both the module structure and the original structure
+# This allows the game to work both when installed as a package and when run directly
+def get_asset_path(subdir, filename):
+    # First try the module structure
+    module_path = os.path.join(os.path.dirname(__file__), subdir, filename)
+    if os.path.exists(module_path):
+        return module_path
+    
+    # Then try the original structure
+    original_path = os.path.join(BASE_DIR, subdir, filename)
+    if os.path.exists(original_path):
+        return original_path
+    
+    # If neither exists, return the module path (will fail gracefully later)
+    return module_path
 
 # Game settings
 DEFAULT_SFX_VOLUME = 0.7  # 70% for sound effects
