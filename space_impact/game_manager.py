@@ -51,16 +51,40 @@ class GameManager:
         self.mini_boss_score_threshold = 750
         self.main_boss_score_threshold = 1500
         
+        # Level design variables
+        self.current_level = 1
+        self.level_thresholds = [0, 500, 1000, 1500, 2000]  # Score thresholds for levels
+        self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each level
+        self.enemy_types_by_level = [
+            ['normal'],
+            ['normal', 'fast'],
+            ['normal', 'fast', 'tank'],
+            ['normal', 'fast', 'tank', 'drone'],
+            ['normal', 'fast', 'tank', 'drone', 'bomber']
+        ]
+        self.enemy_points = {
+            'normal': 10,
+            'fast': 15,
+            'tank': 25,
+            'drone': 20,
+            'bomber': 30
+        }
+        
+        # Testing mode
+        self.testing_mode = False
+        self.show_debug_info = False
+        
         # Start background music
         self.sound_manager.play_music()
     
-    def start_new_game(self):
+    def start_new_game(self, testing_mode=False):
         """Initialize a new game."""
         self.game_active = True
         self.score = 0
+        self.testing_mode = testing_mode
         
         # Play the game start sound
-        if self.sound_manager.sound_enabled:
+        if self.sound_manager.sound_enabled and not testing_mode:
             # Temporarily lower music volume during start sound
             if self.sound_manager.music_enabled:
                 self.sound_manager.temporarily_lower_music()
@@ -85,17 +109,22 @@ class GameManager:
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
         
+        # Reset level variables
+        self.current_level = 1
+        
         # Enemy spawn timer
-        self.enemy_spawn_delay = ENEMY_SPAWN_DELAY
+        self.enemy_spawn_delay = self.enemy_spawn_rates[0]
         self.last_enemy_spawn = pygame.time.get_ticks()
         
         # Power-up spawn timer
         self.powerup_spawn_delay = POWERUP_SPAWN_DELAY
         self.last_powerup_spawn = pygame.time.get_ticks()
         
-        # Difficulty scaling
-        self.difficulty_timer = 0
-        self.enemy_types = ['normal']
+        # If testing mode, give player some advantages
+        if testing_mode:
+            self.player.health = 10  # Extra health for testing
+            self.player.max_health = 10
+            self.player.speed = 8    # Extra speed for testing
     
     def handle_events(self):
         """Handle game events."""
@@ -117,11 +146,51 @@ class GameManager:
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not self.game_active and not self.ui_manager.settings_open:
-                    self.start_new_game()
+                    # Start normal game with SPACE
+                    self.start_new_game(testing_mode=False)
+                elif event.key == pygame.K_t and not self.game_active and not self.ui_manager.settings_open:
+                    # Start test mode with T
+                    self.start_new_game(testing_mode=True)
                 elif event.key == pygame.K_ESCAPE:
                     # Close settings if open
                     if self.ui_manager.settings_open:
                         self.ui_manager.settings_open = False
+                
+                # Testing mode hotkeys (only active in testing mode)
+                if self.testing_mode and self.game_active:
+                    if event.key == pygame.K_1:
+                        # Spawn mini-boss
+                        if not self.mini_boss and not self.main_boss:
+                            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
+                    elif event.key == pygame.K_2:
+                        # Spawn main boss
+                        if not self.mini_boss and not self.main_boss:
+                            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
+                    elif event.key == pygame.K_3:
+                        # Add 100 score
+                        self.score += 100
+                    elif event.key == pygame.K_4:
+                        # Add health
+                        if self.player:
+                            self.player.health = min(self.player.health + 1, self.player.max_health)
+                    elif event.key == pygame.K_5:
+                        # Toggle rapid fire
+                        if self.player:
+                            self.player.rapid_fire = not self.player.rapid_fire
+                            if self.player.rapid_fire:
+                                self.player.shoot_delay = 100
+                                self.player.rapid_fire_timer = 600  # 10 seconds at 60 FPS
+                    elif event.key == pygame.K_6:
+                        # Increase speed
+                        if self.player:
+                            self.player.speed += 1
+                    elif event.key == pygame.K_0:
+                        # Toggle debug info
+                        self.show_debug_info = not self.show_debug_info
+                    elif event.key == pygame.K_l:
+                        # Cycle through levels
+                        self.current_level = (self.current_level % 5) + 1
+                        print(f"Switched to Level {self.current_level}")
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
@@ -155,25 +224,21 @@ class GameManager:
                 if self.main_boss:
                     self.main_boss.update()
                 
-                # Check for boss spawning based on score
-                self.check_boss_spawning()
+                # Check for level progression based on score
+                self.update_level()
                 
-                # Increase difficulty over time
-                self.difficulty_timer += 1
-                if self.difficulty_timer == 1200:  # After 20 seconds
-                    if 'fast' not in self.enemy_types:
-                        self.enemy_types.append('fast')
-                elif self.difficulty_timer == 3600:  # After 1 minute
-                    if 'tank' not in self.enemy_types:
-                        self.enemy_types.append('tank')
+                # Check for boss spawning based on score
+                if not self.testing_mode:  # Only auto-spawn bosses in normal mode
+                    self.check_boss_spawning()
                 
                 # Spawn enemies (only if no boss is active)
                 if not self.mini_boss and not self.main_boss:
                     now = pygame.time.get_ticks()
                     if now - self.last_enemy_spawn > self.enemy_spawn_delay:
                         self.last_enemy_spawn = now
-                        enemy_type = random.choice(self.enemy_types)
+                        enemy_type = random.choice(self.enemy_types_by_level[self.current_level - 1])
                         enemy = Enemy(enemy_type, self.asset_loader.images)
+                        enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                         self.enemies.add(enemy)
                         self.all_sprites.add(enemy)
                 
@@ -266,6 +331,16 @@ class GameManager:
                     # Play powerup sound
                     self.sound_manager.play_sound('powerup')
     
+    def update_level(self):
+        """Update the current level based on score."""
+        for i in range(len(self.level_thresholds) - 1, 0, -1):
+            if self.score >= self.level_thresholds[i]:
+                if self.current_level != i + 1:
+                    self.current_level = i + 1
+                    self.enemy_spawn_delay = self.enemy_spawn_rates[i]
+                    print(f"Level up! Now at Level {self.current_level}")
+                break
+    
     def check_boss_spawning(self):
         """Check if it's time to spawn a boss based on score."""
         # Spawn mini-boss at score threshold
@@ -301,11 +376,34 @@ class GameManager:
                 
                 # Show score and health with max_health
                 self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
+                
+                # Show current level
+                level_font = pygame.font.SysFont('Arial', 22)
+                level_text = level_font.render(f"Level: {self.current_level}", True, (255, 255, 255))
+                self.screen.blit(level_text, (SCREEN_WIDTH - level_text.get_width() - 10, 40))
+                
+                # Show debug info if enabled
+                if self.show_debug_info and self.testing_mode:
+                    debug_font = pygame.font.SysFont('Arial', 16)
+                    debug_info = [
+                        f"Testing Mode: Active",
+                        f"FPS: {int(self.clock.get_fps())}",
+                        f"Enemies: {len(self.enemies)}",
+                        f"Player Speed: {self.player.speed}",
+                        f"Rapid Fire: {'On' if self.player.rapid_fire else 'Off'}",
+                        f"Enemy Spawn Rate: {self.enemy_spawn_delay}ms",
+                        f"Mini-Boss: {'Active' if self.mini_boss else 'Inactive'}",
+                        f"Main Boss: {'Active' if self.main_boss else 'Inactive'}"
+                    ]
+                    
+                    for i, info in enumerate(debug_info):
+                        text = debug_font.render(info, True, (200, 200, 200))
+                        self.screen.blit(text, (10, 80 + i * 20))
             else:
                 if self.score > 0:
                     self.ui_manager.show_game_over(self.screen, self.score)
                 else:
-                    self.ui_manager.show_start_screen(self.screen)
+                    self.ui_manager.show_start_screen(self.screen, self.testing_mode)
         else:
             # Draw settings panel
             self.ui_manager.draw_settings_panel(self.screen)
