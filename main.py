@@ -15,6 +15,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
 
 # Create the game window
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -24,6 +25,23 @@ clock = pygame.time.Clock()
 # Game state
 game_active = False
 score = 0
+
+# Star background
+class Star:
+    def __init__(self):
+        self.x = random.randint(0, SCREEN_WIDTH)
+        self.y = random.randint(0, SCREEN_HEIGHT)
+        self.size = random.randint(1, 3)
+        self.speed = random.randint(1, 3)
+        
+    def update(self):
+        self.x -= self.speed
+        if self.x < 0:
+            self.x = SCREEN_WIDTH
+            self.y = random.randint(0, SCREEN_HEIGHT)
+            
+    def draw(self, surface):
+        pygame.draw.circle(surface, WHITE, (self.x, self.y), self.size)
 
 # Player class
 class Player(pygame.sprite.Sprite):
@@ -146,6 +164,9 @@ def main():
     player = Player()
     all_sprites.add(player)
     
+    # Create stars
+    stars = [Star() for _ in range(50)]
+    
     # Enemy spawn timer
     enemy_spawn_delay = 1000  # milliseconds
     last_enemy_spawn = pygame.time.get_ticks()
@@ -171,6 +192,11 @@ def main():
         
         # Fill the screen with black
         screen.fill(BLACK)
+        
+        # Update and draw stars
+        for star in stars:
+            star.update()
+            star.draw(screen)
         
         if game_active:
             # Update
