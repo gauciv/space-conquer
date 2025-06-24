@@ -88,16 +88,29 @@ jobs:
         
     - name: Create Release Package (Windows)
       if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
-        mkdir -p release
-        cp dist/SpaceConquer.exe release/
-        cp dist/run_game.bat release/
-        cp README.md LICENSE CHANGELOG.md release/
+        New-Item -Path release -ItemType Directory -Force
+        Copy-Item dist/SpaceConquer.exe -Destination release/
+        Copy-Item dist/run_game.bat -Destination release/
+        Copy-Item README.md, LICENSE, CHANGELOG.md -Destination release/
         cd release
         7z a -tzip "../${{ matrix.asset_name }}.zip" *
         
-    - name: Create Release Package (macOS/Linux)
-      if: matrix.os != 'windows-latest'
+    - name: Create Release Package (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        mkdir -p release
+        cp dist/SpaceConquer release/
+        cp dist/run_game.sh release/
+        cp README.md LICENSE CHANGELOG.md release/
+        chmod +x release/SpaceConquer
+        chmod +x release/run_game.sh
+        cd release
+        zip -r "../${{ matrix.asset_name }}.zip" *
+        
+    - name: Create Release Package (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         mkdir -p release
         cp dist/SpaceConquer release/
