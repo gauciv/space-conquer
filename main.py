@@ -59,6 +59,9 @@ class Player(pygame.sprite.Sprite):
         self.bullets = pygame.sprite.Group()
         self.shoot_delay = 250  # milliseconds
         self.last_shot = pygame.time.get_ticks()
+        self.health = 3
+        self.rapid_fire = False
+        self.rapid_fire_timer = 0
     
     def update(self):
         # Get keyboard input
@@ -88,6 +91,13 @@ class Player(pygame.sprite.Sprite):
         
         # Update bullets
         self.bullets.update()
+        
+        # Check rapid fire timer
+        if self.rapid_fire:
+            self.rapid_fire_timer -= 1
+            if self.rapid_fire_timer <= 0:
+                self.rapid_fire = False
+                self.shoot_delay = 250
     
     def shoot(self):
         now = pygame.time.get_ticks()
@@ -95,6 +105,21 @@ class Player(pygame.sprite.Sprite):
             self.last_shot = now
             bullet = Bullet(self.rect.right, self.rect.centery)
             self.bullets.add(bullet)
+            
+            # Add a second bullet if rapid fire is active
+            if self.rapid_fire:
+                bullet2 = Bullet(self.rect.right, self.rect.centery - 10)
+                self.bullets.add(bullet2)
+    
+    def apply_powerup(self, powerup_type):
+        if powerup_type == 'health':
+            self.health += 1
+        elif powerup_type == 'speed':
+            self.speed += 1
+        elif powerup_type == 'rapid_fire':
+            self.rapid_fire = True
+            self.shoot_delay = 100
+            self.rapid_fire_timer = 300  # Lasts for 300 frames (5 seconds at 60 FPS)
     
     def draw(self, surface):
         surface.blit(self.image, self.rect)
@@ -119,14 +144,63 @@ class Bullet(pygame.sprite.Sprite):
 
 # Enemy class
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, enemy_type='normal'):
         super().__init__()
-        self.image = pygame.Surface((40, 40))
-        self.image.fill(RED)
+        self.enemy_type = enemy_type
+        
+        if enemy_type == 'normal':
+            self.image = pygame.Surface((40, 40))
+            self.image.fill(RED)
+            self.health = 1
+            self.speed = random.randint(3, 7)
+            self.points = 10
+        elif enemy_type == 'fast':
+            self.image = pygame.Surface((30, 20))
+            self.image.fill(RED)
+            pygame.draw.polygon(self.image, WHITE, [(0, 10), (30, 0), (30, 20)])
+            self.health = 1
+            self.speed = random.randint(8, 12)
+            self.points = 15
+        elif enemy_type == 'tank':
+            self.image = pygame.Surface((50, 50))
+            self.image.fill(RED)
+            pygame.draw.circle(self.image, WHITE, (25, 25), 15, 3)
+            self.health = 3
+            self.speed = random.randint(2, 4)
+            self.points = 25
+        
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + random.randint(0, 100)
         self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
-        self.speed = random.randint(3, 7)
+    
+    def update(self):
+        self.rect.x -= self.speed
+        # Remove if it goes off-screen
+        if self.rect.right < 0:
+            self.kill()
+
+# Power-up class
+class PowerUp(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.type = random.choice(['health', 'speed', 'rapid_fire'])
+        
+        self.image = pygame.Surface((20, 20))
+        if self.type == 'health':
+            self.image.fill(GREEN)
+            pygame.draw.rect(self.image, WHITE, (8, 3, 4, 14))
+            pygame.draw.rect(self.image, WHITE, (3, 8, 14, 4))
+        elif self.type == 'speed':
+            self.image.fill(BLUE)
+            pygame.draw.polygon(self.image, WHITE, [(5, 10), (15, 5), (15, 15)])
+        elif self.type == 'rapid_fire':
+            self.image.fill(WHITE)
+            pygame.draw.rect(self.image, RED, (5, 5, 10, 10))
+        
+        self.rect = self.image.get_rect()
+        self.rect.x = SCREEN_WIDTH + random.randint(0, 100)
+        self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
+        self.speed = 3
     
     def update(self):
         self.rect.x -= self.speed
