@@ -15,6 +15,35 @@ Space Impact is a side-scrolling shooter game where you control a spaceship and 
 - Background music with separate volume control
 - Settings menu
 
+## Project Structure
+
+The project follows a modular structure for better maintainability:
+
+```
+space-impact/
+├── main.py                  # Main entry point
+├── setup.py                 # Setup script for installation
+├── images/                  # Game images
+├── sounds/                  # Sound effects
+├── music/                   # Background music
+└── space_impact/            # Main package
+    ├── __init__.py
+    ├── config.py            # Game configuration
+    ├── game_manager.py      # Main game manager
+    ├── sprites/             # Game sprites
+    │   ├── __init__.py
+    │   ├── player.py        # Player sprite
+    │   ├── bullet.py        # Bullet sprite
+    │   ├── enemy.py         # Enemy sprites
+    │   ├── powerup.py       # Power-up sprites
+    │   └── star.py          # Background stars
+    └── utils/               # Utility modules
+        ├── __init__.py
+        ├── asset_loader.py  # Asset loading
+        ├── sound_manager.py # Sound management
+        └── ui_manager.py    # UI management
+```
+
 ## How to Play
 
 1. Make sure you have Python and Pygame installed
@@ -69,11 +98,24 @@ The game includes a settings menu accessible by clicking the cog icon in the top
 
 ## Requirements
 
-- Python 3.x
+- Python 3.6+
 - Pygame
 - NumPy (for sound generation)
 
 ## Installation
+
+### Method 1: Using pip
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/space-impact.git
+cd space-impact
+
+# Install the game and dependencies
+pip install -e .
+```
+
+### Method 2: Manual setup
 
 1. Create a virtual environment:
    ```
@@ -93,6 +135,15 @@ The game includes a settings menu accessible by clicking the cog icon in the top
    ```
    python main.py
    ```
+
+## Development
+
+To contribute to the project:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## Credits
 

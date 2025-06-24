@@ -1,0 +1,3 @@
+"""
+Space Impact game package.
+"""
