@@ -99,8 +99,56 @@ class Bullet(pygame.sprite.Sprite):
         if self.rect.left > SCREEN_WIDTH:
             self.kill()
 
+# Enemy class
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.Surface((40, 40))
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        self.rect.x = SCREEN_WIDTH + random.randint(0, 100)
+        self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
+        self.speed = random.randint(3, 7)
+    
+    def update(self):
+        self.rect.x -= self.speed
+        # Remove if it goes off-screen
+        if self.rect.right < 0:
+            self.kill()
+
+def show_score(surface, score):
+    font = pygame.font.SysFont('Arial', 24)
+    score_text = font.render(f'Score: {score}', True, WHITE)
+    surface.blit(score_text, (10, 10))
+
+def game_over_screen():
+    global game_active, score
+    
+    font_large = pygame.font.SysFont('Arial', 64)
+    font_small = pygame.font.SysFont('Arial', 24)
+    
+    game_over_text = font_large.render('GAME OVER', True, RED)
+    score_text = font_small.render(f'Final Score: {score}', True, WHITE)
+    restart_text = font_small.render('Press SPACE to restart', True, WHITE)
+    
+    screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, 200))
+    screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, 300))
+    screen.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, 350))
+
 def main():
     global game_active, score
+    
+    # Create sprite groups
+    all_sprites = pygame.sprite.Group()
+    enemies = pygame.sprite.Group()
+    
+    # Create player
+    player = Player()
+    all_sprites.add(player)
+    
+    # Enemy spawn timer
+    enemy_spawn_delay = 1000  # milliseconds
+    last_enemy_spawn = pygame.time.get_ticks()
     
     # Game loop
     running = True
@@ -111,26 +159,62 @@ def main():
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and not game_active:
-                    # Start the game
+                    # Start/restart the game
                     game_active = True
                     score = 0
+                    # Clear all sprites
+                    all_sprites = pygame.sprite.Group()
+                    enemies = pygame.sprite.Group()
+                    player = Player()
+                    all_sprites.add(player)
+                    last_enemy_spawn = pygame.time.get_ticks()
         
         # Fill the screen with black
         screen.fill(BLACK)
         
         if game_active:
-            # Game logic and rendering will go here
-            pass
+            # Update
+            player.update()
+            enemies.update()
+            
+            # Spawn enemies
+            now = pygame.time.get_ticks()
+            if now - last_enemy_spawn > enemy_spawn_delay:
+                last_enemy_spawn = now
+                enemy = Enemy()
+                enemies.add(enemy)
+                all_sprites.add(enemy)
+            
+            # Check for bullet collisions with enemies
+            hits = pygame.sprite.groupcollide(enemies, player.bullets, True, True)
+            for hit in hits:
+                score += 10
+            
+            # Check for player collision with enemies
+            if pygame.sprite.spritecollide(player, enemies, False):
+                game_active = False
+            
+            # Draw
+            all_sprites.draw(screen)
+            player.draw(screen)
+            
+            # Show score
+            show_score(screen, score)
         else:
-            # Show start screen
-            title_font = pygame.font.SysFont('Arial', 64)
-            instruction_font = pygame.font.SysFont('Arial', 24)
-            
-            title_text = title_font.render('SPACE IMPACT', True, WHITE)
-            instruction_text = instruction_font.render('Press SPACE to start', True, WHITE)
-            
-            screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 200))
-            screen.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 300))
+            if score > 0:
+                game_over_screen()
+            else:
+                # Show start screen
+                title_font = pygame.font.SysFont('Arial', 64)
+                instruction_font = pygame.font.SysFont('Arial', 24)
+                
+                title_text = title_font.render('SPACE IMPACT', True, WHITE)
+                instruction_text = instruction_font.render('Press SPACE to start', True, WHITE)
+                controls_text = instruction_font.render('Arrow keys to move, SPACE to shoot', True, WHITE)
+                
+                screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 200))
+                screen.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, 300))
+                screen.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 350))
         
         # Update the display
         pygame.display.flip()
