@@ -255,7 +255,9 @@ class GameManager:
                 for enemy, bullets in hits.items():
                     enemy.health -= len(bullets)
                     if enemy.health <= 0:
-                        self.score += enemy.points
+                        # Apply score multiplier if active
+                        points = enemy.points * self.player.score_multiplier
+                        self.score += points
                         enemy.kill()
                         # Play explosion sound
                         self.sound_manager.play_sound('explosion')
@@ -266,7 +268,9 @@ class GameManager:
                     if mini_boss_hits:
                         if self.mini_boss.take_damage(len(mini_boss_hits)):
                             # Mini-boss defeated
-                            self.score += self.mini_boss.score_value
+                            # Apply score multiplier if active
+                            points = self.mini_boss.score_value * self.player.score_multiplier
+                            self.score += points
                             self.mini_boss = None
                             # Play explosion sound (could be a special boss explosion)
                             self.sound_manager.play_sound('explosion')
@@ -277,7 +281,9 @@ class GameManager:
                     if main_boss_hits:
                         if self.main_boss.take_damage(len(main_boss_hits)):
                             # Main boss defeated
-                            self.score += self.main_boss.score_value
+                            # Apply score multiplier if active
+                            points = self.main_boss.score_value * self.player.score_multiplier
+                            self.score += points
                             self.main_boss = None
                             # Play explosion sound (could be a special boss explosion)
                             self.sound_manager.play_sound('explosion')
@@ -381,6 +387,17 @@ class GameManager:
                 level_font = pygame.font.SysFont('Arial', 22)
                 level_text = level_font.render(f"Level: {self.current_level}", True, (255, 255, 255))
                 self.screen.blit(level_text, (SCREEN_WIDTH - level_text.get_width() - 10, 40))
+                
+                # Show score multiplier if active
+                if self.player.score_multiplier > 1:
+                    multiplier_font = pygame.font.SysFont('Arial', 22)
+                    multiplier_text = multiplier_font.render(f"Score x{self.player.score_multiplier}", True, (255, 215, 0))  # Gold color
+                    self.screen.blit(multiplier_text, (SCREEN_WIDTH - multiplier_text.get_width() - 10, 70))
+                    
+                    # Show remaining time
+                    time_left = self.player.score_multiplier_timer // 60  # Convert frames to seconds
+                    time_text = multiplier_font.render(f"Time: {time_left}s", True, (255, 215, 0))
+                    self.screen.blit(time_text, (SCREEN_WIDTH - time_text.get_width() - 10, 100))
                 
                 # Show debug info if enabled
                 if self.show_debug_info and self.testing_mode:

@@ -9,14 +9,14 @@ from .bullet import Bullet
 
 class Boss(pygame.sprite.Sprite):
     """Base class for boss enemies."""
-    def __init__(self, boss_type, images, sound_manager):
+    def __init__(self, boss_type, asset_loader, sound_manager):
         super().__init__()
         self.boss_type = boss_type
         self.sound_manager = sound_manager
         
         # Set image based on boss type
         if boss_type == 'mini':
-            self.image = images.get('mini_boss')
+            self.image = asset_loader.get_image('mini_boss')
             self.name = "Vanguard"
             self.max_health = 50
             self.health = self.max_health
@@ -27,7 +27,7 @@ class Boss(pygame.sprite.Sprite):
             self.score_value = 250
             self.movement_pattern = "sine"
         else:  # main boss
-            self.image = images.get('main_boss')
+            self.image = asset_loader.get_image('main_boss')
             self.name = "Dreadnought"
             self.max_health = 100
             self.health = self.max_health
@@ -50,8 +50,8 @@ class Boss(pygame.sprite.Sprite):
         self.movement_change_delay = 120  # frames before changing direction
         
         # Health bar images
-        self.health_bar_bg = images.get('health_bar_bg')
-        self.health_bar_fill = images.get('health_bar_fill')
+        self.health_bar_bg = asset_loader.get_image('health_bar_bg')
+        self.health_bar_fill = asset_loader.get_image('health_bar_fill')
         
         # For complex movement pattern
         self.angle = 0
