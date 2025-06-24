@@ -367,10 +367,16 @@ def main():
                 if enemy.health <= 0:
                     score += enemy.points
                     enemy.kill()
+                    # Play explosion sound
+                    if sound_enabled:
+                        explosion_sound.play()
             
             # Check for player collision with enemies
             if pygame.sprite.spritecollide(player, enemies, True):
                 player.health -= 1
+                # Play explosion sound
+                if sound_enabled:
+                    explosion_sound.play()
                 if player.health <= 0:
                     game_active = False
             
@@ -378,6 +384,9 @@ def main():
             powerup_hits = pygame.sprite.spritecollide(player, powerups, True)
             for powerup in powerup_hits:
                 player.apply_powerup(powerup.type)
+                # Play powerup sound
+                if sound_enabled:
+                    powerup_sound.play()
             
             # Draw
             all_sprites.draw(screen)
