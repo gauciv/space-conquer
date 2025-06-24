@@ -26,7 +26,11 @@ class AssetLoader:
             'slider_bar': 'slider_bar.png',
             'slider_handle': 'slider_handle.png',
             'full_heart': 'full_heart.png',
-            'empty_heart': 'empty_heart.png'
+            'empty_heart': 'empty_heart.png',
+            'mini_boss': 'mini_boss.png',
+            'main_boss': 'main_boss.png',
+            'health_bar_bg': 'health_bar_bg.png',
+            'health_bar_fill': 'health_bar_fill.png'
         }
         
         for name, filename in image_files.items():
