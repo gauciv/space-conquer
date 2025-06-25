@@ -21,6 +21,14 @@ class UIManager:
         self.main_menu_button_rect = None
         self.close_button_rect = None  # Added to store close button rect
         
+        # For main menu button in settings
+        self.settings_main_menu_rect = None
+        
+        # Confirmation dialog elements
+        self.show_confirmation = False
+        self.confirmation_rect = None
+        self.confirm_yes_rect = None
+        self.confirm_no_rect = None
         # Button hover state
         self.hovered_button = None
         
@@ -143,7 +151,7 @@ class UIManager:
         # Store the button rect for click detection
         self.settings_button_rect = button_rect
     
-    def draw_settings_panel(self, surface):
+    def draw_settings_panel(self, surface, game_state=None):
         """Draw an enhanced settings panel with the same mysterious space theme."""
         # Create a semi-transparent overlay for the entire screen
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -380,11 +388,50 @@ class UIManager:
         music_percent = percent_font.render(f"{int(self.sound_manager.music_volume * 100)}%", True, (180, 180, 255))
         surface.blit(music_percent, (music_slider_x + music_slider_width + 10, music_slider_y - 5))
         
-        # Draw close button with the same style as other buttons
-        close_button_width, close_button_height = 120, 40
-        close_button_rect = pygame.Rect(panel_x + panel_width // 2 - close_button_width // 2, 
-                                      panel_y + 240, # Moved up from 250 to add bottom margin
-                                      close_button_width, close_button_height)
+        # Button dimensions - make main menu button wider to fit text
+        main_menu_button_width = 150  # Increased width for main menu button
+        close_button_width = 120      # Original width for close button
+        button_height = 40
+        button_gap = 20  # Gap between buttons
+        
+        # If we're in the game (not in menu or game over), show the main menu button
+        if game_state == 1:  # GAME_STATE_PLAYING
+            # Calculate positions for a row layout with two buttons
+            total_width = (main_menu_button_width + close_button_width) + button_gap
+            row_start_x = panel_x + (panel_width - total_width) // 2
+            
+            # Draw main menu button (left button)
+            main_menu_button_rect = pygame.Rect(
+                row_start_x,
+                panel_y + 240,  # Both buttons at the same y position
+                main_menu_button_width, 
+                button_height
+            )
+            
+            # Store the main menu button rect for click detection
+            self.settings_main_menu_rect = main_menu_button_rect
+            
+            is_menu_hovered = main_menu_button_rect.collidepoint(pygame.mouse.get_pos())
+            self._draw_stylized_button(surface, main_menu_button_rect, "MAIN MENU", (60, 20, 40), (180, 80, 100), is_menu_hovered)
+            
+            # Draw close button (right button)
+            close_button_rect = pygame.Rect(
+                row_start_x + main_menu_button_width + button_gap,  # Position after main menu button + gap
+                panel_y + 240,  # Same y position
+                close_button_width, 
+                button_height
+            )
+        else:
+            # No main menu button needed, just the close button centered
+            self.settings_main_menu_rect = None
+            
+            # Draw close button in the standard position (centered)
+            close_button_rect = pygame.Rect(
+                panel_x + panel_width // 2 - close_button_width // 2, 
+                panel_y + 240,
+                close_button_width, 
+                button_height
+            )
         
         # Store the close button rect for consistent click detection
         self.close_button_rect = close_button_rect
@@ -392,15 +439,43 @@ class UIManager:
         is_close_hovered = close_button_rect.collidepoint(pygame.mouse.get_pos())
         self._draw_stylized_button(surface, close_button_rect, "CLOSE", (30, 30, 80), (80, 80, 180), is_close_hovered)
         
+        # Draw confirmation dialog if active
+        if self.show_confirmation:
+            self._draw_confirmation_dialog(surface)
+        
         return close_button_rect
     
     def handle_settings_click(self, pos):
         """Handle clicks in the settings panel."""
+        # If confirmation dialog is active, handle its clicks first
+        if self.show_confirmation:
+            if self.confirm_yes_rect and self.confirm_yes_rect.collidepoint(pos):
+                # User confirmed going to main menu
+                self.show_confirmation = False
+                self.settings_open = False
+                return "main_menu"  # Return special value to indicate main menu transition
+            elif self.confirm_no_rect and self.confirm_no_rect.collidepoint(pos):
+                # User cancelled
+                self.show_confirmation = False
+                return True
+            elif not self.confirmation_rect.collidepoint(pos):
+                # Clicked outside the dialog, treat as cancel
+                self.show_confirmation = False
+                return True
+            return True  # Consumed the click
+            
+        # Normal settings panel clicks
         if self.settings_button_rect.collidepoint(pos):
             self.settings_open = not self.settings_open
             return True
         
         if self.settings_open:
+            # Check if main menu button was clicked
+            if self.settings_main_menu_rect and self.settings_main_menu_rect.collidepoint(pos):
+                # Show confirmation dialog instead of immediately going to main menu
+                self.show_confirmation = True
+                return True
+                
             # Check if SFX slider handle was clicked (only the handle)
             if self.sfx_handle_rect.collidepoint(pos):
                 self.dragging_sfx_handle = True
@@ -445,7 +520,7 @@ class UIManager:
                 return True
         
         return False
-    
+        
     def handle_mouse_up(self):
         """Handle mouse button up events."""
         self.dragging_sfx_handle = False
@@ -847,3 +922,71 @@ class UIManager:
         text_surface = font.render(text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         surface.blit(text_surface, text_rect)
+
+    def _draw_confirmation_dialog(self, surface):
+        """Draw a confirmation dialog for returning to main menu."""
+        # Create a dark overlay for the background
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))  # Darker overlay for the confirmation dialog
+        surface.blit(overlay, (0, 0))
+        
+        # Create dialog box
+        dialog_width, dialog_height = 400, 200
+        dialog_x = SCREEN_WIDTH // 2 - dialog_width // 2
+        dialog_y = SCREEN_HEIGHT // 2 - dialog_height // 2
+        dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_width, dialog_height)
+        
+        # Draw dialog background with gradient
+        for i in range(dialog_height):
+            progress = i / dialog_height
+            color = (
+                int(40 + 20 * progress),
+                int(20 + 10 * progress),
+                int(30 + 20 * progress),
+                240
+            )
+            dialog_surface = pygame.Surface((dialog_width, 1), pygame.SRCALPHA)
+            dialog_surface.fill(color)
+            surface.blit(dialog_surface, (dialog_x, dialog_y + i))
+        
+        # Draw dialog border with glow effect
+        pygame.draw.rect(surface, (180, 80, 100), dialog_rect, 2)
+        
+        # Add tech details to the dialog
+        pygame.draw.line(surface, (200, 100, 80, 150), 
+                       (dialog_x + 20, dialog_y + 20), 
+                       (dialog_x + dialog_width - 20, dialog_y + 20), 2)
+        pygame.draw.line(surface, (200, 100, 80, 150), 
+                       (dialog_x + 20, dialog_y + dialog_height - 20), 
+                       (dialog_x + dialog_width - 20, dialog_y + dialog_height - 20), 2)
+        
+        # Draw warning text
+        warning_font = pygame.font.SysFont('Arial', 24, bold=True)
+        warning_text = warning_font.render("Return to Main Menu?", True, (255, 200, 180))
+        surface.blit(warning_text, (SCREEN_WIDTH // 2 - warning_text.get_width() // 2, dialog_y + 40))
+        
+        # Draw confirmation message
+        confirm_font = pygame.font.SysFont('Arial', 18)
+        confirm_text = confirm_font.render("Are you sure? Your current progress will be lost.", True, (220, 220, 255))
+        surface.blit(confirm_text, (SCREEN_WIDTH // 2 - confirm_text.get_width() // 2, dialog_y + 80))
+        
+        # Draw Yes button
+        yes_button_width, yes_button_height = 100, 40
+        yes_button_rect = pygame.Rect(dialog_x + dialog_width // 4 - yes_button_width // 2, 
+                                    dialog_y + 130, 
+                                    yes_button_width, yes_button_height)
+        is_yes_hovered = yes_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, yes_button_rect, "YES", (60, 20, 20), (200, 80, 80), is_yes_hovered)
+        
+        # Draw No button
+        no_button_width, no_button_height = 100, 40
+        no_button_rect = pygame.Rect(dialog_x + dialog_width * 3 // 4 - no_button_width // 2, 
+                                   dialog_y + 130, 
+                                   no_button_width, no_button_height)
+        is_no_hovered = no_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, no_button_rect, "NO", (30, 30, 60), (80, 80, 180), is_no_hovered)
+        
+        # Store button rectangles for click detection
+        self.confirmation_rect = dialog_rect
+        self.confirm_yes_rect = yes_button_rect
+        self.confirm_no_rect = no_button_rect

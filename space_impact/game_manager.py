@@ -10,6 +10,7 @@ from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, 
 from .utils.sound_manager import SoundManager
 from .utils.asset_loader import AssetLoader
 from .utils.ui_manager import UIManager
+from .utils.background_manager import BackgroundManager
 from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.powerup import PowerUp
@@ -30,6 +31,7 @@ class GameManager:
         self.asset_loader = AssetLoader()
         self.sound_manager = SoundManager()
         self.ui_manager = UIManager(self.asset_loader, self.sound_manager)
+        self.background_manager = BackgroundManager()
         
         # Game state constants
         self.GAME_STATE_MENU = 0
@@ -233,10 +235,28 @@ class GameManager:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
                     # Handle settings button click
-                    if self.ui_manager.handle_settings_click(event.pos):
+                    settings_result = self.ui_manager.handle_settings_click(event.pos)
+                    if settings_result:
                         # Play a sound effect for feedback when clicking UI elements
                         if 'select' in self.sound_manager.sounds:
                             self.sound_manager.play_sound('select')
+                        
+                        # Check if we need to return to main menu from settings
+                        if settings_result == "main_menu":
+                            # Return to main menu with proper reset
+                            self.game_state = self.GAME_STATE_MENU
+                            self.score = 0
+                            self.player = None
+                            self.enemies.empty()
+                            self.powerups.empty()
+                            self.all_sprites.empty()
+                            self.mini_boss = None
+                            self.main_boss = None
+                            self.mini_boss_spawned = False
+                            self.main_boss_spawned = False
+                            # Play a menu sound if available
+                            if 'menu' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('menu')
                     
                     # Handle main menu button clicks
                     elif self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
@@ -296,9 +316,12 @@ class GameManager:
     
     def update(self):
         """Update game state."""
-        # Update stars
+        # Update stars and background
         for star in self.stars:
             star.update()
+        
+        if self.game_state == self.GAME_STATE_PLAYING:
+            self.background_manager.update()
             
         if not self.ui_manager.settings_open:
             if self.game_state == self.GAME_STATE_PLAYING and self.player:
@@ -453,8 +476,13 @@ class GameManager:
     
     def draw(self):
         """Draw the game screen."""
-        # Fill the screen with black
-        self.screen.fill(BLACK)
+        # Fill with deep space color for Starlight's End
+        deep_space = (5, 5, 15)  # Very dark blue-black
+        self.screen.fill(deep_space)
+        
+        # Draw themed background elements
+        if self.game_state == self.GAME_STATE_PLAYING:
+            self.background_manager.draw(self.screen)
         
         # Draw stars
         for star in self.stars:
@@ -566,8 +594,8 @@ class GameManager:
                 # Show start screen
                 self.ui_manager.show_start_screen(self.screen, self.testing_mode)
         else:
-            # Draw settings panel
-            self.ui_manager.draw_settings_panel(self.screen)
+            # Draw settings panel - pass the current game state
+            self.ui_manager.draw_settings_panel(self.screen, self.game_state)
         
         # Always draw the settings button
         self.ui_manager.draw_settings_button(self.screen)
