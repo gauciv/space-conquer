@@ -40,17 +40,8 @@ class Debris(pygame.sprite.Sprite):
         self.angle = 0
         self.rotation_speed = random.uniform(-2.0, 2.0)  # Degrees per frame
         self.original_image = self.image.copy()
-        
-        # Trail effect properties
-        self.trail_positions = []
-        self.max_trail_length = 5
     
     def update(self):
-        # Store current position for trail effect
-        if len(self.trail_positions) >= self.max_trail_length:
-            self.trail_positions.pop(0)
-        self.trail_positions.append(self.rect.center)
-        
         # Move from right to left
         self.rect.x -= self.speed
         
@@ -76,40 +67,19 @@ class Debris(pygame.sprite.Sprite):
         return self.health <= 0  # Return True if destroyed
     
     def draw(self, surface):
-        """Draw the debris with visual effects."""
-        # Draw motion trail
-        for i, pos in enumerate(self.trail_positions):
-            # Calculate alpha based on position in trail
-            alpha = int(100 * (i / len(self.trail_positions)))
-            
-            # Create a smaller, faded copy of the image for the trail
-            trail_size = int(self.rect.width * 0.7)
-            trail_surface = pygame.Surface((trail_size, trail_size), pygame.SRCALPHA)
-            
-            # Draw a fading circle for the trail
-            pygame.draw.circle(trail_surface, (200, 100, 50, alpha), 
-                             (trail_size // 2, trail_size // 2), 
-                             trail_size // 2)
-            
-            # Position the trail
-            trail_rect = trail_surface.get_rect(center=pos)
-            surface.blit(trail_surface, trail_rect)
-        
+        """Draw the debris with simplified visual effects for better performance."""
         # Draw the debris
         surface.blit(self.image, self.rect)
         
-        # Add a subtle glow effect
-        glow_size = self.rect.width + 6
-        glow_surface = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+        # Draw a simple trail (just a rectangle)
+        trail_x = self.rect.x + self.rect.width
+        trail_y = self.rect.centery - 2
+        trail_width = 8
+        trail_height = 4
         
-        # Draw the glow
-        pygame.draw.circle(glow_surface, (200, 100, 50, 30), 
-                         (glow_size // 2, glow_size // 2), 
-                         glow_size // 2)
-        
-        # Draw the glow centered on the debris
-        glow_rect = glow_surface.get_rect(center=self.rect.center)
-        surface.blit(glow_surface, glow_rect, special_flags=pygame.BLEND_RGBA_ADD)
+        # Draw trail
+        pygame.draw.rect(surface, (200, 100, 50, 100), 
+                       (trail_x, trail_y, trail_width, trail_height))
         
         # Draw hitbox if debug mode is enabled
         if DEBUG_HITBOXES:

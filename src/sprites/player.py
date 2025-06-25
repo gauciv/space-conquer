@@ -154,7 +154,7 @@ class Player(pygame.sprite.Sprite):
         return False  # Player was invulnerable, no damage applied
     
     def draw(self, surface):
-        """Draw the player with enhanced visual effects."""
+        """Draw the player with simplified visual effects for better performance."""
         # Only draw if visible or not invulnerable
         if self.visible or not self.invulnerable:
             # Draw the player ship
@@ -164,55 +164,25 @@ class Player(pygame.sprite.Sprite):
             if DEBUG_HITBOXES:
                 pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 1)
             
-            # Add engine glow effect
+            # Add simplified engine glow effect
             engine_x = self.rect.left
             engine_y = self.rect.centery
             
-            # Create pulsing effect
-            pulse_factor = 0.7 + 0.3 * abs(math.sin(pygame.time.get_ticks() * 0.01))
+            # Draw simplified engine glow (just a rectangle)
+            glow_color = (50, 100, 255, 150)
+            glow_rect = pygame.Rect(engine_x - 8, engine_y - 4, 8, 8)
+            pygame.draw.rect(surface, glow_color, glow_rect)
             
-            # Draw engine glow
-            glow_radius = int(8 * pulse_factor)
-            glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
-            
-            # Create gradient glow
-            for r in range(glow_radius, 0, -1):
-                alpha = int(200 * (r / glow_radius))
-                color = (50, 100, 255, alpha)
-                pygame.draw.circle(glow_surface, color, (glow_radius, glow_radius), r)
-            
-            # Draw the glow behind the ship
-            surface.blit(glow_surface, (engine_x - glow_radius, engine_y - glow_radius))
-            
-            # Add shield effect when invulnerable
+            # Add simplified shield effect when invulnerable
             if self.invulnerable:
-                shield_radius = max(self.rect.width, self.rect.height) + 5
-                shield_surface = pygame.Surface((shield_radius * 2, shield_radius * 2), pygame.SRCALPHA)
-                
-                # Create pulsing shield effect
-                shield_pulse = 0.5 + 0.5 * abs(math.sin(pygame.time.get_ticks() * 0.01))
-                shield_alpha = int(100 * shield_pulse)
-                
-                # Draw shield
-                pygame.draw.circle(shield_surface, (100, 150, 255, shield_alpha), 
-                                  (shield_radius, shield_radius), shield_radius)
-                pygame.draw.circle(shield_surface, (150, 200, 255, shield_alpha), 
-                                  (shield_radius, shield_radius), shield_radius, 2)
-                
-                # Draw the shield around the ship
-                surface.blit(shield_surface, 
-                            (self.rect.centerx - shield_radius, self.rect.centery - shield_radius))
+                shield_color = (100, 150, 255, 100)
+                pygame.draw.rect(surface, shield_color, self.rect.inflate(10, 10), 2)
         
-        # Draw bullets with enhanced effects
+        # Draw bullets (simplified)
         for bullet in self.bullets:
             bullet.draw(surface)
         
-        # Draw rapid fire indicator if active
+        # Draw rapid fire indicator if active (simplified)
         if self.rapid_fire:
-            # Create pulsing effect for the indicator
-            pulse = 0.7 + 0.3 * abs(math.sin(pygame.time.get_ticks() * 0.01))
-            indicator_color = (int(200 * pulse), int(200 * pulse), int(50 * pulse))
-            
             # Draw indicator
-            pygame.draw.circle(surface, indicator_color, (self.rect.right + 10, self.rect.top - 5), 5)
-            pygame.draw.circle(surface, (255, 255, 100), (self.rect.right + 10, self.rect.top - 5), 5, 1)
+            pygame.draw.circle(surface, (255, 255, 0), (self.rect.right + 10, self.rect.top - 5), 5)

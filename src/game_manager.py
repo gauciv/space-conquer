@@ -646,6 +646,11 @@ class GameManager:
                 # Show score and health
                 self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
                 
+                # Show FPS counter in top-right corner
+                fps_font = pygame.font.SysFont('Arial', 16)
+                fps_text = fps_font.render(f"FPS: {int(self.clock.get_fps())}", True, (255, 255, 255))
+                self.screen.blit(fps_text, (SCREEN_WIDTH - fps_text.get_width() - 10, 10))
+                
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:
                     multiplier_font = pygame.font.SysFont('Arial', 22)

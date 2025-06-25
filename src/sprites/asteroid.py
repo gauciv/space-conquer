@@ -113,75 +113,24 @@ class Asteroid(pygame.sprite.Sprite):
         return False  # Asteroid not destroyed yet
     
     def draw(self, surface):
-        """Draw the asteroid with visual effects."""
+        """Draw the asteroid with simplified visual effects for better performance."""
         if self.is_exploding:
-            # Draw explosion animation
+            # Draw simplified explosion animation
             explosion_size = int(self.rect.width * (1 + self.explosion_frame * 0.2))
             
-            # Create explosion surface with transparency
-            explosion_surface = pygame.Surface((explosion_size, explosion_size), pygame.SRCALPHA)
-            
-            # Draw explosion circle with fading opacity
-            max_alpha = 255
-            current_alpha = max(0, max_alpha - (self.explosion_frame * 30))
-            
-            # White core
-            pygame.draw.circle(explosion_surface, (255, 255, 255, current_alpha), 
-                             (explosion_size // 2, explosion_size // 2), 
-                             explosion_size // 4)
-            
-            # Orange middle
-            pygame.draw.circle(explosion_surface, (255, 165, 0, current_alpha), 
-                             (explosion_size // 2, explosion_size // 2), 
-                             explosion_size // 3)
-            
-            # Red outer
-            pygame.draw.circle(explosion_surface, (255, 0, 0, current_alpha // 2), 
-                             (explosion_size // 2, explosion_size // 2), 
-                             explosion_size // 2)
-            
-            # Add particles
-            for _ in range(10):
-                particle_angle = random.uniform(0, math.pi * 2)
-                particle_distance = random.uniform(0, explosion_size // 2)
-                particle_x = explosion_size // 2 + math.cos(particle_angle) * particle_distance
-                particle_y = explosion_size // 2 + math.sin(particle_angle) * particle_distance
-                particle_size = random.randint(2, 5)
-                particle_color = (255, 255, 200, 150)  # Light yellow with transparency
-                
-                pygame.draw.circle(explosion_surface, particle_color, 
-                                 (int(particle_x), int(particle_y)), 
-                                 particle_size)
-            
-            # Draw the explosion centered on the asteroid
-            explosion_rect = explosion_surface.get_rect(center=self.rect.center)
-            surface.blit(explosion_surface, explosion_rect)
+            # Draw a simple circle for explosion
+            explosion_color = (255, 100, 0)  # Orange
+            explosion_rect = pygame.Rect(0, 0, explosion_size, explosion_size)
+            explosion_rect.center = self.rect.center
+            pygame.draw.circle(surface, explosion_color, self.rect.center, explosion_size // 2)
         else:
             # Draw the asteroid
             if self.hit_flash:
-                # Create a white flash effect when hit
-                flash_surface = self.image.copy()
-                flash_surface.fill((255, 255, 255, 150), special_flags=pygame.BLEND_RGBA_ADD)
-                surface.blit(flash_surface, self.rect)
-            else:
-                surface.blit(self.image, self.rect)
+                # Create a white flash effect when hit (simplified)
+                pygame.draw.rect(surface, (255, 255, 255), self.rect, 2)
             
-            # Add a subtle glow effect
-            glow_size = self.rect.width + 10
-            glow_surface = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
-            
-            # Pulsating glow
-            time = pygame.time.get_ticks() * 0.001
-            glow_alpha = 30 + 20 * math.sin(time * 2)
-            
-            # Draw the glow
-            pygame.draw.circle(glow_surface, (100, 100, 150, int(glow_alpha)), 
-                             (glow_size // 2, glow_size // 2), 
-                             glow_size // 2)
-            
-            # Draw the glow centered on the asteroid
-            glow_rect = glow_surface.get_rect(center=self.rect.center)
-            surface.blit(glow_surface, glow_rect, special_flags=pygame.BLEND_RGBA_ADD)
+            # Draw the asteroid image
+            surface.blit(self.image, self.rect)
             
             # Draw hitbox if debug mode is enabled
             if DEBUG_HITBOXES:
