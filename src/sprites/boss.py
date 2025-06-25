@@ -42,6 +42,13 @@ class Boss(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + 50  # Start off-screen
         self.rect.centery = SCREEN_HEIGHT // 2
+        
+        # Create a custom hitbox based on boss type (85% of sprite size for better gameplay)
+        hitbox_width = int(self.rect.width * 0.85)
+        hitbox_height = int(self.rect.height * 0.85)
+        self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+        self.hitbox.center = self.rect.center
+        
         self.bullets = pygame.sprite.Group()
         self.last_shot = pygame.time.get_ticks()
         self.entry_complete = False
@@ -95,6 +102,9 @@ class Boss(pygame.sprite.Sprite):
             
             # Shoot bullets
             self.shoot()
+        
+        # Update hitbox position to follow the rect
+        self.hitbox.center = self.rect.center
         
         # Update bullets
         self.bullets.update()
@@ -156,6 +166,10 @@ class Boss(pygame.sprite.Sprite):
     def draw(self, surface):
         """Draw the boss and its bullets."""
         surface.blit(self.image, self.rect)
+        
+        # Debug: Draw hitbox (uncomment for debugging)
+        # pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        
         self.bullets.draw(surface)
         self.draw_health_bar(surface)
 
@@ -173,10 +187,16 @@ class BossBullet(pygame.sprite.Sprite):
         self.damage = damage
         self.vx = speed
         self.vy = 0  # Can be set for angled shots
+        
+        # Create a smaller hitbox for more precise collision detection
+        self.hitbox = self.rect.inflate(-2, -1)  # 2px smaller on width, 1px smaller on height
     
     def update(self):
         self.rect.x += self.vx
         self.rect.y += self.vy
+        
+        # Update hitbox position to follow the rect
+        self.hitbox.center = self.rect.center
         
         # Remove if it goes off-screen
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH or \

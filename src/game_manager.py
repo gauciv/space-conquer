@@ -428,17 +428,19 @@ class GameManager:
                 
                 # Check for player collision with boss bullets
                 if self.mini_boss:
-                    boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.mini_boss.bullets, True)
-                    if boss_bullet_hits and self.player.take_damage():
-                        if self.player.health <= 0:
-                            self.game_state = self.GAME_STATE_GAME_OVER
-                            # Play game over sound
-                            self.sound_manager.play_sound('game_over')
-                            # Lower music volume for game over sound
-                            if self.sound_manager.music_enabled:
-                                self.sound_manager.temporarily_lower_music(duration=1500)
-                            # Schedule music volume restoration
-                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                    for bullet in self.mini_boss.bullets:
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage():
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    # Play game over sound
+                                    self.sound_manager.play_sound('game_over')
+                                    # Lower music volume for game over sound
+                                    if self.sound_manager.music_enabled:
+                                        self.sound_manager.temporarily_lower_music(duration=1500)
+                                    # Schedule music volume restoration
+                                    pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 if self.main_boss:
                     boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.main_boss.bullets, True)
