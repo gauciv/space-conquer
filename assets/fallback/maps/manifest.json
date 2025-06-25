@@ -1,0 +1,18 @@
+{
+    "maps": [
+        {
+            "id": "fallback_map",
+            "name": "Fallback Map",
+            "description": "This is a fallback map used when the requested map cannot be loaded.",
+            "background": "starlight_end_bg.png",
+            "music": "background_music",
+            "enemy_spawn_rate": 1500,
+            "enemy_types": [
+                "normal",
+                "fast"
+            ],
+            "boss": "mini_boss",
+            "difficulty": 1
+        }
+    ]
+}

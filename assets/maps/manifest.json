@@ -3,24 +3,17 @@
         {
             "id": "starlight_end",
             "name": "Starlight's End",
-            "description": "A dying star system with ancient ruins floating in space",
             "background": "starlight_end_bg.png",
             "music": "starlight_end",
             "enemy_spawn_rate": 1500,
-            "enemy_types": ["normal", "fast", "tank", "drone", "bomber"],
-            "boss": "mini_boss",
-            "difficulty": 1
-        },
-        {
-            "id": "nebula_ruins",
-            "name": "Nebula Ruins",
-            "description": "A mysterious nebula filled with the remnants of an ancient civilization",
-            "background": "nebula_ruins_bg.png",
-            "music": "nebula_ruins",
-            "enemy_spawn_rate": 1200,
-            "enemy_types": ["normal", "fast", "tank", "drone", "bomber"],
-            "boss": "main_boss",
-            "difficulty": 2
+            "enemy_types": [
+                "normal",
+                "fast",
+                "tank",
+                "drone",
+                "bomber"
+            ],
+            "boss": "mini_boss"
         }
     ]
 }

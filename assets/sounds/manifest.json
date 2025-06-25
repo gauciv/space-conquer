@@ -18,13 +18,5 @@
     "game_over": {
         "file": "game_over.wav",
         "volume": 0.7
-    },
-    "select": {
-        "file": "select.wav",
-        "volume": 0.5
-    },
-    "boss_hit": {
-        "file": "boss_hit.wav",
-        "volume": 0.7
     }
 }

@@ -4,7 +4,7 @@ Space Conquer - Main Entry Point
 
 A Python recreation of the classic Space Impact game that was popular on Nokia phones.
 """
-from space_impact.game_manager import GameManager
+from src.game_manager import GameManager
 
 def main():
     """Main entry point for the game."""
