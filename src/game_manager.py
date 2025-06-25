@@ -370,16 +370,18 @@ class GameManager:
                     self.all_sprites.add(powerup)
                 
                 # Check for bullet collisions with enemies
-                hits = pygame.sprite.groupcollide(self.enemies, self.player.bullets, False, True)
-                for enemy, bullets in hits.items():
-                    enemy.health -= len(bullets)
-                    if enemy.health <= 0:
-                        # Apply score multiplier if active
-                        points = enemy.points * self.player.score_multiplier
-                        self.score += points
-                        enemy.kill()
-                        # Play explosion sound
-                        self.sound_manager.play_sound('explosion')
+                for enemy in self.enemies:
+                    for bullet in self.player.bullets:
+                        if enemy.hitbox.colliderect(bullet.hitbox):
+                            enemy.health -= 1
+                            bullet.kill()
+                            if enemy.health <= 0:
+                                # Apply score multiplier if active
+                                points = enemy.points * self.player.score_multiplier
+                                self.score += points
+                                enemy.kill()
+                                # Play explosion sound
+                                self.sound_manager.play_sound('explosion')
                 
                 # Check for bullet collisions with mini-boss
                 if self.mini_boss:
@@ -408,19 +410,21 @@ class GameManager:
                             self.sound_manager.play_sound('explosion')
                 
                 # Check for player collision with enemies
-                if pygame.sprite.spritecollide(self.player, self.enemies, True):
-                    # Use the new take_damage method which handles invulnerability and sound
-                    damage_applied = self.player.take_damage()
-                    
-                    if damage_applied and self.player.health <= 0:
-                        self.game_state = self.GAME_STATE_GAME_OVER
-                        # Play game over sound
-                        self.sound_manager.play_sound('game_over')
-                        # Lower music volume for game over sound
-                        if self.sound_manager.music_enabled:
-                            self.sound_manager.temporarily_lower_music(duration=1500)
-                        # Schedule music volume restoration
-                        pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                for enemy in self.enemies:
+                    if self.player.hitbox.colliderect(enemy.hitbox):
+                        # Use the new take_damage method which handles invulnerability and sound
+                        damage_applied = self.player.take_damage()
+                        enemy.kill()  # Remove the enemy that collided with player
+                        
+                        if damage_applied and self.player.health <= 0:
+                            self.game_state = self.GAME_STATE_GAME_OVER
+                            # Play game over sound
+                            self.sound_manager.play_sound('game_over')
+                            # Lower music volume for game over sound
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.temporarily_lower_music(duration=1500)
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 # Check for player collision with boss bullets
                 if self.mini_boss:
@@ -450,11 +454,12 @@ class GameManager:
                             pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 # Check for player collision with power-ups
-                powerup_hits = pygame.sprite.spritecollide(self.player, self.powerups, True)
-                for powerup in powerup_hits:
-                    self.player.apply_powerup(powerup.type)
-                    # Play powerup sound
-                    self.sound_manager.play_sound('powerup')
+                for powerup in self.powerups:
+                    if self.player.hitbox.colliderect(powerup.rect):
+                        self.player.apply_powerup(powerup.type)
+                        # Play powerup sound
+                        self.sound_manager.play_sound('powerup')
+                        powerup.kill()
     
     def update_enemy_types(self):
         """Update available enemy types based on score."""

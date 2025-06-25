@@ -14,9 +14,15 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.left = x
         self.rect.centery = y
         self.speed = 10
+        
+        # Create a smaller hitbox for more precise collision detection
+        # Bullets should have a very precise hitbox (60% of sprite size)
+        self.hitbox = self.rect.inflate(-4, -2)  # 4px smaller on width, 2px smaller on height
     
     def update(self):
         self.rect.x += self.speed
+        # Update hitbox position to follow the rect
+        self.hitbox.center = self.rect.center
         # Remove if it goes off-screen
         if self.rect.left > SCREEN_WIDTH:
             self.kill()
@@ -25,6 +31,9 @@ class Bullet(pygame.sprite.Sprite):
         """Draw the bullet with enhanced visual effects."""
         # Draw the bullet
         surface.blit(self.image, self.rect)
+        
+        # Debug: Draw hitbox (uncomment for debugging)
+        # pygame.draw.rect(surface, (0, 255, 255), self.hitbox, 1)
         
         # Add a glowing trail effect
         trail_length = 20

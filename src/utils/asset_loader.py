@@ -19,11 +19,9 @@ class AssetLoader:
         """Load all game images using the asset manager."""
         image_ids = {
             'player': 'player-default',
-            'normal_enemy': 'SE-monster-low-normal',
-            'fast_enemy': 'SE-monster-low-fast',
-            'tank_enemy': 'SE-monster-elite-tank',
-            'drone_enemy': 'SE-monster-elite-drone',
-            'bomber_enemy': 'SE-monster-super-bomber',
+            'normal_enemy': 'SE-monster-lower',
+            'fast_enemy': 'SE-monster-elite',
+            'tank_enemy': 'SE-monster-super',
             'bullet': 'player-bullet-default',
             'health_powerup': 'powerup-health',
             'speed_powerup': 'powerup-speed',
@@ -57,15 +55,11 @@ class AssetLoader:
         elif filename == 'bullet.png':
             asset_id = 'player-bullet-default'
         elif filename.startswith('normal_'):
-            asset_id = 'SE-monster-low-normal'
+            asset_id = 'SE-monster-lower'
         elif filename.startswith('fast_'):
-            asset_id = 'SE-monster-low-fast'
+            asset_id = 'SE-monster-elite'
         elif filename.startswith('tank_'):
-            asset_id = 'SE-monster-elite-tank'
-        elif filename.startswith('drone_'):
-            asset_id = 'SE-monster-elite-drone'
-        elif filename.startswith('bomber_'):
-            asset_id = 'SE-monster-super-bomber'
+            asset_id = 'SE-monster-super'
         elif filename.startswith('mini_boss'):
             asset_id = 'SE-monster-mini-boss'
         elif filename.startswith('main_boss'):

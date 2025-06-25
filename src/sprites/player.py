@@ -15,6 +15,10 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = 100
         self.rect.centery = SCREEN_HEIGHT // 2
+        
+        # Create a smaller hitbox for more precise collision detection
+        self.hitbox = self.rect.inflate(-30, -20)  # 30px smaller on width, 20px smaller on height
+        
         self.speed = PLAYER_INITIAL_SPEED
         self.bullets = pygame.sprite.Group()
         self.shoot_delay = PLAYER_SHOOT_DELAY
@@ -60,6 +64,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.top = 0
         if self.rect.bottom > SCREEN_HEIGHT:
             self.rect.bottom = SCREEN_HEIGHT
+            
+        # Update hitbox position to follow the rect
+        self.hitbox.center = self.rect.center
         
         # Shoot bullets
         if keys[pygame.K_SPACE]:
@@ -152,6 +159,9 @@ class Player(pygame.sprite.Sprite):
         if self.visible or not self.invulnerable:
             # Draw the player ship
             surface.blit(self.image, self.rect)
+            
+            # Debug: Draw hitbox (uncomment for debugging)
+            # pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 1)
             
             # Add engine glow effect
             engine_x = self.rect.left

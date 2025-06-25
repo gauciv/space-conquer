@@ -18,34 +18,50 @@ class Enemy(pygame.sprite.Sprite):
             self.speed = 3
             self.points = 10
             self.movement_pattern = "straight"
+            # Normal enemy has a slightly smaller hitbox (80% of sprite size)
+            self.hitbox_ratio = 0.8
         elif enemy_type == 'fast':
             self.image = images.get('fast_enemy')
             self.health = 1
             self.speed = 5
             self.points = 15
             self.movement_pattern = "zigzag"
+            # Fast enemy has an even smaller hitbox (70% of sprite size) since it's harder to hit
+            self.hitbox_ratio = 0.7
         elif enemy_type == 'tank':
             self.image = images.get('tank_enemy')
             self.health = 3
             self.speed = 2
             self.points = 25
             self.movement_pattern = "straight"
+            # Tank enemy has a larger hitbox (90% of sprite size) since it's a bigger target
+            self.hitbox_ratio = 0.9
         elif enemy_type == 'drone':
             self.image = images.get('drone_enemy')
             self.health = 1
             self.speed = 4
             self.points = 20
             self.movement_pattern = "sine"
+            # Drone enemy has a medium hitbox (75% of sprite size)
+            self.hitbox_ratio = 0.75
         elif enemy_type == 'bomber':
             self.image = images.get('bomber_enemy')
             self.health = 2
             self.speed = 2
             self.points = 30
             self.movement_pattern = "dive"
+            # Bomber enemy has a larger hitbox (85% of sprite size)
+            self.hitbox_ratio = 0.85
         
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
+        
+        # Create a custom hitbox based on enemy type
+        hitbox_width = int(self.rect.width * self.hitbox_ratio)
+        hitbox_height = int(self.rect.height * self.hitbox_ratio)
+        self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+        self.hitbox.center = self.rect.center
         
         # For zigzag movement
         self.direction = 1  # 1 for down, -1 for up
@@ -124,6 +140,9 @@ class Enemy(pygame.sprite.Sprite):
                 # Retreat after dive
                 self.rect.x -= self.speed * 1.5  # Faster x movement during retreat
         
+        # Update hitbox position to follow the rect
+        self.hitbox.center = self.rect.center
+        
         # Remove if it goes off-screen
         if self.rect.right < 0:
             self.kill()
@@ -132,6 +151,9 @@ class Enemy(pygame.sprite.Sprite):
         """Draw the enemy with enhanced visual effects."""
         # Draw the enemy ship
         surface.blit(self.image, self.rect)
+        
+        # Debug: Draw hitbox (uncomment for debugging)
+        # pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
         # Add engine glow effect based on enemy type
         engine_x = self.rect.right

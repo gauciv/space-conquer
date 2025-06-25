@@ -1,107 +1,254 @@
 {
     "player": {
-        "file": "player_ship.png",
+        "file": "player/player-default.png",
         "scale": [
-            50,
-            30
+            125,
+            75
         ]
     },
     "normal_enemy": {
-        "file": "normal_enemy.png",
+        "file": "starlights_end/monsters/SE-monster-lower.png",
         "scale": [
-            40,
-            30
+            100,
+            63
         ]
     },
     "fast_enemy": {
-        "file": "fast_enemy.png",
+        "file": "starlights_end/monsters/SE-monster-elite.png",
         "scale": [
-            30,
-            20
+            150,
+            88
         ]
     },
     "tank_enemy": {
-        "file": "tank_enemy.png",
+        "file": "starlights_end/monsters/SE-monster-super.png",
         "scale": [
-            50,
-            40
-        ]
-    },
-    "drone_enemy": {
-        "file": "drone_enemy.png",
-        "scale": [
-            35,
-            25
-        ]
-    },
-    "bomber_enemy": {
-        "file": "bomber_enemy.png",
-        "scale": [
-            45,
-            35
+            200,
+            113
         ]
     },
     "bullet": {
-        "file": "bullet.png",
+        "file": "player/player-bullet-default.png",
         "scale": [
             10,
             5
         ]
     },
     "health_powerup": {
-        "file": "health_powerup.png",
+        "file": "powerups/powerup-health.png",
         "scale": [
-            20,
-            20
+            25,
+            25
         ]
     },
     "speed_powerup": {
-        "file": "speed_powerup.png",
+        "file": "powerups/powerup-speed.png",
         "scale": [
-            20,
-            20
+            25,
+            25
         ]
     },
     "rapid_fire_powerup": {
-        "file": "rapid_fire_powerup.png",
+        "file": "powerups/powerup-rapid-fire.png",
         "scale": [
-            20,
-            20
+            25,
+            25
         ]
     },
     "score_multiplier": {
-        "file": "score_multiplier.png",
+        "file": "powerups/powerup-score-multiplier.png",
         "scale": [
             20,
             20
         ]
     },
     "full_heart": {
-        "file": "full_heart.png",
+        "file": "ui/ui-heart-full.png",
         "scale": [
             32,
             32
         ]
     },
     "empty_heart": {
-        "file": "empty_heart.png",
+        "file": "ui/ui-heart-empty.png",
         "scale": [
             32,
             32
         ]
     },
     "mini_boss": {
-        "file": "mini_boss.png",
+        "file": "starlights_end/monsters/SE-monster-mini-boss.png",
         "scale": [
-            80,
-            60
+            300,
+            175
         ]
     },
     "main_boss": {
-        "file": "main_boss.png",
+        "file": "starlights_end/monsters/SE-monster-boss.png",
         "scale": [
-            120,
-            90
+            450,
+            250
+        ]
+    },
+    "settings_cog": {
+        "file": "ui/ui-settings-cog.png",
+        "scale": [
+            30,
+            30
+        ]
+    },
+    "slider_bar": {
+        "file": "ui/ui-slider-bar.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "slider_handle": {
+        "file": "ui/ui-slider-handle.png",
+        "scale": [
+            20,
+            20
+        ]
+    },
+    "health_bar_bg": {
+        "file": "ui/ui-health-bar-bg.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "health_bar_fill": {
+        "file": "ui/ui-health-bar-fill.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "player-default": {
+        "file": "player/player-default.png",
+        "scale": [
+            125,
+            75
+        ]
+    },
+    "player-bullet-default": {
+        "file": "player/player-bullet-default.png",
+        "scale": [
+            10,
+            5
+        ]
+    },
+    "powerup-health": {
+        "file": "powerups/powerup-health.png",
+        "scale": [
+            25,
+            25
+        ]
+    },
+    "powerup-speed": {
+        "file": "powerups/powerup-speed.png",
+        "scale": [
+            25,
+            25
+        ]
+    },
+    "powerup-rapid-fire": {
+        "file": "powerups/powerup-rapid-fire.png",
+        "scale": [
+            25,
+            25
+        ]
+    },
+    "powerup-score-multiplier": {
+        "file": "powerups/powerup-score-multiplier.png",
+        "scale": [
+            25,
+            25
+        ]
+    },
+    "ui-heart-full": {
+        "file": "ui/ui-heart-full.png",
+        "scale": [
+            32,
+            32
+        ]
+    },
+    "ui-heart-empty": {
+        "file": "ui/ui-heart-empty.png",
+        "scale": [
+            32,
+            32
+        ]
+    },
+    "ui-health-bar-bg": {
+        "file": "ui/ui-health-bar-bg.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "ui-health-bar-fill": {
+        "file": "ui/ui-health-bar-fill.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "ui-settings-cog": {
+        "file": "ui/ui-settings-cog.png",
+        "scale": [
+            30,
+            30
+        ]
+    },
+    "ui-slider-bar": {
+        "file": "ui/ui-slider-bar.png",
+        "scale": [
+            100,
+            10
+        ]
+    },
+    "ui-slider-handle": {
+        "file": "ui/ui-slider-handle.png",
+        "scale": [
+            20,
+            20
+        ]
+    },
+    "SE-monster-lower": {
+        "file": "starlights_end/monsters/SE-monster-lower.png",
+        "scale": [
+            100,
+            63
+        ]
+    },
+    "SE-monster-elite": {
+        "file": "starlights_end/monsters/SE-monster-elite.png",
+        "scale": [
+            150,
+            88
+        ]
+    },
+    "SE-monster-super": {
+        "file": "starlights_end/monsters/SE-monster-super.png",
+        "scale": [
+            200,
+            113
+        ]
+    },
+    "SE-monster-mini-boss": {
+        "file": "starlights_end/monsters/SE-monster-mini-boss.png",
+        "scale": [
+            300,
+            175
+        ]
+    },
+    "SE-monster-boss": {
+        "file": "starlights_end/monsters/SE-monster-boss.png",
+        "scale": [
+            450,
+            250
         ]
     }
 }
