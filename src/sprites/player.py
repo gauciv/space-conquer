@@ -4,7 +4,7 @@ Player sprite for the Space Impact game.
 import pygame
 import time
 import math
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_INITIAL_HEALTH, PLAYER_INITIAL_SPEED, PLAYER_SHOOT_DELAY
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, PLAYER_INITIAL_HEALTH, PLAYER_INITIAL_SPEED, PLAYER_SHOOT_DELAY, DEBUG_HITBOXES
 from .bullet import Bullet
 
 class Player(pygame.sprite.Sprite):
@@ -160,8 +160,9 @@ class Player(pygame.sprite.Sprite):
             # Draw the player ship
             surface.blit(self.image, self.rect)
             
-            # Debug: Draw hitbox (uncomment for debugging)
-            # pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 1)
+            # Draw hitbox if debug mode is enabled
+            if DEBUG_HITBOXES:
+                pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 1)
             
             # Add engine glow effect
             engine_x = self.rect.left

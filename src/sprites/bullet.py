@@ -2,7 +2,7 @@
 Bullet sprite for the Space Impact game.
 """
 import pygame
-from src.config import SCREEN_WIDTH
+from src.config import SCREEN_WIDTH, DEBUG_HITBOXES
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, image=None):
@@ -32,8 +32,9 @@ class Bullet(pygame.sprite.Sprite):
         # Draw the bullet
         surface.blit(self.image, self.rect)
         
-        # Debug: Draw hitbox (uncomment for debugging)
-        # pygame.draw.rect(surface, (0, 255, 255), self.hitbox, 1)
+        # Draw hitbox if debug mode is enabled
+        if DEBUG_HITBOXES:
+            pygame.draw.rect(surface, (0, 255, 255), self.hitbox, 1)
         
         # Add a glowing trail effect
         trail_length = 20

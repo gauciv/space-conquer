@@ -4,7 +4,7 @@ Enemy sprites for the Space Impact game.
 import pygame
 import random
 import math
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, DEBUG_HITBOXES
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, enemy_type, images):
@@ -37,7 +37,8 @@ class Enemy(pygame.sprite.Sprite):
             # Tank enemy has a larger hitbox (90% of sprite size) since it's a bigger target
             self.hitbox_ratio = 0.9
         elif enemy_type == 'drone':
-            self.image = images.get('drone_enemy')
+            # Fallback to normal enemy if drone image is not available
+            self.image = images.get('normal_enemy')
             self.health = 1
             self.speed = 4
             self.points = 20
@@ -45,13 +46,39 @@ class Enemy(pygame.sprite.Sprite):
             # Drone enemy has a medium hitbox (75% of sprite size)
             self.hitbox_ratio = 0.75
         elif enemy_type == 'bomber':
-            self.image = images.get('bomber_enemy')
+            # Fallback to tank enemy if bomber image is not available
+            self.image = images.get('tank_enemy')
             self.health = 2
             self.speed = 2
             self.points = 30
             self.movement_pattern = "dive"
             # Bomber enemy has a larger hitbox (85% of sprite size)
             self.hitbox_ratio = 0.85
+        else:
+            # Default to normal enemy for any unknown type
+            self.image = images.get('normal_enemy')
+            self.health = 1
+            self.speed = 3
+            self.points = 10
+            self.movement_pattern = "straight"
+            self.hitbox_ratio = 0.8
+        
+        # Check if image is None and provide a fallback
+        if self.image is None:
+            # Create a default colored surface
+            self.image = pygame.Surface((50, 30))
+            if enemy_type == 'normal':
+                self.image.fill((255, 0, 0))  # Red for normal
+            elif enemy_type == 'fast':
+                self.image.fill((255, 255, 0))  # Yellow for fast
+            elif enemy_type == 'tank':
+                self.image.fill((0, 0, 255))  # Blue for tank
+            elif enemy_type == 'drone':
+                self.image.fill((0, 255, 0))  # Green for drone
+            elif enemy_type == 'bomber':
+                self.image.fill((255, 0, 255))  # Purple for bomber
+            else:
+                self.image.fill((128, 128, 128))  # Gray for unknown
         
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
@@ -152,8 +179,9 @@ class Enemy(pygame.sprite.Sprite):
         # Draw the enemy ship
         surface.blit(self.image, self.rect)
         
-        # Debug: Draw hitbox (uncomment for debugging)
-        # pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        # Draw hitbox if debug mode is enabled
+        if DEBUG_HITBOXES:
+            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
         # Add engine glow effect based on enemy type
         engine_x = self.rect.right

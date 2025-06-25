@@ -6,7 +6,7 @@ import pygame
 import sys
 import random
 import math
-from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, POWERUP_SPAWN_DELAY
+from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, POWERUP_SPAWN_DELAY, DEBUG_HITBOXES
 from .utils.sound_manager import SoundManager
 from .utils.asset_loader import AssetLoader
 from .utils.ui_manager import UIManager
@@ -50,6 +50,9 @@ class GameManager:
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
         self.player = None
+        
+        # Game active property
+        self.game_active = False
         
         # Boss variables
         self.mini_boss = None
@@ -106,6 +109,7 @@ class GameManager:
     def start_new_game(self, testing_mode=False):
         """Initialize a new game."""
         self.game_state = self.GAME_STATE_PLAYING
+        self.game_active = True
         self.score = 0
         self.testing_mode = testing_mode
         
@@ -231,6 +235,12 @@ class GameManager:
                     elif event.key == pygame.K_0:
                         # Toggle debug info
                         self.show_debug_info = not self.show_debug_info
+                    elif event.key == pygame.K_d:
+                        # Toggle debug hitboxes
+                        from src.config import DEBUG_HITBOXES
+                        import src.config as config
+                        config.DEBUG_HITBOXES = not config.DEBUG_HITBOXES
+                        print(f"Debug hitboxes: {'ON' if config.DEBUG_HITBOXES else 'OFF'}")
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
@@ -322,6 +332,9 @@ class GameManager:
         
         if self.game_state == self.GAME_STATE_PLAYING:
             self.background_manager.update()
+            self.game_active = True
+        elif self.game_state == self.GAME_STATE_GAME_OVER:
+            self.game_active = False
             
         if not self.ui_manager.settings_open:
             if self.game_state == self.GAME_STATE_PLAYING and self.player:
@@ -385,29 +398,31 @@ class GameManager:
                 
                 # Check for bullet collisions with mini-boss
                 if self.mini_boss:
-                    mini_boss_hits = pygame.sprite.spritecollide(self.mini_boss, self.player.bullets, True)
-                    if mini_boss_hits:
-                        if self.mini_boss.take_damage(len(mini_boss_hits)):
-                            # Mini-boss defeated
-                            # Apply score multiplier if active
-                            points = self.mini_boss.score_value * self.player.score_multiplier
-                            self.score += points
-                            self.mini_boss = None
-                            # Play explosion sound (could be a special boss explosion)
-                            self.sound_manager.play_sound('explosion')
+                    for bullet in self.player.bullets:
+                        if self.mini_boss.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.mini_boss.take_damage(1):
+                                # Mini-boss defeated
+                                # Apply score multiplier if active
+                                points = self.mini_boss.score_value * self.player.score_multiplier
+                                self.score += points
+                                self.mini_boss = None
+                                # Play explosion sound (could be a special boss explosion)
+                                self.sound_manager.play_sound('explosion')
                 
                 # Check for bullet collisions with main boss
                 if self.main_boss:
-                    main_boss_hits = pygame.sprite.spritecollide(self.main_boss, self.player.bullets, True)
-                    if main_boss_hits:
-                        if self.main_boss.take_damage(len(main_boss_hits)):
-                            # Main boss defeated
-                            # Apply score multiplier if active
-                            points = self.main_boss.score_value * self.player.score_multiplier
-                            self.score += points
-                            self.main_boss = None
-                            # Play explosion sound (could be a special boss explosion)
-                            self.sound_manager.play_sound('explosion')
+                    for bullet in self.player.bullets:
+                        if self.main_boss.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.main_boss.take_damage(1):
+                                # Main boss defeated
+                                # Apply score multiplier if active
+                                points = self.main_boss.score_value * self.player.score_multiplier
+                                self.score += points
+                                self.main_boss = None
+                                # Play explosion sound (could be a special boss explosion)
+                                self.sound_manager.play_sound('explosion')
                 
                 # Check for player collision with enemies
                 for enemy in self.enemies:
@@ -418,6 +433,7 @@ class GameManager:
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER
+                            self.game_active = False
                             # Play game over sound
                             self.sound_manager.play_sound('game_over')
                             # Lower music volume for game over sound
@@ -443,21 +459,23 @@ class GameManager:
                                     pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 if self.main_boss:
-                    boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.main_boss.bullets, True)
-                    if boss_bullet_hits and self.player.take_damage():
-                        if self.player.health <= 0:
-                            self.game_state = self.GAME_STATE_GAME_OVER
-                            # Play game over sound
-                            self.sound_manager.play_sound('game_over')
-                            # Lower music volume for game over sound
-                            if self.sound_manager.music_enabled:
-                                self.sound_manager.temporarily_lower_music(duration=1500)
-                            # Schedule music volume restoration
-                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                    for bullet in self.main_boss.bullets:
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage():
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    # Play game over sound
+                                    self.sound_manager.play_sound('game_over')
+                                    # Lower music volume for game over sound
+                                    if self.sound_manager.music_enabled:
+                                        self.sound_manager.temporarily_lower_music(duration=1500)
+                                    # Schedule music volume restoration
+                                    pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 # Check for player collision with power-ups
                 for powerup in self.powerups:
-                    if self.player.hitbox.colliderect(powerup.rect):
+                    if self.player.hitbox.colliderect(powerup.hitbox):
                         self.player.apply_powerup(powerup.type)
                         # Play powerup sound
                         self.sound_manager.play_sound('powerup')
@@ -504,6 +522,10 @@ class GameManager:
                 # Draw enemies with enhanced effects
                 for enemy in self.enemies:
                     enemy.draw(self.screen)
+                
+                # Draw powerups with enhanced effects
+                for powerup in self.powerups:
+                    powerup.draw(self.screen)
                 
                 # Draw bosses if they exist
                 if self.mini_boss:
@@ -560,7 +582,8 @@ class GameManager:
                         f"Enemy Spawn Rate: {self.enemy_spawn_delay}ms",
                         f"Mini-Boss: {'Active' if self.mini_boss else 'Inactive'}",
                         f"Main Boss: {'Active' if self.main_boss else 'Inactive'}",
-                        f"Enemy Types: {', '.join(self.enemy_types_available)}"
+                        f"Enemy Types: {', '.join(self.enemy_types_available)}",
+                        f"Debug Hitboxes: {'ON' if DEBUG_HITBOXES else 'OFF'} (Press D to toggle)"
                     ]
                     
                     for i, info in enumerate(debug_info):

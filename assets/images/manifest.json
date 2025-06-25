@@ -2,29 +2,29 @@
     "player": {
         "file": "player/player-default.png",
         "scale": [
-            125,
-            75
+            100,
+            60
         ]
     },
     "normal_enemy": {
         "file": "starlights_end/monsters/SE-monster-lower.png",
         "scale": [
-            100,
-            63
+            80,
+            50
         ]
     },
     "fast_enemy": {
         "file": "starlights_end/monsters/SE-monster-elite.png",
         "scale": [
-            150,
-            88
+            120,
+            70
         ]
     },
     "tank_enemy": {
         "file": "starlights_end/monsters/SE-monster-super.png",
         "scale": [
-            200,
-            113
+            160,
+            90
         ]
     },
     "bullet": {
@@ -79,15 +79,15 @@
     "mini_boss": {
         "file": "starlights_end/monsters/SE-monster-mini-boss.png",
         "scale": [
-            300,
-            175
+            240,
+            140
         ]
     },
     "main_boss": {
         "file": "starlights_end/monsters/SE-monster-boss.png",
         "scale": [
-            450,
-            250
+            360,
+            200
         ]
     },
     "settings_cog": {
@@ -128,8 +128,8 @@
     "player-default": {
         "file": "player/player-default.png",
         "scale": [
-            125,
-            75
+            100,
+            60
         ]
     },
     "player-bullet-default": {
@@ -219,36 +219,36 @@
     "SE-monster-lower": {
         "file": "starlights_end/monsters/SE-monster-lower.png",
         "scale": [
-            100,
-            63
+            80,
+            50
         ]
     },
     "SE-monster-elite": {
         "file": "starlights_end/monsters/SE-monster-elite.png",
         "scale": [
-            150,
-            88
+            120,
+            70
         ]
     },
     "SE-monster-super": {
         "file": "starlights_end/monsters/SE-monster-super.png",
         "scale": [
-            200,
-            113
+            160,
+            90
         ]
     },
     "SE-monster-mini-boss": {
         "file": "starlights_end/monsters/SE-monster-mini-boss.png",
         "scale": [
-            300,
-            175
+            240,
+            140
         ]
     },
     "SE-monster-boss": {
         "file": "starlights_end/monsters/SE-monster-boss.png",
         "scale": [
-            450,
-            250
+            360,
+            200
         ]
     }
 }

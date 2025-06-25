@@ -4,7 +4,7 @@ Boss sprites for the Space Impact game.
 import pygame
 import random
 import math
-from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
+from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, DEBUG_HITBOXES
 from .bullet import Bullet
 
 class Boss(pygame.sprite.Sprite):
@@ -167,8 +167,9 @@ class Boss(pygame.sprite.Sprite):
         """Draw the boss and its bullets."""
         surface.blit(self.image, self.rect)
         
-        # Debug: Draw hitbox (uncomment for debugging)
-        # pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        # Draw hitbox if debug mode is enabled
+        if DEBUG_HITBOXES:
+            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
         self.bullets.draw(surface)
         self.draw_health_bar(surface)
