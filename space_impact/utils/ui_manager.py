@@ -167,14 +167,6 @@ class UIManager:
         # Draw panel border with glow effect
         pygame.draw.rect(surface, (100, 100, 180), (panel_x, panel_y, panel_width, panel_height), 2)
         
-        # Add some "tech" details to the panel
-        pygame.draw.line(surface, (120, 120, 200, 150), 
-                        (panel_x + 20, panel_y + 20), 
-                        (panel_x + panel_width - 20, panel_y + 20), 2)
-        pygame.draw.line(surface, (120, 120, 200, 150), 
-                        (panel_x + 20, panel_y + panel_height - 20), 
-                        (panel_x + panel_width - 20, panel_y + panel_height - 20), 2)
-        
         # Draw settings title with glow effect
         settings_font = pygame.font.SysFont('Arial', 36, bold=True)
         glow_text = settings_font.render('SETTINGS', True, (40, 40, 100))
@@ -183,10 +175,6 @@ class UIManager:
         settings_text = settings_font.render('SETTINGS', True, (150, 150, 255))
         surface.blit(settings_text, (panel_x + panel_width // 2 - settings_text.get_width() // 2, panel_y + 30))
         
-        # Draw horizontal separator line with glow
-        pygame.draw.line(surface, (80, 80, 150), 
-                        (panel_x + 20, panel_y + 80),
-                        (panel_x + panel_width - 20, panel_y + 80), 2)
         
         # Sound effects label with enhanced styling
         sfx_font = pygame.font.SysFont('Arial', 22, bold=True)
@@ -312,11 +300,6 @@ class UIManager:
         # Music percentage
         music_percent = percent_font.render(f"{int(self.sound_manager.music_volume * 100)}%", True, (180, 180, 255))
         surface.blit(music_percent, (music_slider_x + music_slider_width + 10, music_slider_y - 5))
-        
-        # Draw horizontal separator line with glow
-        pygame.draw.line(surface, (80, 80, 150), 
-                        (panel_x + 20, panel_y + 230),
-                        (panel_x + panel_width - 20, panel_y + 230), 2)
         
         # Draw close button with the same style as other buttons
         close_button_width, close_button_height = 120, 40
