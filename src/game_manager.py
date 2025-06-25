@@ -15,7 +15,8 @@ from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
-from .sprites.boss import Boss
+from .sprites.asteroid import Asteroid
+from .sprites.debris import Debris
 
 class GameManager:
     def __init__(self):
@@ -31,7 +32,7 @@ class GameManager:
         self.asset_loader = AssetLoader()
         self.sound_manager = SoundManager()
         self.ui_manager = UIManager(self.asset_loader, self.sound_manager)
-        self.background_manager = BackgroundManager()
+        self.background_manager = BackgroundManager(self.asset_loader)
         
         # Game state constants
         self.GAME_STATE_MENU = 0
@@ -49,6 +50,8 @@ class GameManager:
         self.all_sprites = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
+        self.asteroids = pygame.sprite.Group()
+        self.debris = pygame.sprite.Group()
         self.player = None
         
         # Game active property
@@ -128,6 +131,8 @@ class GameManager:
         self.all_sprites = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
+        self.asteroids = pygame.sprite.Group()
+        self.debris = pygame.sprite.Group()
         
         # Create player
         self.player = Player(self.asset_loader.get_image('player'), self.sound_manager)
@@ -153,6 +158,14 @@ class GameManager:
         # Power-up spawn timer
         self.powerup_spawn_delay = POWERUP_SPAWN_DELAY
         self.last_powerup_spawn = pygame.time.get_ticks()
+        
+        # Asteroid spawn timer
+        self.asteroid_spawn_delay = 5000  # 5 seconds between asteroid spawns
+        self.last_asteroid_spawn = pygame.time.get_ticks()
+        
+        # Debris spawn timer
+        self.debris_spawn_delay = 3000  # 3 seconds between debris spawns
+        self.last_debris_spawn = pygame.time.get_ticks()
         
         # If testing mode, give player some advantages
         if testing_mode:
@@ -349,6 +362,8 @@ class GameManager:
                 self.player.update()
                 self.enemies.update()
                 self.powerups.update()
+                self.asteroids.update()
+                self.debris.update()
                 
                 # Update bosses if they exist
                 if self.mini_boss:
@@ -374,13 +389,30 @@ class GameManager:
                         self.enemies.add(enemy)
                         self.all_sprites.add(enemy)
                 
-                # Spawn power-ups
+                # Spawn asteroids
                 now = pygame.time.get_ticks()
-                if now - self.last_powerup_spawn > self.powerup_spawn_delay:
-                    self.last_powerup_spawn = now
-                    powerup = PowerUp(self.asset_loader.images)
-                    self.powerups.add(powerup)
-                    self.all_sprites.add(powerup)
+                if now - self.last_asteroid_spawn > self.asteroid_spawn_delay:
+                    self.last_asteroid_spawn = now
+                    asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
+                    self.asteroids.add(asteroid)
+                    self.all_sprites.add(asteroid)
+                
+                # Spawn debris
+                now = pygame.time.get_ticks()
+                if now - self.last_debris_spawn > self.debris_spawn_delay:
+                    self.last_debris_spawn = now
+                    debris = Debris(self.asset_loader.images)
+                    self.debris.add(debris)
+                    self.all_sprites.add(debris)
+                
+                # Spawn power-ups (only from asteroids now)
+                # We'll keep this code commented out as reference
+                # now = pygame.time.get_ticks()
+                # if now - self.last_powerup_spawn > self.powerup_spawn_delay:
+                #     self.last_powerup_spawn = now
+                #     powerup = PowerUp(self.asset_loader.images)
+                #     self.powerups.add(powerup)
+                #     self.all_sprites.add(powerup)
                 
                 # Check for bullet collisions with enemies
                 for enemy in self.enemies:
@@ -393,6 +425,35 @@ class GameManager:
                                 points = enemy.points * self.player.score_multiplier
                                 self.score += points
                                 enemy.kill()
+                                # Play explosion sound
+                                self.sound_manager.play_sound('explosion')
+                
+                # Check for bullet collisions with asteroids
+                for asteroid in self.asteroids:
+                    for bullet in self.player.bullets:
+                        if asteroid.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if asteroid.take_damage(1):
+                                # Asteroid destroyed, spawn a powerup
+                                powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
+                                powerup.rect.center = asteroid.rect.center
+                                self.powerups.add(powerup)
+                                self.all_sprites.add(powerup)
+                                
+                                # Apply score multiplier if active
+                                points = asteroid.points * self.player.score_multiplier
+                                self.score += points
+                
+                # Check for bullet collisions with debris
+                for debris_obj in self.debris:
+                    for bullet in self.player.bullets:
+                        if debris_obj.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if debris_obj.take_damage(1):
+                                # Apply score multiplier if active
+                                points = debris_obj.points * self.player.score_multiplier
+                                self.score += points
+                                debris_obj.kill()
                                 # Play explosion sound
                                 self.sound_manager.play_sound('explosion')
                 
@@ -430,6 +491,24 @@ class GameManager:
                         # Use the new take_damage method which handles invulnerability and sound
                         damage_applied = self.player.take_damage()
                         enemy.kill()  # Remove the enemy that collided with player
+                        
+                        if damage_applied and self.player.health <= 0:
+                            self.game_state = self.GAME_STATE_GAME_OVER
+                            self.game_active = False
+                            # Play game over sound
+                            self.sound_manager.play_sound('game_over')
+                            # Lower music volume for game over sound
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.temporarily_lower_music(duration=1500)
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
+                
+                # Check for player collision with debris
+                for debris_obj in self.debris:
+                    if self.player.hitbox.colliderect(debris_obj.hitbox):
+                        # Use the take_damage method which handles invulnerability and sound
+                        damage_applied = self.player.take_damage()
+                        debris_obj.kill()  # Remove the debris that collided with player
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER
@@ -522,6 +601,14 @@ class GameManager:
                 # Draw enemies with enhanced effects
                 for enemy in self.enemies:
                     enemy.draw(self.screen)
+                
+                # Draw asteroids with enhanced effects
+                for asteroid in self.asteroids:
+                    asteroid.draw(self.screen)
+                
+                # Draw debris with enhanced effects
+                for debris_obj in self.debris:
+                    debris_obj.draw(self.screen)
                 
                 # Draw powerups with enhanced effects
                 for powerup in self.powerups:

@@ -6,11 +6,14 @@ import random
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, DEBUG_HITBOXES
 
 class PowerUp(pygame.sprite.Sprite):
-    def __init__(self, images):
+    def __init__(self, images, powerup_type=None):
         super().__init__()
         
-        # Randomly select power-up type
-        self.type = random.choice(['health', 'speed', 'rapid_fire', 'score_multiplier'])
+        # Randomly select power-up type if not specified
+        if powerup_type is None:
+            self.type = random.choice(['health', 'speed', 'rapid_fire', 'score_multiplier'])
+        else:
+            self.type = powerup_type
         
         # Set image based on power-up type
         if self.type == 'health':

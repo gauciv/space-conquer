@@ -1,9 +1,23 @@
 {
-    "player": {
-        "file": "player/player-default.png",
+    "map_background": {
+        "file": "starlights_end/SE-map-background.png",
         "scale": [
-            100,
-            60
+            800,
+            600
+        ]
+    },
+    "asteroid": {
+        "file": "starlights_end/additional_assets/SE-asset-asteroid.png",
+        "scale": [
+            50,
+            50
+        ]
+    },
+    "debris": {
+        "file": "starlights_end/additional_assets/SE-asset-debris.png",
+        "scale": [
+            40,
+            30
         ]
     },
     "normal_enemy": {

@@ -8,7 +8,16 @@ import math
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT
 
 class BackgroundManager:
-    def __init__(self):
+    def __init__(self, asset_loader=None):
+        self.asset_loader = asset_loader
+        self.background_image = None
+        self.background_position = 0
+        self.background_speed = 0.5  # Slow scrolling speed
+        
+        # Load background image if asset_loader is provided
+        if self.asset_loader:
+            self.background_image = self.asset_loader.get_image('map_background')
+        
         self.nebulae = []
         self.dying_stars = []
         self.cosmic_debris = []
@@ -29,6 +38,11 @@ class BackgroundManager:
         # Create stellar remnants
         for _ in range(2):
             self.stellar_remnants.append(self._create_stellar_remnant())
+    
+    def set_asset_loader(self, asset_loader):
+        """Set the asset loader after initialization."""
+        self.asset_loader = asset_loader
+        self.background_image = self.asset_loader.get_image('map_background')
     
     def _create_nebula(self):
         return {
@@ -83,6 +97,12 @@ class BackgroundManager:
         }
     
     def update(self):
+        # Update background position for parallax scrolling
+        if self.background_image:
+            self.background_position -= self.background_speed
+            if self.background_position <= -SCREEN_WIDTH:
+                self.background_position = 0
+        
         # Update cosmic debris
         for debris in self.cosmic_debris:
             debris['x'] -= debris['speed']
@@ -93,6 +113,17 @@ class BackgroundManager:
                 debris['y'] = random.randint(0, SCREEN_HEIGHT)
     
     def draw(self, surface):
+        # Draw background image with parallax scrolling
+        if self.background_image:
+            # Draw the background image twice for seamless scrolling
+            surface.blit(self.background_image, (self.background_position, 0))
+            surface.blit(self.background_image, (self.background_position + SCREEN_WIDTH, 0))
+            
+            # Add a subtle overlay to enhance the mood
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((20, 0, 40, 30))  # Dark purple with transparency
+            surface.blit(overlay, (0, 0))
+        
         # Draw nebulae
         for nebula in self.nebulae:
             pulse = 0.7 + 0.3 * math.sin(pygame.time.get_ticks() * nebula['pulse_speed'] + nebula['pulse_offset'])
@@ -158,3 +189,32 @@ class BackgroundManager:
             rotated_surface = pygame.transform.rotate(debris_surface, math.degrees(debris['rotation']))
             rect = rotated_surface.get_rect(center=(debris['x'], debris['y']))
             surface.blit(rotated_surface, rect)
+            
+        # Add light rays effect
+        self._draw_light_rays(surface)
+    
+    def _draw_light_rays(self, surface):
+        """Draw subtle light rays for atmospheric effect."""
+        ray_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        
+        # Create several light rays
+        for i in range(3):
+            # Calculate ray properties based on time
+            time = pygame.time.get_ticks() * 0.001
+            ray_width = 100 + 50 * math.sin(time * 0.2 + i * 2)
+            ray_alpha = 10 + 5 * math.sin(time * 0.3 + i * 1.5)
+            ray_x = (SCREEN_WIDTH * 0.3 + i * SCREEN_WIDTH * 0.2) + 50 * math.sin(time * 0.1 + i)
+            
+            # Create ray polygon
+            ray_points = [
+                (ray_x, 0),
+                (ray_x + ray_width, 0),
+                (ray_x + ray_width * 2, SCREEN_HEIGHT),
+                (ray_x - ray_width, SCREEN_HEIGHT)
+            ]
+            
+            # Draw ray
+            pygame.draw.polygon(ray_surface, (150, 100, 200, int(ray_alpha)), ray_points)
+        
+        # Apply the rays to the surface
+        surface.blit(ray_surface, (0, 0))
