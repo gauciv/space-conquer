@@ -231,6 +231,9 @@ class GameManager:
                 if event.button == 1:  # Left mouse button
                     # Handle settings button click
                     if self.ui_manager.handle_settings_click(event.pos):
+                        # Play a sound effect for feedback when clicking UI elements
+                        if 'select' in self.sound_manager.sounds:
+                            self.sound_manager.play_sound('select')
                         pass
                     # Handle main menu button clicks
                     elif not self.game_active and not self.ui_manager.settings_open:
