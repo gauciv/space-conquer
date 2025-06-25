@@ -1,0 +1,30 @@
+{
+    "shoot": {
+        "file": "shoot.wav",
+        "volume": 0.7
+    },
+    "explosion": {
+        "file": "explosion.wav",
+        "volume": 0.7
+    },
+    "powerup": {
+        "file": "powerup.wav",
+        "volume": 0.7
+    },
+    "game_start": {
+        "file": "game_start.wav",
+        "volume": 0.7
+    },
+    "game_over": {
+        "file": "game_over.wav",
+        "volume": 0.7
+    },
+    "select": {
+        "file": "select.wav",
+        "volume": 0.5
+    },
+    "boss_hit": {
+        "file": "boss_hit.wav",
+        "volume": 0.7
+    }
+}

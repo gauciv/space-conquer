@@ -1,0 +1,18 @@
+{
+    "menu": {
+        "file": "background_music.wav",
+        "volume": 0.5
+    },
+    "starlight_end": {
+        "file": "starlight_end.wav",
+        "volume": 0.5
+    },
+    "nebula_ruins": {
+        "file": "nebula_ruins.wav",
+        "volume": 0.5
+    },
+    "boss_battle": {
+        "file": "boss_battle.wav",
+        "volume": 0.6
+    }
+}

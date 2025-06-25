@@ -1,0 +1,19 @@
+{
+    "name": "default",
+    "description": "Default space theme with blue accents",
+    "ui": {
+        "font_main": "Arial",
+        "font_title": "Arial",
+        "color_primary": [150, 150, 255],
+        "color_secondary": [100, 100, 180],
+        "color_background": [20, 20, 40],
+        "color_text": [220, 220, 255],
+        "color_highlight": [180, 180, 255],
+        "button_style": "space"
+    },
+    "overrides": {
+        "images": {},
+        "sounds": {},
+        "music": {}
+    }
+}

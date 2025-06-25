@@ -1,0 +1,70 @@
+{
+    "player": {
+        "file": "player_ship.png",
+        "scale": [50, 30]
+    },
+    "normal_enemy": {
+        "file": "normal_enemy.png",
+        "scale": [40, 30]
+    },
+    "fast_enemy": {
+        "file": "fast_enemy.png",
+        "scale": [30, 20]
+    },
+    "tank_enemy": {
+        "file": "tank_enemy.png",
+        "scale": [50, 40]
+    },
+    "drone_enemy": {
+        "file": "drone_enemy.png",
+        "scale": [35, 25]
+    },
+    "bomber_enemy": {
+        "file": "bomber_enemy.png",
+        "scale": [45, 35]
+    },
+    "bullet": {
+        "file": "bullet.png",
+        "scale": [10, 5]
+    },
+    "health_powerup": {
+        "file": "health_powerup.png",
+        "scale": [20, 20]
+    },
+    "speed_powerup": {
+        "file": "speed_powerup.png",
+        "scale": [20, 20]
+    },
+    "rapid_fire_powerup": {
+        "file": "rapid_fire_powerup.png",
+        "scale": [20, 20]
+    },
+    "score_multiplier": {
+        "file": "score_multiplier.png",
+        "scale": [20, 20]
+    },
+    "full_heart": {
+        "file": "full_heart.png",
+        "scale": [32, 32]
+    },
+    "empty_heart": {
+        "file": "empty_heart.png",
+        "scale": [32, 32]
+    },
+    "mini_boss": {
+        "file": "mini_boss.png",
+        "scale": [80, 60]
+    },
+    "main_boss": {
+        "file": "main_boss.png",
+        "scale": [120, 90]
+    },
+    "starlight_end_bg": {
+        "file": "starlight_end_bg.png",
+        "scale": [800, 600]
+    },
+    "nebula_ruins_bg": {
+        "file": "nebula_ruins_bg.png",
+        "scale": [800, 600]
+    }
+}
