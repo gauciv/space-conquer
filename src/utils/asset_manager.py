@@ -266,9 +266,9 @@ class AssetManager:
         
         # Try to load image from different possible locations
         image_paths = [
-            self.asset_dirs["images"] / image_file,
-            self.base_dir / "images" / image_file,
-            self.base_dir / "assets" / image_file
+            self.asset_dirs["images"] / image_file,  # New nested structure
+            self.base_dir / "images" / Path(image_file).name,  # Old structure with just filename
+            self.base_dir / "assets" / image_file  # Alternative path
         ]
         
         # Try each path
@@ -312,7 +312,8 @@ class AssetManager:
             image_data = self.image_manifest.get(image_id, {})
             image_file = image_data.get("file")
             if image_file:
-                fallback_path = self.fallback_dirs["images"] / image_file
+                # For nested paths, just use the filename part
+                fallback_path = self.fallback_dirs["images"] / Path(image_file).name
         
         # Try to load the fallback
         if fallback_path.exists():
