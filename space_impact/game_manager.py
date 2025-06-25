@@ -188,6 +188,11 @@ class GameManager:
                     # Close settings if open
                     if self.ui_manager.settings_open:
                         self.ui_manager.settings_open = False
+                        # Play a sound effect for feedback
+                        if 'menu' in self.sound_manager.sounds:
+                            self.sound_manager.play_sound('menu')
+                        elif 'select' in self.sound_manager.sounds:
+                            self.sound_manager.play_sound('select')
                 
                 # Testing mode hotkeys (only active in testing mode)
                 if self.testing_mode and self.game_active:

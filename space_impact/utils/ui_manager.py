@@ -19,6 +19,7 @@ class UIManager:
         self.start_button_rect = None
         self.test_button_rect = None
         self.main_menu_button_rect = None
+        self.close_button_rect = None  # Added to store close button rect
         
         # Button hover state
         self.hovered_button = None
@@ -34,26 +35,26 @@ class UIManager:
         
         # Volume sliders
         self.sfx_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 - 40, self.slider_width, 10)
-        self.sfx_handle_rect = pygame.Rect(
-            self.panel_x + 130 + int(sound_manager.sfx_volume * self.slider_width) - 10, 
-            SCREEN_HEIGHT // 2 - 45, 
-            20, 20
-        )
+        self.sfx_handle_rect = pygame.Rect(0, 0, 20, 20)  # Position will be set in draw method
         
-        # Ensure handle doesn't extend beyond slider at 0%
-        if sound_manager.sfx_volume <= 0:
-            self.sfx_handle_rect.x = self.panel_x + 130 - 10
-        
+        # Music slider
         self.music_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 + 10, self.slider_width, 10)
-        self.music_handle_rect = pygame.Rect(
-            self.panel_x + 130 + int(sound_manager.music_volume * self.slider_width) - 10, 
-            SCREEN_HEIGHT // 2 + 5, 
-            20, 20
+        self.music_handle_rect = pygame.Rect(0, 0, 20, 20)  # Position will be set in draw method
+        
+        # Expand the clickable area for the sliders
+        self.sfx_slider_clickable_rect = pygame.Rect(
+            self.sfx_slider_rect.left - 10,
+            self.sfx_slider_rect.top - 10,
+            self.sfx_slider_rect.width + 20,
+            self.sfx_slider_rect.height + 20
         )
         
-        # Ensure handle doesn't extend beyond slider at 0%
-        if sound_manager.music_volume <= 0:
-            self.music_handle_rect.x = self.panel_x + 130 - 10
+        self.music_slider_clickable_rect = pygame.Rect(
+            self.music_slider_rect.left - 10,
+            self.music_slider_rect.top - 10,
+            self.music_slider_rect.width + 20,
+            self.music_slider_rect.height + 20
+        )
         
         # Dragging state
         self.dragging_sfx_handle = False
@@ -228,13 +229,15 @@ class UIManager:
             surface.blit(fill_bg, (fill_rect.left, fill_rect.top + i))
         
         # Draw slider handle with glow effect
-        handle_x = sfx_slider_x + fill_width - 10
+        handle_x = sfx_slider_x + fill_width
         handle_y = sfx_slider_y + slider_height // 2
         handle_radius = 10
         
-        # Ensure handle doesn't extend beyond slider at 0%
-        if fill_width <= 10:
-            handle_x = sfx_slider_x
+        # Ensure handle stays within slider bounds
+        handle_x = max(sfx_slider_x, min(handle_x, sfx_slider_x + sfx_slider_width))
+        
+        # Update handle rect for click detection
+        self.sfx_handle_rect.center = (handle_x, handle_y)
         
         # Glow effect
         pygame.draw.circle(surface, (100, 100, 200, 150), (handle_x, handle_y), handle_radius + 2)
@@ -295,12 +298,14 @@ class UIManager:
             surface.blit(fill_bg, (music_fill_rect.left, music_fill_rect.top + i))
         
         # Draw slider handle with glow effect
-        music_handle_x = music_slider_x + music_fill_width - 10
+        music_handle_x = music_slider_x + music_fill_width
         music_handle_y = music_slider_y + slider_height // 2
         
-        # Ensure handle doesn't extend beyond slider at 0%
-        if music_fill_width <= 10:
-            music_handle_x = music_slider_x
+        # Ensure handle stays within slider bounds
+        music_handle_x = max(music_slider_x, min(music_handle_x, music_slider_x + music_slider_width))
+        
+        # Update handle rect for click detection
+        self.music_handle_rect.center = (music_handle_x, music_handle_y)
         
         # Glow effect
         pygame.draw.circle(surface, (100, 100, 200, 150), (music_handle_x, music_handle_y), handle_radius + 2)
@@ -323,6 +328,9 @@ class UIManager:
                                       panel_y + 240, # Moved up from 250 to add bottom margin
                                       close_button_width, close_button_height)
         
+        # Store the close button rect for consistent click detection
+        self.close_button_rect = close_button_rect
+        
         is_close_hovered = close_button_rect.collidepoint(pygame.mouse.get_pos())
         self._draw_stylized_button(surface, close_button_rect, "CLOSE", (30, 30, 80), (80, 80, 180), is_close_hovered)
         
@@ -335,23 +343,38 @@ class UIManager:
             return True
         
         if self.settings_open:
-            # Check if SFX slider handle was clicked
-            if self.sfx_handle_rect.collidepoint(pos):
+            # Check if SFX slider was clicked (expanded clickable area)
+            if self.sfx_slider_clickable_rect.collidepoint(pos) or self.sfx_handle_rect.collidepoint(pos):
                 self.dragging_sfx_handle = True
+                # Immediately update handle position to mouse position
+                self.sfx_handle_rect.centerx = pos[0]
+                # Constrain to slider bounds
+                slider_left = self.sfx_slider_rect.left
+                slider_right = self.sfx_slider_rect.right
+                self.sfx_handle_rect.centerx = max(slider_left, min(self.sfx_handle_rect.centerx, slider_right))
+                # Update volume
+                volume_ratio = (self.sfx_handle_rect.centerx - slider_left) / self.slider_width
+                volume_ratio = max(0, min(1, volume_ratio))  # Clamp between 0 and 1
+                self.sound_manager.set_sfx_volume(volume_ratio)
                 return True
             
-            # Check if music slider handle was clicked
-            elif self.music_handle_rect.collidepoint(pos):
+            # Check if music slider was clicked (expanded clickable area)
+            elif self.music_slider_clickable_rect.collidepoint(pos) or self.music_handle_rect.collidepoint(pos):
                 self.dragging_music_handle = True
+                # Immediately update handle position to mouse position
+                self.music_handle_rect.centerx = pos[0]
+                # Constrain to slider bounds
+                slider_left = self.music_slider_rect.left
+                slider_right = self.music_slider_rect.right
+                self.music_handle_rect.centerx = max(slider_left, min(self.music_handle_rect.centerx, slider_right))
+                # Update volume
+                volume_ratio = (self.music_handle_rect.centerx - slider_left) / self.slider_width
+                volume_ratio = max(0, min(1, volume_ratio))  # Clamp between 0 and 1
+                self.sound_manager.set_music_volume(volume_ratio)
                 return True
             
             # Check if close button was clicked
-            close_button_rect = pygame.Rect(
-                self.panel_x + self.panel_width // 2 - 60, 
-                SCREEN_HEIGHT // 2 + 70, 
-                120, 40
-            )
-            if close_button_rect.collidepoint(pos):
+            if self.close_button_rect and self.close_button_rect.collidepoint(pos):
                 self.settings_open = False
                 return True
         
@@ -369,14 +392,13 @@ class UIManager:
             mouse_x = pos[0]
             slider_left = self.sfx_slider_rect.left
             slider_right = self.sfx_slider_rect.right
-            handle_width = self.sfx_handle_rect.width
             
-            # Keep handle within slider bounds (ensuring it doesn't extend beyond at 0%)
-            handle_x = max(slider_left - handle_width//2, min(mouse_x, slider_right - handle_width//2))
-            self.sfx_handle_rect.x = handle_x
+            # Keep handle centered on mouse and within slider bounds
+            self.sfx_handle_rect.centerx = max(slider_left, min(mouse_x, slider_right))
             
-            # Update volume based on handle position (adjusted calculation)
-            volume_ratio = max(0, min(1, (handle_x + handle_width//2 - slider_left) / self.slider_width))
+            # Update volume based on handle position (simplified calculation)
+            volume_ratio = (self.sfx_handle_rect.centerx - slider_left) / self.slider_width
+            volume_ratio = max(0, min(1, volume_ratio))  # Clamp between 0 and 1
             self.sound_manager.set_sfx_volume(volume_ratio)
             return True
         
@@ -385,14 +407,13 @@ class UIManager:
             mouse_x = pos[0]
             slider_left = self.music_slider_rect.left
             slider_right = self.music_slider_rect.right
-            handle_width = self.music_handle_rect.width
             
-            # Keep handle within slider bounds (ensuring it doesn't extend beyond at 0%)
-            handle_x = max(slider_left - handle_width//2, min(mouse_x, slider_right - handle_width//2))
-            self.music_handle_rect.x = handle_x
+            # Keep handle centered on mouse and within slider bounds
+            self.music_handle_rect.centerx = max(slider_left, min(mouse_x, slider_right))
             
-            # Update volume based on handle position (adjusted calculation)
-            volume_ratio = max(0, min(1, (handle_x + handle_width//2 - slider_left) / self.slider_width))
+            # Update volume based on handle position (simplified calculation)
+            volume_ratio = (self.music_handle_rect.centerx - slider_left) / self.slider_width
+            volume_ratio = max(0, min(1, volume_ratio))  # Clamp between 0 and 1
             self.sound_manager.set_music_volume(volume_ratio)
             return True
         
