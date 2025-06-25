@@ -650,9 +650,66 @@ class UIManager:
         is_menu_hovered = main_menu_button_rect.collidepoint(pygame.mouse.get_pos())
         self._draw_stylized_button(surface, main_menu_button_rect, "MAIN MENU", (30, 30, 60), (70, 70, 140), is_menu_hovered)
         
-        # Store button rectangles for click detection
+        # Store button rectangles for click detection - make sure these are class variables
         self.start_button_rect = restart_button_rect
-        self.main_menu_button_rect = main_menu_button_rect
+        self.main_menu_button_rect = main_menu_button_rect  # Store the main menu button rect
+        self.test_button_rect = None  # No test button on game over screen
+        
+        # Draw panel background with gradient
+        for i in range(panel_height):
+            progress = i / panel_height
+            color = (
+                int(40 + 20 * progress),
+                int(0 + 10 * progress),
+                int(0 + 30 * progress),
+                200
+            )
+            panel_surface = pygame.Surface((panel_width, 1), pygame.SRCALPHA)
+            panel_surface.fill(color)
+            surface.blit(panel_surface, (panel_rect.left, panel_rect.top + i))
+        
+        # Draw panel border
+        pygame.draw.rect(surface, (150, 30, 30), panel_rect, 2)
+        
+        # Add some "tech" details to the panel
+        pygame.draw.line(surface, (200, 50, 50, 150), 
+                        (panel_rect.left + 20, panel_rect.top + 20), 
+                        (panel_rect.left + panel_width - 20, panel_rect.top + 20), 2)
+        pygame.draw.line(surface, (200, 50, 50, 150), 
+                        (panel_rect.left + 20, panel_rect.bottom - 30),  # Moved up to 30px from bottom
+                        (panel_rect.left + panel_width - 20, panel_rect.bottom - 30), 2)
+        
+        # Draw game over text with glow effect
+        game_over_font = pygame.font.SysFont('Arial', 48, bold=True)
+        glow_text = game_over_font.render('GAME OVER', True, (100, 0, 0))
+        surface.blit(glow_text, (SCREEN_WIDTH // 2 - glow_text.get_width() // 2 + 2, panel_rect.top + 50 + 2))
+        
+        game_over_text = game_over_font.render('GAME OVER', True, (255, 50, 50))
+        surface.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, panel_rect.top + 50))
+        
+        # Draw score
+        score_font = pygame.font.SysFont('Arial', 32)
+        score_text = score_font.render(f'Final Score: {score}', True, (220, 220, 255))
+        surface.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, panel_rect.top + 120))
+        
+        # Create restart button
+        restart_button_width, restart_button_height = 250, 50
+        restart_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
+                                        panel_rect.top + 180, 
+                                        restart_button_width, restart_button_height)
+        is_restart_hovered = restart_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, restart_button_rect, "RESTART", (60, 10, 10), (150, 30, 30), is_restart_hovered)
+        
+        # Create main menu button with proper padding and gap
+        main_menu_button_rect = pygame.Rect(SCREEN_WIDTH // 2 - restart_button_width // 2, 
+                                    panel_rect.top + 250,  # Increased gap from first button (from 180 to 250 = 70px gap)
+                                    restart_button_width, restart_button_height)
+        is_menu_hovered = main_menu_button_rect.collidepoint(pygame.mouse.get_pos())
+        self._draw_stylized_button(surface, main_menu_button_rect, "MAIN MENU", (30, 30, 60), (70, 70, 140), is_menu_hovered)
+        
+        # Store button rectangles for click detection - make sure these are class variables
+        self.start_button_rect = restart_button_rect
+        self.main_menu_button_rect = main_menu_button_rect  # Store the main menu button rect
         self.test_button_rect = None  # No test button on game over screen
     
     def show_start_screen(self, surface, testing_mode=False):
@@ -723,6 +780,9 @@ class UIManager:
         
         # Store button rectangles for click detection
         self.start_button_rect = start_button_rect
+        # Make sure we clear the main menu button rect when showing the start screen
+        # to avoid confusion with the game over screen
+        self.main_menu_button_rect = None
         
         # Show testing mode instructions (only during development)
         if testing_mode:

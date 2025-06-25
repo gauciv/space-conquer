@@ -31,9 +31,13 @@ class GameManager:
         self.sound_manager = SoundManager()
         self.ui_manager = UIManager(self.asset_loader, self.sound_manager)
         
-        # Game state
-        self.game_active = False
-        self.game_over = False  # Add a specific game over state
+        # Game state constants
+        self.GAME_STATE_MENU = 0
+        self.GAME_STATE_PLAYING = 1
+        self.GAME_STATE_GAME_OVER = 2
+        
+        # Current game state
+        self.game_state = self.GAME_STATE_MENU
         self.score = 0
         
         # Create stars
@@ -99,8 +103,7 @@ class GameManager:
     
     def start_new_game(self, testing_mode=False):
         """Initialize a new game."""
-        self.game_active = True
-        self.game_over = False  # Reset game over state
+        self.game_state = self.GAME_STATE_PLAYING
         self.score = 0
         self.testing_mode = testing_mode
         
@@ -171,17 +174,17 @@ class GameManager:
             
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    if not self.game_active and not self.game_over and not self.ui_manager.settings_open:
-                        # Start normal game with SPACE
+                    if self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
+                        # Start normal game with SPACE from menu
                         self.start_new_game(testing_mode=False)
-                    elif self.game_over and not self.ui_manager.settings_open:
+                    elif self.game_state == self.GAME_STATE_GAME_OVER and not self.ui_manager.settings_open:
                         # Restart after game over
                         self.start_new_game(testing_mode=False)
                 elif event.key == pygame.K_t:
-                    if not self.game_active and not self.game_over and not self.ui_manager.settings_open:
-                        # Start test mode with T
+                    if self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
+                        # Start test mode with T from menu
                         self.start_new_game(testing_mode=True)
-                    elif self.game_over and not self.ui_manager.settings_open:
+                    elif self.game_state == self.GAME_STATE_GAME_OVER and not self.ui_manager.settings_open:
                         # Restart in test mode after game over
                         self.start_new_game(testing_mode=True)
                 elif event.key == pygame.K_ESCAPE:
@@ -234,27 +237,36 @@ class GameManager:
                         # Play a sound effect for feedback when clicking UI elements
                         if 'select' in self.sound_manager.sounds:
                             self.sound_manager.play_sound('select')
-                        pass
+                    
                     # Handle main menu button clicks
-                    elif not self.game_active and not self.ui_manager.settings_open:
+                    elif self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
                         if self.ui_manager.start_button_rect and self.ui_manager.start_button_rect.collidepoint(event.pos):
                             self.start_new_game(testing_mode=False)
                         elif self.ui_manager.test_button_rect and self.ui_manager.test_button_rect.collidepoint(event.pos):
                             self.start_new_game(testing_mode=True)
+                    
                     # Handle game over screen button clicks
-                    elif self.game_over and not self.ui_manager.settings_open:
+                    elif self.game_state == self.GAME_STATE_GAME_OVER and not self.ui_manager.settings_open:
                         if self.ui_manager.start_button_rect and self.ui_manager.start_button_rect.collidepoint(event.pos):
+                            # Restart game
                             self.start_new_game(testing_mode=False)
-                        elif hasattr(self.ui_manager, 'main_menu_button_rect') and self.ui_manager.main_menu_button_rect and self.ui_manager.main_menu_button_rect.collidepoint(event.pos):
+                        elif self.ui_manager.main_menu_button_rect and self.ui_manager.main_menu_button_rect.collidepoint(event.pos):
                             # Return to main menu with proper reset
-                            self.game_active = False  # Ensure game is not active
-                            self.game_over = False    # Exit game over state
+                            self.game_state = self.GAME_STATE_MENU
                             self.score = 0
                             self.player = None
                             self.enemies.empty()
                             self.powerups.empty()
                             self.all_sprites.empty()
                             self.mini_boss = None
+                            self.main_boss = None
+                            self.mini_boss_spawned = False
+                            self.main_boss_spawned = False
+                            # Play a menu sound if available
+                            if 'menu' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('menu')
+                            elif 'select' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('select')
                             self.main_boss = None
                             self.mini_boss_spawned = False
                             self.main_boss_spawned = False
@@ -289,7 +301,7 @@ class GameManager:
             star.update()
             
         if not self.ui_manager.settings_open:
-            if self.game_active and self.player:
+            if self.game_state == self.GAME_STATE_PLAYING and self.player:
                 # Handle map name display
                 if self.showing_map_name:
                     self.map_transition_timer -= 1
@@ -378,8 +390,7 @@ class GameManager:
                     damage_applied = self.player.take_damage()
                     
                     if damage_applied and self.player.health <= 0:
-                        self.game_active = False
-                        self.game_over = True  # Set game over state
+                        self.game_state = self.GAME_STATE_GAME_OVER
                         # Play game over sound
                         self.sound_manager.play_sound('game_over')
                         # Lower music volume for game over sound
@@ -393,8 +404,7 @@ class GameManager:
                     boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.mini_boss.bullets, True)
                     if boss_bullet_hits and self.player.take_damage():
                         if self.player.health <= 0:
-                            self.game_active = False
-                            self.game_over = True  # Set game over state
+                            self.game_state = self.GAME_STATE_GAME_OVER
                             # Play game over sound
                             self.sound_manager.play_sound('game_over')
                             # Lower music volume for game over sound
@@ -407,8 +417,7 @@ class GameManager:
                     boss_bullet_hits = pygame.sprite.spritecollide(self.player, self.main_boss.bullets, True)
                     if boss_bullet_hits and self.player.take_damage():
                         if self.player.health <= 0:
-                            self.game_active = False
-                            self.game_over = True  # Set game over state
+                            self.game_state = self.GAME_STATE_GAME_OVER
                             # Play game over sound
                             self.sound_manager.play_sound('game_over')
                             # Lower music volume for game over sound
@@ -452,7 +461,7 @@ class GameManager:
             star.draw(self.screen)
         
         if not self.ui_manager.settings_open:
-            if self.game_active and self.player:
+            if self.game_state == self.GAME_STATE_PLAYING and self.player:
                 # Draw game elements
                 self.all_sprites.draw(self.screen)
                 self.player.draw(self.screen)
@@ -548,10 +557,12 @@ class GameManager:
                         # Draw marker text
                         text = marker_font.render(f"{marker['name']}", True, (255, 255, 255))
                         self.screen.blit(text, (SCREEN_WIDTH - 145, 153 + i * 30))
-            elif self.game_over:  # Check for game over state
+            
+            # Draw appropriate screen based on game state
+            elif self.game_state == self.GAME_STATE_GAME_OVER:
                 # Show game over screen
                 self.ui_manager.show_game_over(self.screen, self.score)
-            else:
+            elif self.game_state == self.GAME_STATE_MENU:
                 # Show start screen
                 self.ui_manager.show_start_screen(self.screen, self.testing_mode)
         else:
