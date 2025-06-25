@@ -35,7 +35,9 @@ class AssetLoader:
             'mini_boss': 'SE-monster-mini-boss',
             'main_boss': 'SE-monster-boss',
             'health_bar_bg': 'ui-health-bar-bg',
-            'health_bar_fill': 'ui-health-bar-fill'
+            'health_bar_fill': 'ui-health-bar-fill',
+            'asteroid': 'asteroid',
+            'debris': 'debris'
         }
         
         for old_name, new_id in image_ids.items():
