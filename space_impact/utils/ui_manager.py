@@ -25,8 +25,8 @@ class UIManager:
         
         # Settings panel
         self.settings_open = False
-        self.x_offset = 40
-        self.panel_x = (SCREEN_WIDTH // 2 - 200) + self.x_offset
+        self.x_offset = 0  # Removed the offset to center the panel
+        self.panel_x = SCREEN_WIDTH // 2 - 200  # Centered panel
         self.panel_width = 400
         
         # Slider settings
@@ -40,12 +40,20 @@ class UIManager:
             20, 20
         )
         
+        # Ensure handle doesn't extend beyond slider at 0%
+        if sound_manager.sfx_volume <= 0:
+            self.sfx_handle_rect.x = self.panel_x + 130 - 10
+        
         self.music_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 + 10, self.slider_width, 10)
         self.music_handle_rect = pygame.Rect(
             self.panel_x + 130 + int(sound_manager.music_volume * self.slider_width) - 10, 
             SCREEN_HEIGHT // 2 + 5, 
             20, 20
         )
+        
+        # Ensure handle doesn't extend beyond slider at 0%
+        if sound_manager.music_volume <= 0:
+            self.music_handle_rect.x = self.panel_x + 130 - 10
         
         # Dragging state
         self.dragging_sfx_handle = False
@@ -184,7 +192,7 @@ class UIManager:
         # Sound effects slider
         sfx_slider_x = panel_x + 20
         sfx_slider_y = panel_y + 130
-        sfx_slider_width = panel_width - 40
+        sfx_slider_width = panel_width - 90
         
         # Draw slider background with gradient
         slider_height = 10
@@ -224,6 +232,10 @@ class UIManager:
         handle_y = sfx_slider_y + slider_height // 2
         handle_radius = 10
         
+        # Ensure handle doesn't extend beyond slider at 0%
+        if fill_width <= 10:
+            handle_x = sfx_slider_x
+        
         # Glow effect
         pygame.draw.circle(surface, (100, 100, 200, 150), (handle_x, handle_y), handle_radius + 2)
         # Main handle
@@ -248,7 +260,7 @@ class UIManager:
         # Music slider
         music_slider_x = panel_x + 20
         music_slider_y = panel_y + 190
-        music_slider_width = panel_width - 40
+        music_slider_width = panel_width - 90
         
         # Draw slider background with gradient
         music_slider_bg_rect = pygame.Rect(music_slider_x, music_slider_y, music_slider_width, slider_height)
@@ -286,6 +298,10 @@ class UIManager:
         music_handle_x = music_slider_x + music_fill_width - 10
         music_handle_y = music_slider_y + slider_height // 2
         
+        # Ensure handle doesn't extend beyond slider at 0%
+        if music_fill_width <= 10:
+            music_handle_x = music_slider_x
+        
         # Glow effect
         pygame.draw.circle(surface, (100, 100, 200, 150), (music_handle_x, music_handle_y), handle_radius + 2)
         # Main handle
@@ -304,7 +320,7 @@ class UIManager:
         # Draw close button with the same style as other buttons
         close_button_width, close_button_height = 120, 40
         close_button_rect = pygame.Rect(panel_x + panel_width // 2 - close_button_width // 2, 
-                                      panel_y + 250, 
+                                      panel_y + 240, # Moved up from 250 to add bottom margin
                                       close_button_width, close_button_height)
         
         is_close_hovered = close_button_rect.collidepoint(pygame.mouse.get_pos())
@@ -331,9 +347,9 @@ class UIManager:
             
             # Check if close button was clicked
             close_button_rect = pygame.Rect(
-                self.panel_x + self.panel_width // 2 - 50, 
-                SCREEN_HEIGHT // 2 + 80, 
-                100, 35
+                self.panel_x + self.panel_width // 2 - 60, 
+                SCREEN_HEIGHT // 2 + 70, 
+                120, 40
             )
             if close_button_rect.collidepoint(pos):
                 self.settings_open = False
@@ -353,13 +369,14 @@ class UIManager:
             mouse_x = pos[0]
             slider_left = self.sfx_slider_rect.left
             slider_right = self.sfx_slider_rect.right
+            handle_width = self.sfx_handle_rect.width
             
-            # Keep handle within slider bounds
-            handle_x = max(slider_left, min(mouse_x, slider_right - self.sfx_handle_rect.width))
+            # Keep handle within slider bounds (ensuring it doesn't extend beyond at 0%)
+            handle_x = max(slider_left - handle_width//2, min(mouse_x, slider_right - handle_width//2))
             self.sfx_handle_rect.x = handle_x
             
-            # Update volume based on handle position
-            volume_ratio = (handle_x - slider_left) / (slider_right - slider_left - self.sfx_handle_rect.width)
+            # Update volume based on handle position (adjusted calculation)
+            volume_ratio = max(0, min(1, (handle_x + handle_width//2 - slider_left) / self.slider_width))
             self.sound_manager.set_sfx_volume(volume_ratio)
             return True
         
@@ -368,13 +385,14 @@ class UIManager:
             mouse_x = pos[0]
             slider_left = self.music_slider_rect.left
             slider_right = self.music_slider_rect.right
+            handle_width = self.music_handle_rect.width
             
-            # Keep handle within slider bounds
-            handle_x = max(slider_left, min(mouse_x, slider_right - self.music_handle_rect.width))
+            # Keep handle within slider bounds (ensuring it doesn't extend beyond at 0%)
+            handle_x = max(slider_left - handle_width//2, min(mouse_x, slider_right - handle_width//2))
             self.music_handle_rect.x = handle_x
             
-            # Update volume based on handle position
-            volume_ratio = (handle_x - slider_left) / (slider_right - slider_left - self.music_handle_rect.width)
+            # Update volume based on handle position (adjusted calculation)
+            volume_ratio = max(0, min(1, (handle_x + handle_width//2 - slider_left) / self.slider_width))
             self.sound_manager.set_music_volume(volume_ratio)
             return True
         
