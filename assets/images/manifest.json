@@ -1,4 +1,11 @@
 {
+    "blue_stars": {
+        "file": "starlights_end/additional_assets/SE-asset-blue-stars.png",
+        "scale": [
+            800,
+            600
+        ]
+    },
     "map_background": {
         "file": "starlights_end/SE-map-background.png",
         "scale": [

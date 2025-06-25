@@ -1,6 +1,6 @@
 """
 Background manager for themed map visuals.
-Handles nebulae, dying stars, and cosmic debris for the Starlight's End theme.
+Handles nebulae, blue stars, and cosmic debris for the Starlight's End theme.
 """
 import pygame
 import random
@@ -13,23 +13,23 @@ class BackgroundManager:
         self.background_image = None
         self.background_position = 0
         self.background_speed = 0.5  # Slow scrolling speed
+        self.blue_stars_image = None
+        self.blue_stars_alpha = 255
+        self.blue_stars_fade_direction = -1  # -1 for fading out, 1 for fading in
+        self.blue_stars_fade_speed = 0.5  # Speed of the fade effect
         
         # Load background image if asset_loader is provided
         if self.asset_loader:
             self.background_image = self.asset_loader.get_image('map_background')
+            self.blue_stars_image = self.asset_loader.get_image('blue_stars')
         
         self.nebulae = []
-        self.dying_stars = []
         self.cosmic_debris = []
         self.stellar_remnants = []
         
         # Create nebulae patches
         for _ in range(3):
             self.nebulae.append(self._create_nebula())
-        
-        # Create dying stars
-        for _ in range(2):
-            self.dying_stars.append(self._create_dying_star())
         
         # Create cosmic debris
         for _ in range(8):
@@ -43,6 +43,7 @@ class BackgroundManager:
         """Set the asset loader after initialization."""
         self.asset_loader = asset_loader
         self.background_image = self.asset_loader.get_image('map_background')
+        self.blue_stars_image = self.asset_loader.get_image('blue_stars')
     
     def _create_nebula(self):
         return {
@@ -58,21 +59,6 @@ class BackgroundManager:
             'drift_speed': random.uniform(0.1, 0.3),
             'pulse_speed': random.uniform(0.005, 0.015),
             'pulse_offset': random.uniform(0, 6.28)
-        }
-    
-    def _create_dying_star(self):
-        return {
-            'x': random.randint(100, SCREEN_WIDTH - 100),
-            'y': random.randint(100, SCREEN_HEIGHT - 100),
-            'size': random.randint(15, 25),
-            'color': random.choice([
-                (200, 100, 50),   # Orange
-                (180, 80, 40),    # Red-orange
-                (220, 120, 60)    # Bright orange
-            ]),
-            'flicker_speed': random.uniform(0.02, 0.05),
-            'flicker_offset': random.uniform(0, 6.28),
-            'glow_radius': random.randint(40, 80)
         }
     
     def _create_debris(self):
@@ -103,6 +89,20 @@ class BackgroundManager:
             if self.background_position <= -SCREEN_WIDTH:
                 self.background_position = 0
         
+        # Update blue stars blinking effect
+        if self.blue_stars_image:
+            # Update alpha based on fade direction
+            self.blue_stars_alpha += self.blue_stars_fade_direction * self.blue_stars_fade_speed
+            
+            # Change direction when reaching limits
+            if self.blue_stars_alpha <= 100:  # Minimum visibility
+                self.blue_stars_fade_direction = 1
+            elif self.blue_stars_alpha >= 255:  # Maximum visibility
+                self.blue_stars_fade_direction = -1
+            
+            # Ensure alpha stays within valid range
+            self.blue_stars_alpha = max(100, min(255, self.blue_stars_alpha))
+        
         # Update cosmic debris
         for debris in self.cosmic_debris:
             debris['x'] -= debris['speed']
@@ -123,6 +123,13 @@ class BackgroundManager:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((20, 0, 40, 30))  # Dark purple with transparency
             surface.blit(overlay, (0, 0))
+        
+        # Draw blue stars with blinking effect
+        if self.blue_stars_image:
+            # Create a copy of the image with adjusted alpha
+            stars_surface = self.blue_stars_image.copy()
+            stars_surface.set_alpha(int(self.blue_stars_alpha))
+            surface.blit(stars_surface, (0, 0))
         
         # Draw nebulae
         for nebula in self.nebulae:
@@ -157,24 +164,6 @@ class BackgroundManager:
                                  (remnant['radius'], remnant['radius']), r)
             
             surface.blit(remnant_surface, (remnant['x'] - remnant['radius'], remnant['y'] - remnant['radius']))
-        
-        # Draw dying stars
-        for star in self.dying_stars:
-            flicker = 0.6 + 0.4 * math.sin(pygame.time.get_ticks() * star['flicker_speed'] + star['flicker_offset'])
-            
-            # Draw glow
-            glow_surface = pygame.Surface((star['glow_radius']*2, star['glow_radius']*2), pygame.SRCALPHA)
-            for r in range(star['glow_radius'], 0, -2):
-                alpha = int(80 * flicker * (r / star['glow_radius']))
-                glow_color = (*star['color'], alpha)
-                pygame.draw.circle(glow_surface, glow_color, 
-                                 (star['glow_radius'], star['glow_radius']), r)
-            
-            surface.blit(glow_surface, (star['x'] - star['glow_radius'], star['y'] - star['glow_radius']))
-            
-            # Draw star core
-            core_color = tuple(int(c * flicker) for c in star['color'])
-            pygame.draw.circle(surface, core_color, (star['x'], star['y']), int(star['size'] * flicker))
         
         # Draw cosmic debris
         for debris in self.cosmic_debris:
