@@ -311,9 +311,7 @@ class GameManager:
                     # Handle main menu button clicks
                     elif self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
                         if self.ui_manager.start_button_rect and self.ui_manager.start_button_rect.collidepoint(event.pos):
-                            self.start_new_game(testing_mode=False)
-                        elif self.ui_manager.test_button_rect and self.ui_manager.test_button_rect.collidepoint(event.pos):
-                            self.start_new_game(testing_mode=True)
+                            self.start_new_game(testing_mode=self.testing_mode)
                         # Handle robot button click
                         elif self.ui_manager.show_robot_button and self.ui_manager.robot_button_rect.collidepoint(event.pos):
                             self.start_new_game(testing_mode=True)

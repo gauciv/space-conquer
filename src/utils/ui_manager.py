@@ -854,14 +854,8 @@ class UIManager:
         is_start_hovered = start_button_rect.collidepoint(pygame.mouse.get_pos())
         self._draw_stylized_button(surface, start_button_rect, "START GAME", (30, 30, 80), (80, 80, 180), is_start_hovered)
         
-        # Test Mode Button (only shown during development if testing_mode is True)
-        if testing_mode:
-            test_button_rect = pygame.Rect(SCREEN_WIDTH - 120, SCREEN_HEIGHT - 40, 100, 30)
-            is_test_hovered = test_button_rect.collidepoint(pygame.mouse.get_pos())
-            self._draw_stylized_button(surface, test_button_rect, "TEST MODE", (40, 20, 60), (120, 80, 140), is_test_hovered)
-            self.test_button_rect = test_button_rect
-        else:
-            self.test_button_rect = None
+        # Remove test mode button from main menu
+        self.test_button_rect = None
         
         # Draw the robot button if it's enabled
         if self.show_robot_button:
@@ -906,28 +900,6 @@ class UIManager:
         # Make sure we clear the main menu button rect when showing the start screen
         # to avoid confusion with the game over screen
         self.main_menu_button_rect = None
-        
-        # Show testing mode instructions (only during development)
-        if testing_mode:
-            test_instructions = [
-                "TESTING MODE CONTROLS:",
-                "1: Spawn Mini-Boss",
-                "2: Spawn Main Boss",
-                "3: Add 100 Score",
-                "4: Add Health",
-                "5: Toggle Rapid Fire",
-                "6: Increase Speed",
-                "0: Toggle Debug Info"
-            ]
-            
-            # Create a semi-transparent background for test instructions
-            test_overlay = pygame.Surface((300, len(test_instructions) * 20 + 20), pygame.SRCALPHA)
-            test_overlay.fill((0, 0, 30, 150))
-            surface.blit(test_overlay, (20, SCREEN_HEIGHT - len(test_instructions) * 20 - 30))
-            
-            for i, instruction in enumerate(test_instructions):
-                text = self.font_small.render(instruction, True, (200, 200, 100))
-                surface.blit(text, (30, SCREEN_HEIGHT - len(test_instructions) * 20 - 10 + i * 20))
     
     def _draw_stylized_button(self, surface, rect, text, color_dark, color_light, is_hovered=False):
         """Draw a stylized button with a space theme."""
