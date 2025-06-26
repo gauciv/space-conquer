@@ -31,7 +31,9 @@ class Debris(pygame.sprite.Sprite):
         self.hitbox.center = self.rect.center
         
         # Debris properties
-        self.speed = random.randint(4, 7)  # Faster than normal enemies
+        self.base_speed = random.randint(4, 7)  # Faster than normal enemies
+        self.speed_multiplier = 1.0  # Can be modified by game phases
+        self.speed = self.base_speed
         self.damage = 1  # Damage dealt to player on collision
         self.points = 5  # Points awarded for destroying
         self.health = 1  # Takes 1 hit to destroy
@@ -42,6 +44,9 @@ class Debris(pygame.sprite.Sprite):
         self.original_image = self.image.copy()
     
     def update(self):
+        # Apply speed multiplier
+        self.speed = self.base_speed * self.speed_multiplier
+        
         # Move from right to left
         self.rect.x -= self.speed
         

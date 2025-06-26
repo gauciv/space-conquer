@@ -71,6 +71,10 @@ class BossManager:
                 self.mini_boss = None
                 self.mini_boss_dying = False
                 print("Mini boss destroyed and removed!")
+                
+                # Notify phase manager that mini boss is defeated
+                if hasattr(self.game_manager.phase_manager, 'handle_boss_defeated'):
+                    self.game_manager.phase_manager.handle_boss_defeated('mini')
         
         # Update main boss
         if self.main_boss:
@@ -82,6 +86,10 @@ class BossManager:
                 self.main_boss = None
                 self.main_boss_dying = False
                 print("Main boss destroyed and removed!")
+                
+                # Notify phase manager that main boss is defeated
+                if hasattr(self.game_manager.phase_manager, 'handle_boss_defeated'):
+                    self.game_manager.phase_manager.handle_boss_defeated('main')
     
     def draw(self, surface):
         """Draw all active bosses."""

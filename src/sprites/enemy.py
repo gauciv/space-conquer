@@ -111,6 +111,9 @@ class Enemy(pygame.sprite.Sprite):
         self.dive_speed = self.speed * 1.5
     
     def update(self):
+        # Apply speed multiplier
+        self.speed = self.base_speed * self.speed_multiplier
+        
         # Move based on movement pattern
         if self.movement_pattern == "straight":
             self.rect.x -= self.speed

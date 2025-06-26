@@ -51,6 +51,9 @@ class Asteroid(pygame.sprite.Sprite):
         # Powerup to drop when destroyed
         self.powerup_type = random.choice(['health', 'speed', 'rapid_fire', 'score_multiplier'])
         
+        # Chance to drop a powerup (can be modified by game phases)
+        self.powerup_drop_chance = 0.5  # 50% chance by default
+        
         # Visual effect properties
         self.glow_alpha = 0
         self.hit_flash = False
@@ -135,3 +138,6 @@ class Asteroid(pygame.sprite.Sprite):
             # Draw hitbox if debug mode is enabled
             if DEBUG_HITBOXES:
                 pygame.draw.rect(surface, (150, 150, 0), self.hitbox, 1)
+    def should_drop_powerup(self):
+        """Determine if the asteroid should drop a powerup based on the current chance."""
+        return random.random() < self.powerup_drop_chance

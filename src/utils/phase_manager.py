@@ -4,6 +4,7 @@ Handles game phases, difficulty progression, and enemy types based on time.
 """
 import pygame
 import time
+import math
 
 class Phase:
     """Represents a game phase with specific enemy types and difficulty settings."""
