@@ -505,7 +505,9 @@ class PhaseManager:
         scaled_text = pygame.transform.scale(frenzy_text, 
                                            (int(frenzy_text.get_width() * size_multiplier),
                                             int(frenzy_text.get_height() * size_multiplier)))
-        scaled_rect = scaled_text.get_rect(center=(surface.get_width() // 2, 30))
+        
+        # Position below the timer (y=100 instead of y=30)
+        scaled_rect = scaled_text.get_rect(center=(surface.get_width() // 2, 100))
         
         # Create a glowing effect
         for i in range(3, 0, -1):
@@ -515,7 +517,7 @@ class PhaseManager:
             pygame.draw.rect(glow_surf, (255, 50, 50, glow_alpha), 
                            (0, 0, glow_surf.get_width(), glow_surf.get_height()), 
                            border_radius=15)
-            glow_rect = glow_surf.get_rect(center=(surface.get_width() // 2, 30))
+            glow_rect = glow_surf.get_rect(center=(surface.get_width() // 2, 100))
             surface.blit(glow_surf, glow_rect)
         
         # Draw the text
@@ -523,7 +525,7 @@ class PhaseManager:
         
         # Draw warning triangles on the sides
         triangle_size = 20 + int(pulse * 10)  # 20-30 pixels
-        triangle_y = 30
+        triangle_y = 100  # Match the new y position
         triangle_margin = 50
         
         # Left triangle
@@ -547,7 +549,7 @@ class PhaseManager:
             time_remaining = max(0, self.frenzy_duration - (self.game_time - self.frenzy_start_time))
             time_font = pygame.font.SysFont('Arial', 16)
             time_text = time_font.render(f"{time_remaining:.1f}s", True, (255, 255, 255))
-            time_rect = time_text.get_rect(center=(surface.get_width() // 2, 60))
+            time_rect = time_text.get_rect(center=(surface.get_width() // 2, 130))  # Position below the frenzy text
             surface.blit(time_text, time_rect)
     def _clear_all_enemies_with_explosion(self):
         """Clear all enemies with explosion effects when main boss appears."""

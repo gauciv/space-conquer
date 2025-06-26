@@ -540,6 +540,9 @@ class UIManager:
             # Check if close button was clicked
             if self.close_button_rect and self.close_button_rect.collidepoint(pos):
                 self.settings_open = False
+                # Update the phase manager's last update time to prevent time skipping
+                if hasattr(self.game_manager, 'phase_manager'):
+                    self.game_manager.phase_manager.last_update_time_ms = time.time() * 1000
                 return True
         
         return False
