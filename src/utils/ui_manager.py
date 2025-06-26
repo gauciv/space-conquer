@@ -1086,9 +1086,9 @@ class UIManager:
                 surface.blit(god_text, (robot_rect.right + 5, robot_rect.centery + 10))
             return
             
-        # Draw a larger popup panel that doesn't overlap with the robot icon
+        # Draw a compact popup panel that doesn't overlap with the robot icon
         panel_width = 250
-        panel_height = 200  # Increased height for phase selector
+        panel_height = 150  # Reduced height since we removed phase selector
         panel_x = 10
         panel_y = 120
         
@@ -1143,66 +1143,9 @@ class UIManager:
         self._draw_toggle_button(surface, fps_rect, "Show FPS", self.show_fps)
         button_y += button_height + button_spacing
         
-        # Phase selection dropdown
-        if phase_manager:
-            # Draw phase selection label
-            phase_label = self.font_small.render("Select Phase:", True, (200, 200, 255))
-            surface.blit(phase_label, (panel_x + 10, button_y))
-            button_y += 20
-            
-            # Draw dropdown button
-            dropdown_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
-            
-            # Get current phase name
-            current_phase_name = "Select Phase"
-            if 0 <= self.selected_phase_index < len(phase_manager.phases):
-                current_phase_name = phase_manager.phases[self.selected_phase_index].name
-                
-            # Draw dropdown button
-            pygame.draw.rect(surface, (40, 40, 80), dropdown_rect)
-            pygame.draw.rect(surface, (80, 80, 120), dropdown_rect, 1)
-            
-            # Draw selected phase name
-            phase_text = self.font_small.render(current_phase_name, True, (200, 200, 255))
-            surface.blit(phase_text, (dropdown_rect.x + 10, dropdown_rect.centery - phase_text.get_height() // 2))
-            
-            # Draw dropdown arrow
-            arrow_points = [
-                (dropdown_rect.right - 15, dropdown_rect.centery - 3),
-                (dropdown_rect.right - 5, dropdown_rect.centery - 3),
-                (dropdown_rect.right - 10, dropdown_rect.centery + 5)
-            ]
-            pygame.draw.polygon(surface, (200, 200, 255), arrow_points)
-            
-            # Store dropdown rect for click detection
-            self.phase_dropdown_rect = dropdown_rect
-            
-            # Draw dropdown options if open
-            if self.phase_dropdown_open:
-                option_height = 25
-                dropdown_options_height = len(phase_manager.phases) * option_height
-                dropdown_options_rect = pygame.Rect(dropdown_rect.x, dropdown_rect.bottom, 
-                                                  dropdown_rect.width, dropdown_options_height)
-                
-                # Draw options background
-                pygame.draw.rect(surface, (30, 30, 60), dropdown_options_rect)
-                pygame.draw.rect(surface, (80, 80, 120), dropdown_options_rect, 1)
-                
-                # Draw each option
-                for i, phase in enumerate(phase_manager.phases):
-                    option_rect = pygame.Rect(dropdown_options_rect.x, dropdown_options_rect.y + i * option_height,
-                                            dropdown_options_rect.width, option_height)
-                    
-                    # Highlight selected or hovered option
-                    if i == self.selected_phase_index or option_rect.collidepoint(pygame.mouse.get_pos()):
-                        pygame.draw.rect(surface, (60, 60, 100), option_rect)
-                    
-                    # Draw option text
-                    option_text = self.font_small.render(phase.name, True, (200, 200, 255))
-                    surface.blit(option_text, (option_rect.x + 10, option_rect.centery - option_text.get_height() // 2))
-                    
-                    # Store option rect for click detection
-                    phase.option_rect = option_rect
+        # Note about phase markers
+        note_text = self.font_small.render("Use phase markers on the right side →", True, (200, 200, 255))
+        surface.blit(note_text, (panel_x + 10, button_y))
         
         # Store button rectangles for click detection
         self.god_mode_button_rect = god_mode_rect
@@ -1276,7 +1219,6 @@ class UIManager:
         # Check if the collapse button was clicked when panel is expanded
         if not self.testing_panel_collapsed and hasattr(self, 'collapse_button_rect') and self.collapse_button_rect.collidepoint(pos):
             self.testing_panel_collapsed = True
-            self.phase_dropdown_open = False  # Close dropdown when collapsing panel
             return True
             
         # If collapsed, don't check the rest of the panel
@@ -1294,24 +1236,6 @@ class UIManager:
             
         if self.fps_button_rect and self.fps_button_rect.collidepoint(pos):
             self.show_fps = not self.show_fps
-            return True
-            
-        # Check phase dropdown
-        if hasattr(self, 'phase_dropdown_rect') and self.phase_dropdown_rect.collidepoint(pos):
-            self.phase_dropdown_open = not self.phase_dropdown_open
-            return True
-            
-        # Check phase dropdown options
-        if self.phase_dropdown_open and phase_manager:
-            for i, phase in enumerate(phase_manager.phases):
-                if hasattr(phase, 'option_rect') and phase.option_rect.collidepoint(pos):
-                    self.selected_phase_index = i
-                    self.phase_dropdown_open = False
-                    phase_manager.skip_to_phase(i)
-                    return True
-            
-            # Close dropdown if clicked outside
-            self.phase_dropdown_open = False
             return True
             
         return False

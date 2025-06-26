@@ -127,6 +127,9 @@ class GameManager:
         self.player = Player(self.asset_loader.get_image('player'), self.sound_manager)
         self.all_sprites.add(self.player)
         
+        # Store a reference to the asset loader for bullet images
+        self.player.asset_loader = self.asset_loader
+        
         # Reset boss manager
         self.boss_manager.reset()
         
@@ -206,6 +209,7 @@ class GameManager:
                     elif self.game_state == self.GAME_STATE_GAME_OVER and not self.ui_manager.settings_open:
                         # Restart after game over
                         self.start_new_game(testing_mode=False)
+                    # Note: We don't handle shooting here - it's handled in the Player.update() method
                 elif event.key == pygame.K_t:
                     if self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
                         # Start test mode with T from menu
@@ -633,6 +637,10 @@ class GameManager:
                 # Draw game elements
                 self.all_sprites.draw(self.screen)
                 self.player.draw(self.screen)
+                
+                # Draw player bullets with enhanced effects
+                for bullet in self.player.bullets:
+                    bullet.draw(self.screen)
                 
                 # Draw enemies with enhanced effects
                 for enemy in self.enemies:

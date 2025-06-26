@@ -59,6 +59,14 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_RIGHT]:
             self.rect.x += self.speed
         
+        # Handle shooting with SPACE key
+        if keys[pygame.K_SPACE]:
+            # Get bullet image from asset loader if available
+            bullet_image = None
+            if hasattr(self, 'asset_loader'):
+                bullet_image = self.asset_loader.get_image('bullet')
+            self.shoot(bullet_image)
+        
         # Keep player on screen
         if self.rect.left < 0:
             self.rect.left = 0
@@ -118,6 +126,8 @@ class Player(pygame.sprite.Sprite):
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
+            
+            # Create bullet with proper image
             bullet = Bullet(self.rect.right, self.rect.centery, bullet_image)
             self.bullets.add(bullet)
             
