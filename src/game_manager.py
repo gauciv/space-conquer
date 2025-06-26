@@ -512,24 +512,6 @@ class GameManager:
                             # Schedule music volume restoration
                             pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
-                # Check for player collision with boss bullets
-                if self.mini_boss is not None:
-                    # Make sure the mini boss has been properly initialized with bullets
-                    if hasattr(self.mini_boss, 'bullets') and hasattr(self.player, 'hitbox'):
-                        for bullet in list(self.mini_boss.bullets):  # Create a copy of the bullets list
-                            if self.player.hitbox.colliderect(bullet.hitbox):
-                                bullet.kill()
-                                if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
-                                    if self.player.health <= 0:
-                                        self.game_state = self.GAME_STATE_GAME_OVER
-                                        # Play game over sound
-                                        self.sound_manager.play_sound('game_over')
-                                        # Lower music volume for game over sound
-                                    if self.sound_manager.music_enabled:
-                                        self.sound_manager.temporarily_lower_music(duration=1500)
-                                    # Schedule music volume restoration
-                                    pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
-                
                 # Check for player collision with power-ups
                 for powerup in self.powerups:
                     if self.player.hitbox.colliderect(powerup.hitbox):
@@ -751,15 +733,25 @@ class GameManager:
         pygame.quit()
         sys.exit()
 
-def main():
-    """Entry point when run as a module."""
-    game = GameManager()
-    game.run()
-    def create_boss(self, boss_type):
-        """Create a boss of the specified type."""
-        return Boss(boss_type, self.asset_loader, self.sound_manager)
     def initialize_boss(self, boss_type):
         """Initialize a boss of the specified type and add it to the game."""
+        if boss_type == 'mini':
+            # Create mini boss
+            mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
+            self.all_sprites.add(mini_boss)
+            self.boss_manager.mini_boss = mini_boss
+            self.boss_manager.mini_boss_spawned = True
+            print("Mini boss initialized!")
+            return mini_boss
+        elif boss_type == 'main':
+            # Create main boss
+            main_boss = Boss('main', self.asset_loader, self.sound_manager)
+            self.all_sprites.add(main_boss)
+            self.boss_manager.main_boss = main_boss
+            self.boss_manager.main_boss_spawned = True
+            print("Main boss initialized!")
+            return main_boss
+        return None
         if boss_type == 'mini':
             # Create mini boss
             self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
