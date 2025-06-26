@@ -1,9 +1,11 @@
 """
 Enemy sprites for the Space Impact game.
+Five enemy types: low-type, elite-type, super-type, mini-boss, and boss.
 """
 import pygame
 import random
 import math
+import time
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, DEBUG_HITBOXES
 
 class Enemy(pygame.sprite.Sprite):
@@ -12,52 +14,59 @@ class Enemy(pygame.sprite.Sprite):
         self.enemy_type = enemy_type
         
         # Set image based on enemy type
-        if enemy_type == 'normal':
+        if enemy_type == 'low':
             self.image = images.get('normal_enemy')
             self.health = 1
             self.base_speed = 3
-            self.points = 10
-            self.movement_pattern = "straight"
-            # Normal enemy has a slightly smaller hitbox (80% of sprite size)
+            self.points = 30  # Already includes 3x multiplier
+            self.movement_pattern = "oscillate"  # New movement pattern for low-type
+            # Low-type enemy has a slightly smaller hitbox (80% of sprite size)
             self.hitbox_ratio = 0.8
-        elif enemy_type == 'fast':
+            
+            # Special properties for low-type enemy
+            self.oscillation_amplitude = random.randint(10, 20)  # Horizontal oscillation range
+            self.oscillation_speed = random.uniform(0.05, 0.1)  # How fast it oscillates
+            self.oscillation_angle = random.random() * 6.28  # Random start angle
+            
+            # Stutter behavior (periodically slows down)
+            self.stutter_timer = random.uniform(3.0, 5.0)  # Time until next stutter
+            self.stutter_duration = 0.0  # Current stutter duration
+            self.is_stuttering = False
+            self.last_time = time.time()
+            
+            # Attack pattern
+            self.fire_rate = random.uniform(2.0, 3.0)  # Time between shots
+            self.time_since_last_shot = random.uniform(0, 1.5)  # Randomize initial shot timing
+            self.is_telegraphing = False  # Whether it's about to shoot
+            self.telegraph_duration = 0.3  # How long the telegraph lasts
+            self.telegraph_timer = 0.0
+            
+        elif enemy_type == 'elite':
             self.image = images.get('fast_enemy')
             self.health = 1
             self.base_speed = 5
-            self.points = 15
+            self.points = 45  # Already includes 3x multiplier
             self.movement_pattern = "zigzag"
-            # Fast enemy has an even smaller hitbox (70% of sprite size) since it's harder to hit
+            # Elite enemy has an even smaller hitbox (70% of sprite size) since it's harder to hit
             self.hitbox_ratio = 0.7
-        elif enemy_type == 'tank':
+            
+        elif enemy_type == 'super':
             self.image = images.get('tank_enemy')
             self.health = 3
             self.base_speed = 2
-            self.points = 25
+            self.points = 75  # Already includes 3x multiplier
             self.movement_pattern = "straight"
-            # Tank enemy has a larger hitbox (90% of sprite size) since it's a bigger target
+            # Super enemy has a larger hitbox (90% of sprite size) since it's a bigger target
             self.hitbox_ratio = 0.9
-        elif enemy_type == 'drone':
-            # Fallback to normal enemy if drone image is not available
-            self.image = images.get('normal_enemy')
-            self.health = 1
-            self.base_speed = 4
-            self.points = 20
-            self.movement_pattern = "sine"
-            # Drone enemy has a medium hitbox (75% of sprite size)
-            self.hitbox_ratio = 0.75
-        elif enemy_type == 'bomber':
-            # Fallback to tank enemy if bomber image is not available
-            self.image = images.get('tank_enemy')
-            self.health = 2
-            self.base_speed = 2
-            self.points = 30
-            self.movement_pattern = "dive"
-            # Bomber enemy has a larger hitbox (85% of sprite size)
-            self.hitbox_ratio = 0.85
+            
         else:
-            # Default to normal enemy for any unknown type
+            # Default to low-type enemy for any unknown type
             self.image = images.get('normal_enemy')
             self.health = 1
+            self.base_speed = 3
+            self.points = 30
+            self.movement_pattern = "straight"
+            self.hitbox_ratio = 0.8
             self.base_speed = 3
             self.points = 10
             self.movement_pattern = "straight"
@@ -71,18 +80,17 @@ class Enemy(pygame.sprite.Sprite):
         if self.image is None:
             # Create a default colored surface
             self.image = pygame.Surface((50, 30))
-            if enemy_type == 'normal':
-                self.image.fill((255, 0, 0))  # Red for normal
-            elif enemy_type == 'fast':
-                self.image.fill((255, 255, 0))  # Yellow for fast
-            elif enemy_type == 'tank':
-                self.image.fill((0, 0, 255))  # Blue for tank
-            elif enemy_type == 'drone':
-                self.image.fill((0, 255, 0))  # Green for drone
-            elif enemy_type == 'bomber':
-                self.image.fill((255, 0, 255))  # Purple for bomber
+            if enemy_type == 'low':
+                self.image.fill((255, 0, 0))  # Red for low-type
+            elif enemy_type == 'elite':
+                self.image.fill((255, 255, 0))  # Yellow for elite-type
+            elif enemy_type == 'super':
+                self.image.fill((0, 0, 255))  # Blue for super-type
             else:
                 self.image.fill((128, 128, 128))  # Gray for unknown
+        
+        # Store the original image for the low-type enemy's telegraph effect
+        self.original_image = self.image.copy()
         
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
@@ -109,13 +117,78 @@ class Enemy(pygame.sprite.Sprite):
         self.dive_state = "approach"  # approach, dive, retreat
         self.target_y = random.randint(100, SCREEN_HEIGHT - 100)
         self.dive_speed = self.speed * 1.5
-    
+        
+        # For bullet firing (low-type enemy)
+        self.bullets = []  # Store bullets here
+        
     def update(self):
+        # Get current time for time-based behaviors
+        current_time = time.time()
+        delta_time = current_time - self.last_time if hasattr(self, 'last_time') else 0.016
+        self.last_time = current_time
+        
         # Apply speed multiplier
         self.speed = self.base_speed * self.speed_multiplier
         
-        # Move based on movement pattern
-        if self.movement_pattern == "straight":
+        # Update low-type enemy specific behaviors
+        if self.enemy_type == 'low' and self.movement_pattern == "oscillate":
+            # Update stutter timer
+            if not self.is_stuttering:
+                self.stutter_timer -= delta_time
+                if self.stutter_timer <= 0:
+                    # Start stuttering
+                    self.is_stuttering = True
+                    self.stutter_duration = 0.5  # Stutter for 0.5 seconds
+                    self.stutter_timer = random.uniform(3.0, 5.0)  # Reset timer for next stutter
+            else:
+                # Currently stuttering
+                self.stutter_duration -= delta_time
+                if self.stutter_duration <= 0:
+                    self.is_stuttering = False
+            
+            # Calculate actual speed based on stutter state
+            actual_speed = self.speed * 0.5 if self.is_stuttering else self.speed
+            
+            # Move horizontally with oscillation
+            self.rect.x -= actual_speed
+            
+            # Update oscillation angle
+            self.oscillation_angle += self.oscillation_speed
+            
+            # Apply horizontal oscillation
+            oscillation = math.sin(self.oscillation_angle) * self.oscillation_amplitude
+            self.rect.x += oscillation * delta_time * 60  # Scale by delta_time and target 60 FPS
+            
+            # Update attack pattern
+            self.time_since_last_shot += delta_time
+            
+            # Check if it's time to telegraph the shot
+            if not self.is_telegraphing and self.time_since_last_shot >= self.fire_rate - self.telegraph_duration:
+                self.is_telegraphing = True
+                self.telegraph_timer = self.telegraph_duration
+                
+                # Create a brightened version of the image for telegraph effect
+                bright_image = self.original_image.copy()
+                bright_overlay = pygame.Surface(bright_image.get_size(), pygame.SRCALPHA)
+                bright_overlay.fill((50, 50, 100, 0))
+                bright_image.blit(bright_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                self.image = bright_image
+            
+            # Update telegraph timer
+            if self.is_telegraphing:
+                self.telegraph_timer -= delta_time
+                if self.telegraph_timer <= 0:
+                    self.is_telegraphing = False
+                    self.image = self.original_image.copy()  # Reset image
+                    
+                    # Fire a shot
+                    if self.time_since_last_shot >= self.fire_rate:
+                        self.fire_shot()
+                        self.time_since_last_shot = 0
+                        self.fire_rate = random.uniform(2.0, 3.0)  # Randomize next shot timing
+        
+        # Other movement patterns remain the same
+        elif self.movement_pattern == "straight":
             self.rect.x -= self.speed
         
         elif self.movement_pattern == "zigzag":
