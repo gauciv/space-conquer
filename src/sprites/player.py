@@ -199,6 +199,22 @@ class Player(pygame.sprite.Sprite):
         # Set cooldown for this damage source
         self.damage_cooldown[source_id] = current_time
         
+        # Check if player died and handle it in the game manager
+        if self.health <= 0 and hasattr(pygame, 'app') and hasattr(pygame.app, 'game_manager'):
+            game_manager = pygame.app.game_manager
+            if game_manager.testing_mode and not game_manager.ui_manager.god_mode:
+                # In test mode without god mode, start respawn countdown
+                game_manager.game_state = game_manager.GAME_STATE_RESPAWNING
+                game_manager.ui_manager.start_respawn_countdown()
+                print("Player died in test mode - starting respawn countdown")
+                # Return True to indicate damage was applied but don't proceed with game over
+                return True
+            else:
+                # Normal game over
+                game_manager.game_state = game_manager.GAME_STATE_GAME_OVER
+                game_manager.game_active = False
+                game_manager.sound_manager.play_sound('game_over')
+        
         return True  # Damage was applied
     
     def draw(self, surface):

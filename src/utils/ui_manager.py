@@ -63,6 +63,11 @@ class UIManager:
         self.show_player_coords = False
         self.show_fps = True
         
+        # Player respawn in test mode
+        self.respawning = False
+        self.respawn_timer = 0
+        self.respawn_duration = 3000  # 3 seconds in milliseconds
+        
         # Phase selection dropdown
         self.phase_dropdown_open = False
         self.selected_phase_index = 0
@@ -1239,3 +1244,47 @@ class UIManager:
             return True
             
         return False
+    def draw_respawn_countdown(self, surface):
+        """Draw respawn countdown in test mode."""
+        if not self.respawning:
+            return
+            
+        # Calculate remaining time
+        remaining_time = max(0, (self.respawn_timer + self.respawn_duration - pygame.time.get_ticks()) / 1000)
+        
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 100))  # Semi-transparent black
+        surface.blit(overlay, (0, 0))
+        
+        # Draw respawn message
+        font_large = pygame.font.SysFont('Arial', 48, bold=True)
+        font_medium = pygame.font.SysFont('Arial', 24)
+        
+        # Main message
+        respawn_text = font_large.render("RESPAWNING", True, (255, 255, 255))
+        surface.blit(respawn_text, (SCREEN_WIDTH // 2 - respawn_text.get_width() // 2, SCREEN_HEIGHT // 2 - 60))
+        
+        # Countdown
+        countdown_text = font_large.render(f"{remaining_time:.1f}", True, (255, 200, 0))
+        surface.blit(countdown_text, (SCREEN_WIDTH // 2 - countdown_text.get_width() // 2, SCREEN_HEIGHT // 2))
+        
+        # Test mode message
+        test_text = font_medium.render("Test Mode: Auto-respawn enabled", True, (150, 200, 255))
+        surface.blit(test_text, (SCREEN_WIDTH // 2 - test_text.get_width() // 2, SCREEN_HEIGHT // 2 + 60))
+        
+    def start_respawn_countdown(self):
+        """Start the respawn countdown."""
+        self.respawning = True
+        self.respawn_timer = pygame.time.get_ticks()
+        
+    def update_respawn_countdown(self):
+        """Update the respawn countdown and check if it's complete."""
+        if not self.respawning:
+            return False
+            
+        current_time = pygame.time.get_ticks()
+        if current_time - self.respawn_timer >= self.respawn_duration:
+            self.respawning = False
+            return True  # Respawn complete
+        return False  # Still counting down

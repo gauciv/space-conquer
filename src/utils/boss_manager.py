@@ -136,13 +136,27 @@ class BossManager:
                     source_id = f"boss_bullet_{bullet.rect.x}_{bullet.rect.y}"
                     if player.take_damage(god_mode, source_id=source_id):
                         if player.health <= 0:
-                            self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
-                            self.game_manager.sound_manager.play_sound('game_over')
+                            if self.game_manager.testing_mode and not self.game_manager.ui_manager.god_mode:
+                                # In test mode without god mode, start respawn countdown instead of game over
+                                self.game_manager.ui_manager.start_respawn_countdown()
+                            else:
+                                # Normal game over
+                                self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
+                                self.game_manager.sound_manager.play_sound('game_over')
         
         # Check direct collision between player and boss
         if player.hitbox.colliderect(boss.hitbox):
             god_mode = self.game_manager.testing_mode and self.game_manager.ui_manager.god_mode
             source_id = f"boss_body_{boss.boss_type}"
+            if player.take_damage(god_mode, source_id=source_id):
+                if player.health <= 0:
+                    if self.game_manager.testing_mode and not self.game_manager.ui_manager.god_mode:
+                        # In test mode without god mode, start respawn countdown instead of game over
+                        self.game_manager.ui_manager.start_respawn_countdown()
+                    else:
+                        # Normal game over
+                        self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
+                        self.game_manager.sound_manager.play_sound('game_over')
             if player.take_damage(god_mode, source_id=source_id):
                 if player.health <= 0:
                     self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
