@@ -17,6 +17,7 @@ from .sprites.powerup import PowerUp
 from .sprites.star import Star
 from .sprites.asteroid import Asteroid
 from .sprites.debris import Debris
+from .sprites.boss import Boss
 
 class GameManager:
     def __init__(self):
@@ -80,16 +81,14 @@ class GameManager:
         self.enemy_progression = [
             {'score': 0, 'types': ['normal']},
             {'score': 200, 'types': ['normal', 'fast']},
-            {'score': 400, 'types': ['normal', 'fast', 'drone']},
-            {'score': 600, 'types': ['normal', 'fast', 'drone', 'tank']},
-            {'score': 800, 'types': ['normal', 'fast', 'drone', 'tank', 'bomber']}
+            {'score': 400, 'types': ['normal', 'fast', 'tank']},
+            {'score': 600, 'types': ['normal', 'fast', 'tank', 'bomber']}
         ]
         self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each map
         self.enemy_points = {
             'normal': 10,
             'fast': 15,
             'tank': 25,
-            'drone': 20,
             'bomber': 30
         }
         
@@ -99,9 +98,8 @@ class GameManager:
         self.phase_markers = [
             {'name': 'Start', 'score': 0},
             {'name': 'Fast Enemies', 'score': 200},
-            {'name': 'Drone Enemies', 'score': 400},
-            {'name': 'Tank Enemies', 'score': 600},
-            {'name': 'Bomber Enemies', 'score': 800},
+            {'name': 'Tank Enemies', 'score': 400},
+            {'name': 'Bomber Enemies', 'score': 600},
             {'name': 'Mini-Boss', 'score': 750},
             {'name': 'Main Boss', 'score': 1500}
         ]
@@ -143,6 +141,11 @@ class GameManager:
         self.main_boss = None
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
+        
+        # If testing mode, open testing panel
+        if testing_mode:
+            self.ui_manager.testing_panel_open = True
+            self.ui_manager.testing_panel_collapsed = True
         
         # Reset map variables
         self.current_map = 0
@@ -192,7 +195,14 @@ class GameManager:
                 pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Disable the timer
             
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                # Check for Ctrl+D to toggle the robot button
+                if event.key == pygame.K_d and pygame.key.get_mods() & pygame.KMOD_CTRL:
+                    self.ui_manager.toggle_robot_button()
+                    # Play a sound effect for feedback
+                    if 'select' in self.sound_manager.sounds:
+                        self.sound_manager.play_sound('select')
+                
+                elif event.key == pygame.K_SPACE:
                     if self.game_state == self.GAME_STATE_MENU and not self.ui_manager.settings_open:
                         # Start normal game with SPACE from menu
                         self.start_new_game(testing_mode=False)
@@ -257,6 +267,18 @@ class GameManager:
             
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
+                    # Handle testing panel clicks if in testing mode
+                    if self.testing_mode and self.ui_manager.testing_panel_open:
+                        if self.ui_manager.handle_testing_panel_click(event.pos):
+                            # Apply god mode if enabled
+                            if self.player and self.ui_manager.god_mode:
+                                self.player.health = self.player.max_health
+                            
+                            # Play a sound effect for feedback
+                            if 'select' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('select')
+                            continue
+                    
                     # Handle settings button click
                     settings_result = self.ui_manager.handle_settings_click(event.pos)
                     if settings_result:
@@ -287,6 +309,12 @@ class GameManager:
                             self.start_new_game(testing_mode=False)
                         elif self.ui_manager.test_button_rect and self.ui_manager.test_button_rect.collidepoint(event.pos):
                             self.start_new_game(testing_mode=True)
+                        # Handle robot button click
+                        elif self.ui_manager.show_robot_button and self.ui_manager.robot_button_rect.collidepoint(event.pos):
+                            self.start_new_game(testing_mode=True)
+                            # Play a sound effect for feedback
+                            if 'select' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('select')
                     
                     # Handle game over screen button clicks
                     elif self.game_state == self.GAME_STATE_GAME_OVER and not self.ui_manager.settings_open:
@@ -351,6 +379,10 @@ class GameManager:
             
         if not self.ui_manager.settings_open:
             if self.game_state == self.GAME_STATE_PLAYING and self.player:
+                # Apply God Mode if enabled in testing mode
+                if self.testing_mode and self.ui_manager.god_mode and self.player:
+                    self.player.health = self.player.max_health
+                
                 # Handle map name display
                 if self.showing_map_name:
                     self.map_transition_timer -= 1
@@ -366,9 +398,9 @@ class GameManager:
                 self.debris.update()
                 
                 # Update bosses if they exist
-                if self.mini_boss:
+                if self.mini_boss is not None:
                     self.mini_boss.update()
-                if self.main_boss:
+                if self.main_boss is not None:
                     self.main_boss.update()
                 
                 # Check for enemy type progression based on score
@@ -458,7 +490,7 @@ class GameManager:
                                 self.sound_manager.play_sound('explosion')
                 
                 # Check for bullet collisions with mini-boss
-                if self.mini_boss:
+                if self.mini_boss is not None:
                     for bullet in self.player.bullets:
                         if self.mini_boss.hitbox.colliderect(bullet.hitbox):
                             bullet.kill()
@@ -472,7 +504,7 @@ class GameManager:
                                 self.sound_manager.play_sound('explosion')
                 
                 # Check for bullet collisions with main boss
-                if self.main_boss:
+                if self.main_boss is not None:
                     for bullet in self.player.bullets:
                         if self.main_boss.hitbox.colliderect(bullet.hitbox):
                             bullet.kill()
@@ -522,7 +554,7 @@ class GameManager:
                             pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
                 # Check for player collision with boss bullets
-                if self.mini_boss:
+                if self.mini_boss is not None:
                     for bullet in self.mini_boss.bullets:
                         if self.player.hitbox.colliderect(bullet.hitbox):
                             bullet.kill()
@@ -537,7 +569,7 @@ class GameManager:
                                     # Schedule music volume restoration
                                     pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
                 
-                if self.main_boss:
+                if self.main_boss is not None:
                     for bullet in self.main_boss.bullets:
                         if self.player.hitbox.colliderect(bullet.hitbox):
                             bullet.kill()
@@ -615,9 +647,9 @@ class GameManager:
                     powerup.draw(self.screen)
                 
                 # Draw bosses if they exist
-                if self.mini_boss:
+                if self.mini_boss is not None:
                     self.mini_boss.draw(self.screen)
-                if self.main_boss:
+                if self.main_boss is not None:
                     self.main_boss.draw(self.screen)
                 
                 # Show current map name at the top only after intro
@@ -644,12 +676,12 @@ class GameManager:
                     self.screen.blit(map_name, (SCREEN_WIDTH // 2 - map_name.get_width() // 2, SCREEN_HEIGHT // 2))
                 
                 # Show score and health
-                self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health)
+                self.ui_manager.show_score(self.screen, self.score, self.player.health, self.player.max_health, 
+                                          self.testing_mode, self.player, self.clock.get_fps())
                 
-                # Show FPS counter in top-right corner
-                fps_font = pygame.font.SysFont('Arial', 16)
-                fps_text = fps_font.render(f"FPS: {int(self.clock.get_fps())}", True, (255, 255, 255))
-                self.screen.blit(fps_text, (SCREEN_WIDTH - fps_text.get_width() - 10, 10))
+                # Draw testing panel if in testing mode
+                if self.testing_mode and self.ui_manager.testing_panel_open:
+                    self.ui_manager.draw_testing_panel(self.screen, self.player, self.clock.get_fps())
                 
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:

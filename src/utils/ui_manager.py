@@ -49,6 +49,20 @@ class UIManager:
         self.sfx_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 - 40, self.slider_width, 10)
         self.sfx_handle_rect = pygame.Rect(0, 0, 24, 24)  # Larger clickable area
         
+        # Hidden robot button for developer mode
+        self.show_robot_button = False
+        self.robot_button_rect = pygame.Rect(20, 20, 40, 40)
+        self.robot_icon = self._create_robot_icon()
+        
+        # Testing panel
+        self.testing_panel_open = False
+        self.testing_panel_collapsed = True
+        
+        # Testing options
+        self.god_mode = False
+        self.show_player_coords = False
+        self.show_fps = True
+        
         # Music slider
         self.music_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 + 10, self.slider_width, 10)
         self.music_handle_rect = pygame.Rect(0, 0, 24, 24)  # Larger clickable area
@@ -574,7 +588,7 @@ class UIManager:
         
         return False
     
-    def show_score(self, surface, score, health, max_health=3):
+    def show_score(self, surface, score, health, max_health=3, testing_mode=False, player=None, fps=0):
         """Display score and health with enhanced visual styling."""
         # Create a semi-transparent panel for the score
         score_panel_width = 150
@@ -610,6 +624,11 @@ class UIManager:
         surface.blit(main_text, (20, 18))
         
         # Create a semi-transparent panel for health
+        # In testing mode, limit to 3 hearts
+        if testing_mode:
+            max_health = min(max_health, 3)
+            health = min(health, max_health)
+            
         health_panel_width = max_health * 45 + 20
         health_panel_height = 40
         health_panel_rect = pygame.Rect(10, 60, health_panel_width, health_panel_height)
@@ -652,6 +671,23 @@ class UIManager:
             else:
                 # Just draw the empty heart
                 surface.blit(self.empty_heart_img, (heart_x, heart_y))
+        
+        # Set robot button position below health panel
+        self.robot_button_rect = pygame.Rect(10, health_panel_rect.bottom + 10, 40, 40)
+        
+        # Draw player coordinates if enabled
+        if testing_mode and self.show_player_coords and player:
+            # Draw coordinates at the top of the screen
+            coords_font = pygame.font.SysFont('Arial', 16)
+            coords_text = coords_font.render(f"X:{int(player.rect.x)}, Y:{int(player.rect.y)}", True, (200, 200, 255))
+            surface.blit(coords_text, (SCREEN_WIDTH // 2 - 150, 10))
+        
+        # Draw FPS if enabled
+        if testing_mode and self.show_fps:
+            # Draw FPS at the top of the screen
+            fps_font = pygame.font.SysFont('Arial', 16)
+            fps_text = fps_font.render(f"FPS: {int(fps)}", True, (200, 200, 255))
+            surface.blit(fps_text, (SCREEN_WIDTH // 2 + 50, 10))
     
     def show_game_over(self, surface, score):
         """Display an enhanced game over screen."""
@@ -836,6 +872,18 @@ class UIManager:
         else:
             self.test_button_rect = None
         
+        # Draw the robot button if it's enabled
+        if self.show_robot_button:
+            # Draw the robot icon
+            surface.blit(self.robot_icon, (self.robot_button_rect.x - 5, self.robot_button_rect.y - 5))
+            
+            # Add a subtle glow effect if hovered
+            if self.robot_button_rect.collidepoint(pygame.mouse.get_pos()):
+                glow_surface = pygame.Surface((60, 60), pygame.SRCALPHA)
+                glow_color = (100, 150, 255, 50)
+                pygame.draw.circle(glow_surface, glow_color, (30, 30), 25)
+                surface.blit(glow_surface, (self.robot_button_rect.x - 10, self.robot_button_rect.y - 10))
+        
         # Controls section with a semi-transparent background
         controls_overlay = pygame.Surface((400, 80), pygame.SRCALPHA)
         controls_overlay.fill((0, 0, 30, 150))
@@ -990,3 +1038,197 @@ class UIManager:
         self.confirmation_rect = dialog_rect
         self.confirm_yes_rect = yes_button_rect
         self.confirm_no_rect = no_button_rect
+    def _create_robot_icon(self):
+        """Create a simple robot icon using pygame drawing primitives."""
+        # Create a surface for the robot icon
+        icon_size = 40
+        icon = pygame.Surface((icon_size, icon_size), pygame.SRCALPHA)
+        
+        # Robot body (dark gray rectangle)
+        body_color = (60, 60, 80)
+        pygame.draw.rect(icon, body_color, (8, 12, 24, 20), border_radius=2)
+        
+        # Robot head (lighter gray rectangle)
+        head_color = (80, 80, 100)
+        pygame.draw.rect(icon, head_color, (12, 4, 16, 12), border_radius=3)
+        
+        # Robot eyes (blue circles)
+        eye_color = (100, 150, 255)
+        pygame.draw.circle(icon, eye_color, (16, 10), 3)
+        pygame.draw.circle(icon, eye_color, (24, 10), 3)
+        
+        # Robot antenna
+        antenna_color = (120, 120, 140)
+        pygame.draw.rect(icon, antenna_color, (19, 1, 2, 4))
+        pygame.draw.circle(icon, eye_color, (20, 1), 2)
+        
+        # Robot arms
+        pygame.draw.rect(icon, antenna_color, (4, 16, 4, 12), border_radius=2)
+        pygame.draw.rect(icon, antenna_color, (32, 16, 4, 12), border_radius=2)
+        
+        # Robot legs
+        pygame.draw.rect(icon, antenna_color, (12, 32, 6, 6), border_radius=1)
+        pygame.draw.rect(icon, antenna_color, (22, 32, 6, 6), border_radius=1)
+        
+        # Add a subtle glow effect
+        glow_surface = pygame.Surface((icon_size + 10, icon_size + 10), pygame.SRCALPHA)
+        glow_color = (100, 150, 255, 30)
+        pygame.draw.circle(glow_surface, glow_color, (icon_size // 2 + 5, icon_size // 2 + 5), icon_size // 2 + 2)
+        
+        # Create the final surface with glow
+        final_surface = pygame.Surface((icon_size + 10, icon_size + 10), pygame.SRCALPHA)
+        final_surface.blit(glow_surface, (0, 0))
+        final_surface.blit(icon, (5, 5))
+        
+        return final_surface
+        
+    def toggle_robot_button(self):
+        """Toggle the visibility of the robot button."""
+        self.show_robot_button = not self.show_robot_button
+        return self.show_robot_button
+    def draw_testing_panel(self, surface, player=None, fps=0):
+        """Draw a compact testing panel with toggle options."""
+        if not self.testing_panel_open:
+            return
+            
+        if self.testing_panel_collapsed:
+            # Draw the robot icon when panel is collapsed
+            robot_rect = self.robot_button_rect
+            
+            # Draw the robot icon with a subtle glow
+            glow_surface = pygame.Surface((50, 50), pygame.SRCALPHA)
+            glow_color = (100, 150, 255, 30)
+            pygame.draw.circle(glow_surface, glow_color, (25, 25), 20)
+            surface.blit(glow_surface, (robot_rect.x - 5, robot_rect.y - 5))
+            surface.blit(self.robot_icon, (robot_rect.x, robot_rect.y))
+            
+            # Draw testing mode indicator
+            test_font = pygame.font.SysFont('Arial', 14)
+            test_text = test_font.render("TEST MODE", True, (100, 150, 255))
+            surface.blit(test_text, (robot_rect.right + 5, robot_rect.centery - test_text.get_height() // 2))
+            
+            # Draw God Mode indicator if enabled
+            if self.god_mode:
+                god_text = test_font.render("GOD MODE", True, (255, 215, 0))  # Gold color
+                surface.blit(god_text, (robot_rect.right + 5, robot_rect.centery + 10))
+            return
+            
+        # Draw a small popup panel near the robot icon position
+        panel_width = 220
+        panel_height = 130
+        panel_x = 10
+        panel_y = 110
+        
+        # Draw panel background
+        panel_color = (20, 20, 40, 220)
+        panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        panel_surface = pygame.Surface((panel_width, panel_height), pygame.SRCALPHA)
+        panel_surface.fill(panel_color)
+        surface.blit(panel_surface, panel_rect)
+        
+        # Draw panel border
+        pygame.draw.rect(surface, (100, 150, 255), panel_rect, 2)
+        
+        # Draw header
+        header_font = pygame.font.SysFont('Arial', 16, bold=True)
+        header_text = header_font.render("TESTING OPTIONS", True, (200, 200, 255))
+        surface.blit(header_text, (panel_x + 10, panel_y + 10))
+        
+        # Draw collapse button (X)
+        collapse_btn_size = 20
+        collapse_btn_rect = pygame.Rect(panel_rect.right - collapse_btn_size - 5, panel_rect.y + 5, collapse_btn_size, collapse_btn_size)
+        pygame.draw.rect(surface, (60, 60, 100), collapse_btn_rect, border_radius=3)
+        
+        # Draw X
+        pygame.draw.line(surface, (200, 200, 255), 
+                        (collapse_btn_rect.left + 5, collapse_btn_rect.top + 5),
+                        (collapse_btn_rect.right - 5, collapse_btn_rect.bottom - 5), 2)
+        pygame.draw.line(surface, (200, 200, 255), 
+                        (collapse_btn_rect.left + 5, collapse_btn_rect.bottom - 5),
+                        (collapse_btn_rect.right - 5, collapse_btn_rect.top + 5), 2)
+        
+        # Store collapse button rect for click detection
+        self.collapse_button_rect = collapse_btn_rect
+        
+        # Draw toggle buttons in a flexbox-like layout
+        button_height = 30
+        button_spacing = 10
+        button_y = panel_y + 40
+        
+        # God Mode button
+        god_mode_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
+        self._draw_toggle_button(surface, god_mode_rect, "God Mode", self.god_mode)
+        button_y += button_height + button_spacing
+        
+        # Show Coordinates button
+        coords_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
+        self._draw_toggle_button(surface, coords_rect, "Show Coordinates", self.show_player_coords)
+        button_y += button_height + button_spacing
+        
+        # Show FPS button
+        fps_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
+        self._draw_toggle_button(surface, fps_rect, "Show FPS", self.show_fps)
+        
+        # Store button rectangles for click detection
+        self.god_mode_button_rect = god_mode_rect
+        self.player_coords_button_rect = coords_rect
+        self.fps_button_rect = fps_rect
+    
+    def _draw_toggle_button(self, surface, rect, text, is_active):
+        """Draw a toggle button with on/off state."""
+        # Draw button background
+        button_color = (40, 40, 80) if not is_active else (60, 80, 120)
+        pygame.draw.rect(surface, button_color, rect, border_radius=5)
+        
+        # Draw button border
+        border_color = (80, 80, 120) if not is_active else (100, 150, 200)
+        pygame.draw.rect(surface, border_color, rect, width=2, border_radius=5)
+        
+        # Draw button text
+        button_font = pygame.font.SysFont('Arial', 14)
+        text_surface = button_font.render(text, True, (200, 200, 255))
+        surface.blit(text_surface, (rect.x + 10, rect.centery - text_surface.get_height() // 2))
+        
+        # Draw toggle indicator
+        toggle_rect = pygame.Rect(rect.right - 50, rect.centery - 8, 40, 16)
+        pygame.draw.rect(surface, (30, 30, 50), toggle_rect, border_radius=8)
+        
+        # Draw toggle handle
+        handle_x = toggle_rect.right - 14 if is_active else toggle_rect.left + 2
+        handle_rect = pygame.Rect(handle_x, toggle_rect.centery - 6, 12, 12)
+        handle_color = (100, 200, 100) if is_active else (150, 150, 150)
+        pygame.draw.rect(surface, handle_color, handle_rect, border_radius=6)
+        
+    def handle_testing_panel_click(self, pos):
+        """Handle clicks on the testing panel."""
+        if not self.testing_panel_open:
+            return False
+            
+        # Check if the robot button was clicked when panel is collapsed
+        if self.testing_panel_collapsed and self.robot_button_rect and self.robot_button_rect.collidepoint(pos):
+            self.testing_panel_collapsed = False
+            return True
+            
+        # Check if the collapse button was clicked when panel is expanded
+        if not self.testing_panel_collapsed and hasattr(self, 'collapse_button_rect') and self.collapse_button_rect.collidepoint(pos):
+            self.testing_panel_collapsed = True
+            return True
+            
+        # If collapsed, don't check the rest of the panel
+        if self.testing_panel_collapsed:
+            return False
+            
+        # Check toggle buttons
+        if self.god_mode_button_rect and self.god_mode_button_rect.collidepoint(pos):
+            self.god_mode = not self.god_mode
+            return True
+            
+        if self.player_coords_button_rect and self.player_coords_button_rect.collidepoint(pos):
+            self.show_player_coords = not self.show_player_coords
+            return True
+            
+        if self.fps_button_rect and self.fps_button_rect.collidepoint(pos):
+            self.show_fps = not self.show_fps
+            return True
+            
+        return False
