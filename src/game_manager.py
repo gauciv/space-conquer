@@ -35,6 +35,7 @@ class GameManager:
         self.asset_loader = AssetLoader()
         self.sound_manager = SoundManager()
         self.ui_manager = UIManager(self.asset_loader, self.sound_manager)
+        self.ui_manager.game_manager = self  # Add reference to game manager
         self.background_manager = BackgroundManager(self.asset_loader)
         
         # Game state constants
@@ -525,11 +526,12 @@ class GameManager:
                         if asteroid.hitbox.colliderect(bullet.hitbox):
                             bullet.kill()
                             if asteroid.take_damage(1):
-                                # Asteroid destroyed, spawn a powerup
-                                powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
-                                powerup.rect.center = asteroid.rect.center
-                                self.powerups.add(powerup)
-                                self.all_sprites.add(powerup)
+                                # Asteroid destroyed, check if it should drop a powerup
+                                if asteroid.should_drop_powerup():
+                                    powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
+                                    powerup.rect.center = asteroid.rect.center
+                                    self.powerups.add(powerup)
+                                    self.all_sprites.add(powerup)
                                 
                                 # Apply score multiplier if active
                                 points = asteroid.points * self.player.score_multiplier
@@ -950,11 +952,12 @@ class GameManager:
                         # Only damage the asteroid if player damage was applied
                         if damage_applied:
                             if asteroid.take_damage(1):
-                                # Asteroid destroyed, spawn a powerup
-                                powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
-                                powerup.rect.center = asteroid.rect.center
-                                self.powerups.add(powerup)
-                                self.all_sprites.add(powerup)
+                                # Asteroid destroyed, check if it should drop a powerup
+                                if asteroid.should_drop_powerup():
+                                    powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
+                                    powerup.rect.center = asteroid.rect.center
+                                    self.powerups.add(powerup)
+                                    self.all_sprites.add(powerup)
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER

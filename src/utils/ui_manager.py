@@ -5,6 +5,7 @@ Handles UI elements like settings panel, menus, etc.
 import pygame # type: ignore
 import random
 import math
+import time
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, BLACK, GRAY, DARK_GRAY
 
 class UIManager:
@@ -490,6 +491,11 @@ class UIManager:
         # Normal settings panel clicks
         if self.settings_button_rect.collidepoint(pos):
             self.settings_open = not self.settings_open
+            
+            # Update the phase manager's last update time when toggling settings
+            if hasattr(self.game_manager, 'phase_manager'):
+                self.game_manager.phase_manager.last_update_time_ms = time.time() * 1000
+                
             return True
         
         if self.settings_open:

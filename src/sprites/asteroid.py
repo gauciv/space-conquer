@@ -133,14 +133,16 @@ class Asteroid(pygame.sprite.Sprite):
             # Draw the asteroid
             if self.hit_flash:
                 # Create a white flash effect when hit (simplified)
-                pygame.draw.rect(surface, (255, 255, 255), self.rect, 2)
+                flash_surface = self.image.copy()
+                flash_surface.fill((255, 255, 255, 128), None, pygame.BLEND_RGBA_ADD)
+                surface.blit(flash_surface, self.rect)
+            else:
+                # Draw the asteroid image
+                surface.blit(self.image, self.rect)
             
-            # Draw the asteroid image
-            surface.blit(self.image, self.rect)
-            
-            # Draw hitbox if debug mode is enabled
-            if DEBUG_HITBOXES:
-                pygame.draw.rect(surface, (150, 150, 0), self.hitbox, 1)
+            # Draw hitbox if debug mode is enabled (but we're disabling this)
+            # if DEBUG_HITBOXES:
+            #     pygame.draw.rect(surface, (150, 150, 0), self.hitbox, 1)
     def should_drop_powerup(self):
         """Determine if the asteroid should drop a powerup based on the current chance."""
         return random.random() < self.powerup_drop_chance

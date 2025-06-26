@@ -158,7 +158,7 @@ class Player(pygame.sprite.Sprite):
             return True
         return False
     
-    def take_damage(self, god_mode=False, source_id=None):
+    def take_damage(self, god_mode=False, source_id=None, damage=1):
         """
         Apply damage to the player with cooldown system.
         
@@ -166,6 +166,7 @@ class Player(pygame.sprite.Sprite):
             god_mode (bool): If True, player takes no damage
             source_id: Unique identifier for the damage source (enemy, boss, etc.)
                       Used to track cooldown for each source separately
+            damage (int): Amount of damage to apply (default: 1)
         
         Returns:
             bool: True if damage was applied, False otherwise
@@ -188,7 +189,7 @@ class Player(pygame.sprite.Sprite):
             return False  # No actual damage applied
             
         # Apply damage and start cooldown
-        self.health -= 1
+        self.health -= damage
         self.sound_manager.play_sound('explosion')
         
         # Start invulnerability period
