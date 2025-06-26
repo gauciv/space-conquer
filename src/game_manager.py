@@ -445,6 +445,13 @@ class GameManager:
                 # Update phase manager based on time
                 self.phase_manager.update()
                 
+                # Check if we should spawn an asteroid during boss fights
+                if self.boss_manager.has_active_boss() and self.phase_manager.should_spawn_boss_asteroid():
+                    # Spawn an asteroid during boss fight
+                    asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
+                    self.asteroids.add(asteroid)
+                    self.all_sprites.add(asteroid)
+                
                 # Update boss warning effect
                 if self.showing_boss_warning:
                     self.boss_warning_timer -= 1
@@ -708,8 +715,12 @@ class GameManager:
                 for enemy in self.enemies:
                     enemy.draw(self.screen)
                     
-                # Draw game timer below chapter title
+                # Draw game timer below chapter title (or boss timer if boss is active)
                 self.phase_manager.draw_game_timer(self.screen)
+                
+                # Draw boss timer if a boss is active
+                if self.boss_manager.has_active_boss():
+                    self.phase_manager.draw_boss_timer(self.screen)
                 
                 # Draw frenzy mode indicator if active
                 if self.phase_manager.frenzy_mode:

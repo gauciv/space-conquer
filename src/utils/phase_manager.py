@@ -471,9 +471,17 @@ class PhaseManager:
             surface.blit(cooldown_text, (panel_x, panel_y + 55 + len(self.phases) * 30))
     def draw_game_timer(self, surface):
         """Draw the game timer below the chapter title."""
-        if self.game_manager.show_chapter_header:
+        # Don't show game timer during boss fights
+        if self.game_manager.show_chapter_header and not self.boss_timer_active:
             font = pygame.font.SysFont('Arial', 18)
             timer_text = font.render(f"Time: {self.format_time(self.game_time)}", True, (200, 200, 255))
+            surface.blit(timer_text, (surface.get_width() // 2 - timer_text.get_width() // 2, 40))
+    
+    def draw_boss_timer(self, surface):
+        """Draw the boss timer during boss fights."""
+        if self.boss_timer_active:
+            font = pygame.font.SysFont('Arial', 18)
+            timer_text = font.render(f"Boss Time: {self.format_time(self.boss_timer)}", True, (255, 100, 100))
             surface.blit(timer_text, (surface.get_width() // 2 - timer_text.get_width() // 2, 40))
             
     def draw_boss_warning(self, surface, boss_type):
@@ -626,3 +634,9 @@ class PhaseManager:
             debris_obj.kill()
             
         print(f"Cleared {len(enemies)} enemies, {len(asteroids)} asteroids, and {len(debris)} debris for main boss entrance")
+    def should_spawn_boss_asteroid(self):
+        """Check if it's time to spawn an asteroid during boss fights."""
+        if self.boss_timer_active and self.boss_asteroid_spawn_timer >= 6:  # Every 6 seconds
+            self.boss_asteroid_spawn_timer = 0  # Reset the timer
+            return True
+        return False
