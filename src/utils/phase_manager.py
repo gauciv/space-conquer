@@ -57,9 +57,8 @@ class PhaseManager:
         # Frenzy mode
         self.frenzy_mode = False
         self.frenzy_start_time = 0
-        self.frenzy_duration = 8  # seconds
-        self.next_frenzy_time = 25  # seconds until first frenzy
-        self.frenzy_interval = 25  # seconds between frenzies
+        self.frenzy_duration = 10  # seconds (changed from 8 to 10)
+        self.frenzy_times = [35, 65, 115, 145]  # Specific times for frenzy mode in seconds
         
         # Phase selection cooldown
         self.phase_selection_cooldown = 3.0  # 3 seconds
@@ -183,16 +182,21 @@ class PhaseManager:
         """Update frenzy mode status based on time."""
         # Skip frenzy mode if a boss is active
         if self.game_manager.boss_manager.has_active_boss():
+            if self.frenzy_mode:
+                self.frenzy_mode = False
+                print(f"Frenzy mode ended due to boss at {self.format_time(self.game_time)}")
             return
             
-        # Check if we should start a frenzy
+        # Check if we should start a frenzy based on specific times
         if not self.frenzy_mode:
-            # Check if it's time for a frenzy
-            if self.game_time >= self.next_frenzy_time:
-                self.frenzy_mode = True
-                self.frenzy_start_time = self.game_time
-                self.next_frenzy_time = self.game_time + self.frenzy_duration + self.frenzy_interval
-                print(f"Frenzy mode activated at {self.format_time(self.game_time)}!")
+            # Check if current time matches any of our specific frenzy times
+            for frenzy_time in self.frenzy_times:
+                # Allow a small window of 0.1 seconds to catch the exact time
+                if abs(self.game_time - frenzy_time) < 0.1:
+                    self.frenzy_mode = True
+                    self.frenzy_start_time = self.game_time
+                    print(f"Frenzy mode activated at {self.format_time(self.game_time)}!")
+                    break
         else:
             # Check if frenzy should end
             if self.game_time >= self.frenzy_start_time + self.frenzy_duration:
