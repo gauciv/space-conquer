@@ -144,6 +144,7 @@ class GameManager:
         
         # If testing mode, open testing panel
         if testing_mode:
+            # Keep default health (3)
             self.ui_manager.testing_panel_open = True
             self.ui_manager.testing_panel_collapsed = True
         

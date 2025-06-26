@@ -874,8 +874,16 @@ class UIManager:
         
         # Draw the robot button if it's enabled
         if self.show_robot_button:
-            # Draw the robot icon
-            surface.blit(self.robot_icon, (self.robot_button_rect.x - 5, self.robot_button_rect.y - 5))
+            # Position the robot icon in the top left for the main menu
+            robot_rect = pygame.Rect(20, 20, 40, 40)
+            self.robot_button_rect = robot_rect
+            
+            # Draw the robot icon with a subtle glow
+            glow_surface = pygame.Surface((60, 60), pygame.SRCALPHA)
+            glow_color = (100, 150, 255, 30)
+            pygame.draw.circle(glow_surface, glow_color, (30, 30), 25)
+            surface.blit(glow_surface, (robot_rect.x - 10, robot_rect.y - 10))
+            surface.blit(self.robot_icon, (robot_rect.x, robot_rect.y))
             
             # Add a subtle glow effect if hovered
             if self.robot_button_rect.collidepoint(pygame.mouse.get_pos()):
