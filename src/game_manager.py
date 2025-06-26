@@ -159,11 +159,11 @@ class GameManager:
         self.last_powerup_spawn = pygame.time.get_ticks()
         
         # Asteroid spawn timer
-        self.asteroid_spawn_delay = 5000  # 5 seconds between asteroid spawns
+        self.asteroid_spawn_delay = 3333  # ~3.3 seconds between asteroid spawns (5000/1.5)
         self.last_asteroid_spawn = pygame.time.get_ticks()
         
         # Debris spawn timer
-        self.debris_spawn_delay = 8000  # 8 seconds between debris spawns
+        self.debris_spawn_delay = 5333  # ~5.3 seconds between debris spawns (8000/1.5)
         self.last_debris_spawn = pygame.time.get_ticks()
         
         # Enemy speed and powerup drop chance modifiers
@@ -448,8 +448,8 @@ class GameManager:
                 
                 # Only spawn entities if no boss is active and enemy spawn cooldown is over
                 if not self.boss_manager.has_active_boss() and self.enemy_spawn_cooldown <= 0:
-                    # Apply frenzy mode if active
-                    spawn_rate_multiplier = 0.5 if self.phase_manager.frenzy_mode else 1.0
+                    # Apply frenzy mode if active - 2.5x faster spawning during frenzy (0.4 multiplier)
+                    spawn_rate_multiplier = 0.4 if self.phase_manager.frenzy_mode else 1.0
                     
                     # Spawn enemies if available in current phase
                     if self.enemy_types_available:

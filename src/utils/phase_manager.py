@@ -69,13 +69,13 @@ class PhaseManager:
     def _init_phases(self):
         """Initialize all game phases based on time thresholds."""
         self.phases = [
-            Phase("Start", 0, ['normal'], spawn_rate=2500),
-            Phase("Low Enemies Speed Up", 15, ['normal'], spawn_rate=2500, speed_multiplier=1.25),
-            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=5000, powerup_drop_chance_modifier=-0.25),
-            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=8000),
-            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=10000, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),
+            Phase("Start", 0, ['normal'], spawn_rate=1667),  # 2500/1.5 = ~1667 (1.5x faster)
+            Phase("Low Enemies Speed Up", 15, ['normal'], spawn_rate=1667, speed_multiplier=1.25),
+            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=3333, powerup_drop_chance_modifier=-0.25),  # 5000/1.5 = ~3333
+            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=5333),  # 8000/1.5 = ~5333
+            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=6667, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 10000/1.5 = ~6667
             Phase("Mini-Boss", 90, [], boss_type='mini'),
-            Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=2500),
+            Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=1667),  # 2500/1.5 = ~1667
             Phase("Final Boss", 180, [], boss_type='main')
         ]
         
