@@ -123,9 +123,26 @@ class PhaseManager:
         if phase.spawn_rate is not None:
             self.game_manager.enemy_spawn_delay = phase.spawn_rate
         
+        # Clear existing bosses when changing phases
+        self.game_manager.boss_manager.reset()
+        
         # Handle boss spawning using the boss manager
         if phase.boss_type:
-            self.game_manager.boss_manager.spawn_boss(phase.boss_type)
+            # Show phase transition
+            self.showing_phase_transition = True
+            self.transition_timer = self.transition_duration
+            
+            # Spawn the appropriate boss
+            boss = self.game_manager.boss_manager.spawn_boss(phase.boss_type)
+            if boss:
+                print(f"Boss spawned: {boss.name}")
+            else:
+                print(f"Failed to spawn boss for phase: {phase.name}")
+        else:
+            print(f"No boss for phase: {phase.name}")
+            
+        # Trigger phase transition effect
+        self._handle_phase_transition()
     
     def get_current_phase(self):
         """Get the current active phase."""
@@ -155,8 +172,14 @@ class PhaseManager:
             # Skip to the selected phase
             target_phase = self.phases[phase_index]
             target_phase.active = True  # Mark only this phase as active
+            self.current_phase_index = phase_index  # Update current phase index
+            
+            # Set score to phase threshold
             self.game_manager.score = target_phase.score_threshold
-            self.update(self.game_manager.score)
+            
+            # Apply phase settings directly
+            self._apply_phase_settings(target_phase)
+            
             print(f"Skipped to phase: {target_phase.name} (Score: {target_phase.score_threshold})")
             return True
         return False

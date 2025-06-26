@@ -20,16 +20,28 @@ class BossManager:
     
     def reset(self):
         """Reset boss state."""
+        # Clean up any existing bosses
+        if self.mini_boss:
+            self.mini_boss.kill()
+        if self.main_boss:
+            self.main_boss.kill()
+            
+        # Reset all boss-related variables
         self.mini_boss = None
         self.main_boss = None
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
         self.mini_boss_dying = False
         self.main_boss_dying = False
+        
+        print("Boss manager reset - all bosses cleared")
     
     def spawn_boss(self, boss_type):
         """Spawn a boss of the specified type."""
-        if boss_type == 'mini' and not self.mini_boss_spawned:
+        # First, clear any existing bosses
+        self.reset()
+        
+        if boss_type == 'mini':
             # Create mini boss
             self.mini_boss = Boss('mini', self.game_manager.asset_loader, self.game_manager.sound_manager)
             # Add to all sprites group
@@ -37,7 +49,7 @@ class BossManager:
             self.mini_boss_spawned = True
             print(f"Mini boss spawned!")
             return self.mini_boss
-        elif boss_type == 'main' and not self.main_boss_spawned:
+        elif boss_type == 'main':
             # Create main boss
             self.main_boss = Boss('main', self.game_manager.asset_loader, self.game_manager.sound_manager)
             # Add to all sprites group
