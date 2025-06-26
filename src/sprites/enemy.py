@@ -9,40 +9,22 @@ import time
 from src.config import SCREEN_WIDTH, SCREEN_HEIGHT, DEBUG_HITBOXES
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, enemy_type, images):
+    def __init__(self, enemy_type, images, behavior_manager=None):
         super().__init__()
         self.enemy_type = enemy_type
         
         # Set image based on enemy type
         if enemy_type == 'low':
-            self.image = images.get('normal_enemy')
+            self.image = images.get('low_enemy') or images.get('normal_enemy')
             self.health = 1
-            self.base_speed = 3
+            self.base_speed = 2  # Slower base speed for downward movement
             self.points = 30  # Already includes 3x multiplier
-            self.movement_pattern = "oscillate"  # New movement pattern for low-type
+            self.movement_pattern = "drifter"  # New movement pattern for low-type
             # Low-type enemy has a slightly smaller hitbox (80% of sprite size)
             self.hitbox_ratio = 0.8
             
-            # Special properties for low-type enemy
-            self.oscillation_amplitude = random.randint(10, 20)  # Horizontal oscillation range
-            self.oscillation_speed = random.uniform(0.05, 0.1)  # How fast it oscillates
-            self.oscillation_angle = random.random() * 6.28  # Random start angle
-            
-            # Stutter behavior (periodically slows down)
-            self.stutter_timer = random.uniform(3.0, 5.0)  # Time until next stutter
-            self.stutter_duration = 0.0  # Current stutter duration
-            self.is_stuttering = False
-            self.last_time = time.time()
-            
-            # Attack pattern
-            self.fire_rate = random.uniform(2.0, 3.0)  # Time between shots
-            self.time_since_last_shot = random.uniform(0, 1.5)  # Randomize initial shot timing
-            self.is_telegraphing = False  # Whether it's about to shoot
-            self.telegraph_duration = 0.3  # How long the telegraph lasts
-            self.telegraph_timer = 0.0
-            
         elif enemy_type == 'elite':
-            self.image = images.get('fast_enemy')
+            self.image = images.get('elite_enemy') or images.get('fast_enemy')
             self.health = 1
             self.base_speed = 5
             self.points = 45  # Already includes 3x multiplier
@@ -51,7 +33,7 @@ class Enemy(pygame.sprite.Sprite):
             self.hitbox_ratio = 0.7
             
         elif enemy_type == 'super':
-            self.image = images.get('tank_enemy')
+            self.image = images.get('super_enemy') or images.get('tank_enemy')
             self.health = 3
             self.base_speed = 2
             self.points = 75  # Already includes 3x multiplier
@@ -67,34 +49,16 @@ class Enemy(pygame.sprite.Sprite):
             self.points = 30
             self.movement_pattern = "straight"
             self.hitbox_ratio = 0.8
-            self.base_speed = 3
-            self.points = 10
-            self.movement_pattern = "straight"
-            self.hitbox_ratio = 0.8
         
         # Speed multiplier (for time-based difficulty)
         self.speed_multiplier = 1.0
         self.speed = self.base_speed
         
-        # Check if image is None and provide a fallback
-        if self.image is None:
-            # Create a default colored surface
-            self.image = pygame.Surface((50, 30))
-            if enemy_type == 'low':
-                self.image.fill((255, 0, 0))  # Red for low-type
-            elif enemy_type == 'elite':
-                self.image.fill((255, 255, 0))  # Yellow for elite-type
-            elif enemy_type == 'super':
-                self.image.fill((0, 0, 255))  # Blue for super-type
-            else:
-                self.image.fill((128, 128, 128))  # Gray for unknown
-        
-        # Store the original image for the low-type enemy's telegraph effect
+        # Store the original image for the enemy's telegraph effect
         self.original_image = self.image.copy()
         
+        # Create the rect
         self.rect = self.image.get_rect()
-        self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
-        self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
         
         # Create a custom hitbox based on enemy type
         hitbox_width = int(self.rect.width * self.hitbox_ratio)
@@ -102,160 +66,68 @@ class Enemy(pygame.sprite.Sprite):
         self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
         self.hitbox.center = self.rect.center
         
-        # For zigzag movement
-        self.direction = 1  # 1 for down, -1 for up
-        self.direction_change_timer = 0
-        self.direction_change_delay = random.randint(20, 40)  # frames before changing direction
-        
-        # For sine wave movement
-        self.angle = random.random() * 6.28  # Random start angle
-        self.center_y = self.rect.centery
-        self.amplitude = random.randint(30, 70)  # How far up/down the enemy moves
-        self.frequency = random.uniform(0.05, 0.1)  # How fast the enemy moves up/down
-        
-        # For dive movement
-        self.dive_state = "approach"  # approach, dive, retreat
-        self.target_y = random.randint(100, SCREEN_HEIGHT - 100)
-        self.dive_speed = self.speed * 1.5
-        
-        # For bullet firing (low-type enemy)
+        # For bullet firing
         self.bullets = []  # Store bullets here
         
+        # Initialize time tracking
+        self.last_time = time.time()
+        
+        # Initialize behavior using the behavior manager
+        self.behavior_manager = behavior_manager
+        if self.behavior_manager:
+            self.behavior_manager.initialize_behavior(self, self.movement_pattern)
+    
     def update(self):
+        """Update the enemy based on its behavior pattern."""
         # Get current time for time-based behaviors
         current_time = time.time()
-        delta_time = current_time - self.last_time if hasattr(self, 'last_time') else 0.016
+        delta_time = current_time - self.last_time
         self.last_time = current_time
         
         # Apply speed multiplier
         self.speed = self.base_speed * self.speed_multiplier
         
-        # Update low-type enemy specific behaviors
-        if self.enemy_type == 'low' and self.movement_pattern == "oscillate":
-            # Update stutter timer
-            if not self.is_stuttering:
-                self.stutter_timer -= delta_time
-                if self.stutter_timer <= 0:
-                    # Start stuttering
-                    self.is_stuttering = True
-                    self.stutter_duration = 0.5  # Stutter for 0.5 seconds
-                    self.stutter_timer = random.uniform(3.0, 5.0)  # Reset timer for next stutter
-            else:
-                # Currently stuttering
-                self.stutter_duration -= delta_time
-                if self.stutter_duration <= 0:
-                    self.is_stuttering = False
-            
-            # Calculate actual speed based on stutter state
-            actual_speed = self.speed * 0.5 if self.is_stuttering else self.speed
-            
-            # Move horizontally with oscillation
-            self.rect.x -= actual_speed
-            
-            # Update oscillation angle
-            self.oscillation_angle += self.oscillation_speed
-            
-            # Apply horizontal oscillation
-            oscillation = math.sin(self.oscillation_angle) * self.oscillation_amplitude
-            self.rect.x += oscillation * delta_time * 60  # Scale by delta_time and target 60 FPS
-            
-            # Update attack pattern
-            self.time_since_last_shot += delta_time
-            
-            # Check if it's time to telegraph the shot
-            if not self.is_telegraphing and self.time_since_last_shot >= self.fire_rate - self.telegraph_duration:
-                self.is_telegraphing = True
-                self.telegraph_timer = self.telegraph_duration
-                
-                # Create a brightened version of the image for telegraph effect
-                bright_image = self.original_image.copy()
-                bright_overlay = pygame.Surface(bright_image.get_size(), pygame.SRCALPHA)
-                bright_overlay.fill((50, 50, 100, 0))
-                bright_image.blit(bright_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                self.image = bright_image
-            
-            # Update telegraph timer
-            if self.is_telegraphing:
-                self.telegraph_timer -= delta_time
-                if self.telegraph_timer <= 0:
-                    self.is_telegraphing = False
-                    self.image = self.original_image.copy()  # Reset image
-                    
-                    # Fire a shot
-                    if self.time_since_last_shot >= self.fire_rate:
-                        self.fire_shot()
-                        self.time_since_last_shot = 0
-                        self.fire_rate = random.uniform(2.0, 3.0)  # Randomize next shot timing
-        
-        # Other movement patterns remain the same
-        elif self.movement_pattern == "straight":
+        # Use behavior manager if available
+        if self.behavior_manager:
+            self.behavior_manager.update_behavior(self, delta_time)
+            self.behavior_manager.update_bullets(self)
+        else:
+            # Fallback to basic movement if no behavior manager
             self.rect.x -= self.speed
-        
-        elif self.movement_pattern == "zigzag":
-            self.rect.x -= self.speed
-            self.rect.y += self.speed * self.direction
             
-            # Change direction periodically
-            self.direction_change_timer += 1
-            if self.direction_change_timer >= self.direction_change_delay:
-                self.direction *= -1
-                self.direction_change_timer = 0
-                self.direction_change_delay = random.randint(20, 40)
+            # Update hitbox position
+            self.hitbox.center = self.rect.center
             
-            # Keep within screen bounds
-            if self.rect.top < 10:
-                self.rect.top = 10
-                self.direction = 1
-            elif self.rect.bottom > SCREEN_HEIGHT - 10:
-                self.rect.bottom = SCREEN_HEIGHT - 10
-                self.direction = -1
-        
-        elif self.movement_pattern == "sine":
-            self.rect.x -= self.speed
-            self.angle += self.frequency
-            self.rect.centery = self.center_y + int(self.amplitude * math.sin(self.angle))
-            
-            # Keep within screen bounds
-            if self.rect.top < 10:
-                self.rect.top = 10
-            elif self.rect.bottom > SCREEN_HEIGHT - 10:
-                self.rect.bottom = SCREEN_HEIGHT - 10
-        
-        elif self.movement_pattern == "dive":
-            if self.dive_state == "approach":
-                # Move towards the screen
-                self.rect.x -= self.speed
-                
-                # When reaching a certain x position, start diving
-                if self.rect.x < SCREEN_WIDTH * 0.7:
-                    self.dive_state = "dive"
-            
-            elif self.dive_state == "dive":
-                # Dive towards the target y position
-                self.rect.x -= self.speed * 0.5  # Slow down x movement during dive
-                
-                if self.rect.centery < self.target_y:
-                    self.rect.y += self.dive_speed
-                    if self.rect.centery >= self.target_y:
-                        self.dive_state = "retreat"
-                else:
-                    self.rect.y -= self.dive_speed
-                    if self.rect.centery <= self.target_y:
-                        self.dive_state = "retreat"
-            
-            elif self.dive_state == "retreat":
-                # Retreat after dive
-                self.rect.x -= self.speed * 1.5  # Faster x movement during retreat
-        
-        # Update hitbox position to follow the rect
-        self.hitbox.center = self.rect.center
-        
-        # Remove if it goes off-screen
-        if self.rect.right < 0:
-            self.kill()
-            
+            # Remove if it goes off-screen
+            if self.rect.right < 0:
+                self.kill()
+    
+    def take_damage(self, damage=1):
+        """Take damage and return True if destroyed."""
+        self.health -= damage
+        if self.health <= 0:
+            return True
+        return False
+    
+    def fire_shot(self):
+        """Fire a projectile (for enemies that can shoot)."""
+        if self.behavior_manager:
+            self.behavior_manager._fire_shot(self)
+        else:
+            # Default bullet behavior
+            bullet = {
+                'x': self.rect.centerx,
+                'y': self.rect.bottom,
+                'speed': 3,
+                'width': 4,
+                'height': 8,
+                'color': (255, 100, 100),
+                'damage': 1
+            }
+            self.bullets.append(bullet)
+    
     def draw(self, surface):
-        """Draw the enemy with simplified visual effects for better performance."""
+        """Draw the enemy with visual effects."""
         # Draw the enemy ship
         surface.blit(self.image, self.rect)
         
@@ -264,20 +136,22 @@ class Enemy(pygame.sprite.Sprite):
             pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
         # Add simplified engine glow effect
-        engine_x = self.rect.right
-        engine_y = self.rect.centery
+        if self.enemy_type == 'low' and self.movement_pattern == "drifter":
+            # For drifter, engine is on the left side (since it moves right)
+            engine_x = self.rect.left
+            engine_y = self.rect.centery
+        else:
+            # For other enemies, engine is on the right side (since they move left)
+            engine_x = self.rect.right
+            engine_y = self.rect.centery
         
         # Different colors for different enemy types
-        if self.enemy_type == 'normal':
+        if self.enemy_type == 'low':
             glow_color = (255, 50, 50)  # Red
-        elif self.enemy_type == 'fast':
+        elif self.enemy_type == 'elite':
             glow_color = (255, 150, 0)  # Orange
-        elif self.enemy_type == 'tank':
+        elif self.enemy_type == 'super':
             glow_color = (150, 0, 255)  # Purple
-        elif self.enemy_type == 'drone':
-            glow_color = (0, 255, 150)  # Cyan
-        elif self.enemy_type == 'bomber':
-            glow_color = (255, 255, 0)  # Yellow
         else:
             glow_color = (255, 0, 0)  # Default red
         
@@ -285,7 +159,127 @@ class Enemy(pygame.sprite.Sprite):
         glow_rect = pygame.Rect(engine_x - 2, engine_y - 3, 6, 6)
         pygame.draw.rect(surface, glow_color, glow_rect)
         
-        # Add health indicator for enemies with more than 1 health (simplified)
+        # Draw flickering light for drifter enemy
+        if self.enemy_type == 'low' and self.movement_pattern == "drifter" and hasattr(self, 'light_brightness'):
+            # Calculate light color based on brightness
+            light_color = (
+                min(255, self.light_brightness),
+                min(255, int(self.light_brightness * 0.7)),
+                min(255, int(self.light_brightness * 0.5)),
+                255
+            )
+            
+            # Draw the light
+            light_pos = (self.rect.centerx, self.rect.centery - 5)
+            light_size = self.light_size
+            
+            # Draw a small circle for the light
+            pygame.draw.circle(surface, light_color, light_pos, light_size)
+            
+            # Add shot preparation effect (red flash)
+            if hasattr(self, 'is_preparing_shot') and self.is_preparing_shot:
+                # Create a subtle red glow around the enemy
+                flash_surface = pygame.Surface((self.rect.width + 6, self.rect.height + 6), pygame.SRCALPHA)
+                flash_intensity = min(100, self.shot_flash_intensity)
+                pygame.draw.rect(flash_surface, (255, 0, 0, flash_intensity), 
+                               (3, 3, self.rect.width, self.rect.height), 2)  # Just an outline
+                surface.blit(flash_surface, (self.rect.x - 3, self.rect.y - 3))
+                
+                # Add a small red dot that grows brighter
+                dot_size = 2 + int(self.shot_flash_intensity / 20)  # Small dot that grows slightly
+                dot_pos = (self.rect.centerx + self.rect.width // 4, self.rect.centery)
+                dot_color = (255, 50, 50, min(255, self.shot_flash_intensity * 3))
+                
+                # Draw the dot
+                pygame.draw.circle(surface, dot_color, dot_pos, dot_size)
+                
+                # Add a small glow around the dot
+                if self.shot_flash_intensity > 40:  # Only add glow when intensity is high enough
+                    glow_surface = pygame.Surface((dot_size * 4, dot_size * 4), pygame.SRCALPHA)
+                    glow_color = (255, 50, 50, min(150, self.shot_flash_intensity * 2))
+                    pygame.draw.circle(glow_surface, glow_color, 
+                                     (dot_size * 2, dot_size * 2), dot_size * 2)
+                    surface.blit(glow_surface, 
+                               (dot_pos[0] - dot_size * 2, dot_pos[1] - dot_size * 2))
+            
+            # Add a subtle glow effect for normal flickering
+            elif hasattr(self, 'is_telegraphing') and self.is_telegraphing:
+                # Larger glow when telegraphing
+                glow_surface = pygame.Surface((light_size * 6, light_size * 6), pygame.SRCALPHA)
+                glow_color_alpha = (light_color[0], light_color[1], light_color[2], 100)
+                pygame.draw.circle(glow_surface, glow_color_alpha, 
+                                 (light_size * 3, light_size * 3), light_size * 2)
+                surface.blit(glow_surface, 
+                           (light_pos[0] - light_size * 3, light_pos[1] - light_size * 3))
+        
+        # Draw bullets
+        for bullet in self.bullets:
+            # Adjust bullet drawing based on direction (horizontal or vertical)
+            if 'speed' in bullet and bullet['speed'] < 0:  # Horizontal bullet (moving left)
+                bullet_rect = pygame.Rect(
+                    bullet['x'] - bullet['width'] // 2,
+                    bullet['y'] - bullet['height'] // 2,
+                    bullet['width'],
+                    bullet['height']
+                )
+                
+                # Draw a more pronounced bullet
+                pygame.draw.rect(surface, bullet['color'], bullet_rect)
+                
+                # Add a bright core to the bullet
+                core_rect = pygame.Rect(
+                    bullet['x'] - bullet['width'] // 4,
+                    bullet['y'] - bullet['height'] // 4,
+                    bullet['width'] // 2,
+                    bullet['height'] // 2
+                )
+                pygame.draw.rect(surface, (255, 200, 200), core_rect)
+                
+                # Add a larger glow effect for horizontal bullets
+                glow_width = bullet['width'] * 2
+                glow_height = bullet['height'] * 2
+                glow_surface = pygame.Surface((glow_width, glow_height), pygame.SRCALPHA)
+                
+                # Create an elongated glow in the direction of travel
+                glow_color = (*bullet['color'][:3], 100)
+                pygame.draw.ellipse(glow_surface, glow_color, (0, 0, glow_width, glow_height))
+                
+                # Add a trail effect
+                trail_length = bullet['width'] * 1.5
+                trail_surface = pygame.Surface((int(trail_length), bullet['height']), pygame.SRCALPHA)
+                for i in range(int(trail_length)):
+                    alpha = 150 * (1 - i / trail_length)
+                    trail_color = (*bullet['color'][:3], int(alpha))
+                    pygame.draw.line(trail_surface, trail_color, 
+                                   (i, bullet['height'] // 2), 
+                                   (i, bullet['height'] // 2), 
+                                   1)
+                
+                # Position the glow and trail
+                surface.blit(glow_surface, 
+                           (bullet['x'] - glow_width // 2, 
+                            bullet['y'] - glow_height // 2))
+                surface.blit(trail_surface,
+                           (bullet['x'] + bullet['width'] // 2,
+                            bullet['y'] - bullet['height'] // 2))
+            else:  # Vertical bullet (moving down)
+                bullet_rect = pygame.Rect(
+                    bullet['x'] - bullet['width'] // 2,
+                    bullet['y'],
+                    bullet['width'],
+                    bullet['height']
+                )
+                pygame.draw.rect(surface, bullet['color'], bullet_rect)
+                
+                # Add a small glow effect to the bullet
+                glow_surface = pygame.Surface((bullet['width'] + 4, bullet['height'] + 4), pygame.SRCALPHA)
+                pygame.draw.ellipse(glow_surface, (*bullet['color'][:3], 100), 
+                                  (0, 0, bullet['width'] + 4, bullet['height'] + 4))
+                surface.blit(glow_surface, 
+                       (bullet['x'] - (bullet['width'] + 4) // 2, 
+                        bullet['y'] - 2))
+        
+        # Add health indicator for enemies with more than 1 health
         if self.health > 1:
             health_width = 20
             health_height = 3
@@ -310,3 +304,7 @@ class Enemy(pygame.sprite.Sprite):
                 
             pygame.draw.rect(surface, health_color, 
                            (health_x, health_y, health_fill_width, health_height))
+    
+    def get_bullets(self):
+        """Return the enemy's bullets for collision detection."""
+        return self.bullets

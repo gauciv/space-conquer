@@ -14,6 +14,7 @@ from .utils.ui_manager import UIManager
 from .utils.background_manager import BackgroundManager
 from .utils.phase_manager import PhaseManager
 from .utils.boss_manager import BossManager
+from .utils.enemy_behavior_manager import EnemyBehaviorManager
 from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.powerup import PowerUp
@@ -37,6 +38,7 @@ class GameManager:
         self.ui_manager = UIManager(self.asset_loader, self.sound_manager)
         self.ui_manager.game_manager = self  # Add reference to game manager
         self.background_manager = BackgroundManager(self.asset_loader)
+        self.enemy_behavior_manager = EnemyBehaviorManager()  # Initialize enemy behavior manager
         
         # Game state constants
         self.GAME_STATE_MENU = 0
@@ -78,17 +80,15 @@ class GameManager:
         # Enemy progression
         self.enemy_types_available = ['normal']
         self.enemy_progression = [
-            {'score': 0, 'types': ['normal']},
-            {'score': 200, 'types': ['normal', 'fast']},
-            {'score': 400, 'types': ['normal', 'fast', 'tank']},
-            {'score': 600, 'types': ['normal', 'fast', 'tank', 'bomber']}
+            {'score': 0, 'types': ['low']},
+            {'score': 200, 'types': ['low', 'elite']},
+            {'score': 400, 'types': ['low', 'elite', 'super']}
         ]
         self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each map
         self.enemy_points = {
-            'normal': 30,  # Increased from 10 to 30 (3x)
-            'fast': 45,    # Increased from 15 to 45 (3x)
-            'tank': 75,    # Increased from 25 to 75 (3x)
-            'bomber': 90   # Increased from 30 to 90 (3x)
+            'low': 30,    # Low-type enemy
+            'elite': 45,  # Elite-type enemy
+            'super': 75   # Super-type enemy
         }
         
         # Testing mode
@@ -144,7 +144,7 @@ class GameManager:
         
         # Reset map variables
         self.current_map = 0
-        self.enemy_types_available = ['normal']
+        self.enemy_types_available = ['low']  # Start with low-type enemies
         self.showing_map_name = True
         self.map_transition_timer = self.map_name_duration
         self.show_chapter_header = False  # Don't show the chapter header until intro is done
@@ -473,9 +473,11 @@ class GameManager:
                         if now - self.last_enemy_spawn > self.enemy_spawn_delay * spawn_rate_multiplier:
                             self.last_enemy_spawn = now
                             enemy_type = random.choice(self.enemy_types_available)
-                            enemy = Enemy(enemy_type, self.asset_loader.images)
+                            # Create enemy with behavior manager
+                            enemy = Enemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
                             enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                             enemy.speed_multiplier = self.enemy_speed_multiplier  # Apply speed multiplier
+                            enemy.game_manager = self  # Give enemy a reference to the game manager
                             self.enemies.add(enemy)
                             self.all_sprites.add(enemy)
                     
@@ -562,6 +564,46 @@ class GameManager:
                 
                 # Check for player collision with enemies
                 for enemy in self.enemies:
+                    # Check for collision with enemy bullets
+                    if hasattr(enemy, 'get_bullets') and enemy.enemy_type == 'low':
+                        for bullet in list(enemy.bullets):
+                            # Create a bullet rect for collision detection based on direction
+                            if 'direction' in bullet and bullet['direction'] == 'left':
+                                # Horizontal bullet (moving left)
+                                bullet_rect = pygame.Rect(
+                                    bullet['x'] - bullet['width'] // 2,
+                                    bullet['y'] - bullet['height'] // 2,
+                                    bullet['width'],
+                                    bullet['height']
+                                )
+                            else:
+                                # Vertical bullet (moving down)
+                                bullet_rect = pygame.Rect(
+                                    bullet['x'] - bullet['width'] // 2,
+                                    bullet['y'],
+                                    bullet['width'],
+                                    bullet['height']
+                                )
+                            
+                            if self.player.hitbox.colliderect(bullet_rect):
+                                # Remove the bullet
+                                enemy.bullets.remove(bullet)
+                                
+                                # Apply damage to player
+                                source_id = f"enemy_bullet_{enemy.rect.x}_{enemy.rect.y}"
+                                damage_applied = self.player.take_damage(
+                                    self.testing_mode and self.ui_manager.god_mode,
+                                    source_id=source_id,
+                                    damage=bullet['damage']
+                                )
+                                
+                                if damage_applied and self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.game_active = False
+                                    # Play game over sound
+                                    self.sound_manager.play_sound('game_over')
+                    
+                    # Check for collision with enemy body
                     if self.player.hitbox.colliderect(enemy.hitbox):
                         # Use the new take_damage method with source ID for cooldown
                         source_id = f"enemy_{enemy.rect.x}_{enemy.rect.y}"

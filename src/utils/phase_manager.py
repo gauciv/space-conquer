@@ -75,13 +75,13 @@ class PhaseManager:
     def _init_phases(self):
         """Initialize all game phases based on time thresholds."""
         self.phases = [
-            Phase("Start", 0, ['normal'], spawn_rate=1667),  # 2500/1.5 = ~1667 (1.5x faster)
-            Phase("Low Enemies Speed Up", 15, ['normal'], spawn_rate=1667, speed_multiplier=1.25),
-            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=1667, powerup_drop_chance_modifier=-0.25),  # 3333/2 = ~1667 (2x faster for elite)
-            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=2667),  # 5333/2 = ~2667 (2x faster for elite)
-            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=3333, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 6667/2 = ~3333 (2x faster for super)
+            Phase("Start", 0, ['low'], spawn_rate=1667),  # 2500/1.5 = ~1667 (1.5x faster)
+            Phase("Low Enemies Speed Up", 15, ['low'], spawn_rate=1667, speed_multiplier=1.25),
+            Phase("Asteroids & Elite Enemies", 30, ['low', 'elite'], spawn_rate=1667, powerup_drop_chance_modifier=-0.25),  # 3333/2 = ~1667 (2x faster for elite)
+            Phase("Flying Debris", 45, ['low', 'elite'], spawn_rate=2667),  # 5333/2 = ~2667 (2x faster for elite)
+            Phase("Super Monsters", 60, ['low', 'elite', 'super'], spawn_rate=3333, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 6667/2 = ~3333 (2x faster for super)
             Phase("Mini-Boss", 90, [], boss_type='mini'),  # 90 seconds = 1:30
-            Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=1667),  # 2500/1.5 = ~1667
+            Phase("Post Mini-Boss", 91, ['low', 'elite', 'super'], spawn_rate=1667),  # 2500/1.5 = ~1667
             Phase("Final Boss", 180, [], boss_type='main')  # 180 seconds = 3:00
         ]
         
@@ -223,8 +223,19 @@ class PhaseManager:
     
     def _apply_phase_settings(self, phase):
         """Apply the settings for the given phase to the game."""
-        # Update enemy types
-        self.game_manager.enemy_types_available = phase.enemy_types
+        # Update enemy types - map old enemy types to new ones if needed
+        enemy_types = []
+        for enemy_type in phase.enemy_types:
+            if enemy_type == 'normal':
+                enemy_types.append('low')
+            elif enemy_type == 'fast':
+                enemy_types.append('elite')
+            elif enemy_type == 'tank':
+                enemy_types.append('super')
+            else:
+                enemy_types.append(enemy_type)
+                
+        self.game_manager.enemy_types_available = enemy_types
         
         # Update spawn rate if specified
         if phase.spawn_rate is not None:

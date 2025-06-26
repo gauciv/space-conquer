@@ -19,9 +19,12 @@ class AssetLoader:
         """Load all game images using the asset manager."""
         image_ids = {
             'player': 'player-default',
-            'normal_enemy': 'SE-monster-lower',
-            'fast_enemy': 'SE-monster-elite',
-            'tank_enemy': 'SE-monster-super',
+            'normal_enemy': 'SE-monster-lower',  # Keep for backward compatibility
+            'fast_enemy': 'SE-monster-elite',    # Keep for backward compatibility
+            'tank_enemy': 'SE-monster-super',    # Keep for backward compatibility
+            'low_enemy': 'SE-monster-lower',     # New enemy type
+            'elite_enemy': 'SE-monster-elite',   # New enemy type
+            'super_enemy': 'SE-monster-super',   # New enemy type
             'bullet': 'player-bullet-default',
             'health_powerup': 'powerup-health',
             'speed_powerup': 'powerup-speed',
