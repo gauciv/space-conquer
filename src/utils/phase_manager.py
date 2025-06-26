@@ -72,9 +72,9 @@ class PhaseManager:
         self.phases = [
             Phase("Start", 0, ['normal'], spawn_rate=1667),  # 2500/1.5 = ~1667 (1.5x faster)
             Phase("Low Enemies Speed Up", 15, ['normal'], spawn_rate=1667, speed_multiplier=1.25),
-            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=3333, powerup_drop_chance_modifier=-0.25),  # 5000/1.5 = ~3333
-            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=5333),  # 8000/1.5 = ~5333
-            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=6667, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 10000/1.5 = ~6667
+            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=1667, powerup_drop_chance_modifier=-0.25),  # 3333/2 = ~1667 (2x faster for elite)
+            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=2667),  # 5333/2 = ~2667 (2x faster for elite)
+            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=3333, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 6667/2 = ~3333 (2x faster for super)
             Phase("Mini-Boss", 90, [], boss_type='mini'),
             Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=1667),  # 2500/1.5 = ~1667
             Phase("Final Boss", 180, [], boss_type='main')
@@ -175,9 +175,10 @@ class PhaseManager:
             # Play transition sound if available
             if 'phase_change' in self.game_manager.sound_manager.sounds:
                 self.game_manager.sound_manager.play_sound('phase_change')
-            
-            # Log phase change
-            print(f"Entering new phase: {current_phase.name} (Time: {self.format_time(current_phase.time_threshold)})")
+                
+            # Only print phase changes in testing mode
+            if self.game_manager.testing_mode:
+                print(f"Entering new phase: {current_phase.name} (Time: {self.format_time(current_phase.time_threshold)})")
     
     def _apply_phase_settings(self, phase):
         """Apply the settings for the given phase to the game."""
@@ -295,6 +296,8 @@ class PhaseManager:
     
     def draw_phase_transition(self, surface):
         """Draw phase transition effect."""
+        # We're removing the phase transition headlines as requested
+        # Only keep this method for compatibility
         if not self.showing_phase_transition:
             return
             
@@ -303,35 +306,6 @@ class PhaseManager:
         if self.transition_timer <= 0:
             self.showing_phase_transition = False
             return
-        
-        # Calculate alpha based on timer (fade in, then fade out)
-        if self.transition_timer > self.transition_duration / 2:
-            # Fade in
-            alpha = 255 * (1 - (self.transition_timer - self.transition_duration/2) / (self.transition_duration/2))
-        else:
-            # Fade out
-            alpha = 255 * (self.transition_timer / (self.transition_duration/2))
-        
-        # Draw semi-transparent overlay
-        overlay = pygame.Surface((surface.get_width(), 80), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, min(180, int(alpha * 0.7))))
-        surface.blit(overlay, (0, surface.get_height() // 2 - 40))
-        
-        # Draw phase name
-        current_phase = self.get_current_phase()
-        if current_phase:
-            font = pygame.font.SysFont('Arial', 32, bold=True)
-            text = font.render(f"PHASE {self.current_phase_index + 1}: {current_phase.name}", True, (255, 255, 255))
-            text.set_alpha(int(alpha))
-            surface.blit(text, (surface.get_width() // 2 - text.get_width() // 2, 
-                               surface.get_height() // 2 - text.get_height() // 2))
-            
-            # Draw time threshold
-            time_font = pygame.font.SysFont('Arial', 20)
-            time_text = time_font.render(f"Time: {self.format_time(current_phase.time_threshold)}", True, (200, 200, 255))
-            time_text.set_alpha(int(alpha))
-            surface.blit(time_text, (surface.get_width() // 2 - time_text.get_width() // 2, 
-                                   surface.get_height() // 2 + 20))
     
     def toggle_panel_collapse(self):
         """Toggle the collapsed state of the phase markers panel."""
@@ -454,29 +428,6 @@ class PhaseManager:
             cooldown_text = cooldown_font.render(f"Cooldown: {self.phase_selection_cooldown - (time.time() - self.last_phase_selection_time):.1f}s", 
                                                True, (200, 200, 200))
             surface.blit(cooldown_text, (panel_x, panel_y + 55 + len(self.phases) * 30))
-            
-        # Draw frenzy mode indicator if active
-        if self.frenzy_mode:
-            frenzy_font = pygame.font.SysFont('Arial', 20, bold=True)
-            frenzy_text = frenzy_font.render("FRENZY MODE!", True, (255, 50, 50))
-            frenzy_rect = frenzy_text.get_rect(center=(surface.get_width() // 2, 30))
-            
-            # Add a pulsing effect
-            pulse = (math.sin(pygame.time.get_ticks() / 200) + 1) * 0.5  # 0 to 1
-            size_multiplier = 1.0 + pulse * 0.2  # 1.0 to 1.2
-            
-            # Scale the text
-            scaled_text = pygame.transform.scale(frenzy_text, 
-                                               (int(frenzy_text.get_width() * size_multiplier),
-                                                int(frenzy_text.get_height() * size_multiplier)))
-            scaled_rect = scaled_text.get_rect(center=(surface.get_width() // 2, 30))
-            
-            # Draw with a glow effect
-            glow_surf = pygame.Surface((scaled_rect.width + 10, scaled_rect.height + 10), pygame.SRCALPHA)
-            pygame.draw.rect(glow_surf, (255, 50, 50, 100), (0, 0, glow_surf.get_width(), glow_surf.get_height()), 
-                           border_radius=10)
-            surface.blit(glow_surf, glow_surf.get_rect(center=(surface.get_width() // 2, 30)))
-            surface.blit(scaled_text, scaled_rect)
     def draw_game_timer(self, surface):
         """Draw the game timer below the chapter title."""
         if self.game_manager.show_chapter_header:
@@ -519,3 +470,72 @@ class PhaseManager:
                        border_radius=15)
         surface.blit(glow_surf, glow_surf.get_rect(center=(surface.get_width() // 2, surface.get_height() // 2)))
         surface.blit(scaled_text, text_rect)
+    def draw_frenzy_mode(self, surface):
+        """Draw an intense frenzy mode indicator."""
+        if not self.frenzy_mode:
+            return
+            
+        # Create a pulsing red overlay for the entire screen
+        pulse = (math.sin(pygame.time.get_ticks() / 150) + 1) * 0.5  # 0 to 1
+        alpha = int(20 + pulse * 30)  # 20 to 50 alpha
+        
+        # Create semi-transparent red overlay
+        overlay = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+        overlay.fill((255, 0, 0, alpha))
+        surface.blit(overlay, (0, 0))
+        
+        # Draw "FRENZY MODE" text with intense effects
+        frenzy_font = pygame.font.SysFont('Arial', 32, bold=True)
+        frenzy_text = frenzy_font.render("FRENZY MODE", True, (255, 50, 50))
+        
+        # Add a pulsing effect
+        size_multiplier = 1.0 + pulse * 0.3  # 1.0 to 1.3
+        
+        # Scale the text
+        scaled_text = pygame.transform.scale(frenzy_text, 
+                                           (int(frenzy_text.get_width() * size_multiplier),
+                                            int(frenzy_text.get_height() * size_multiplier)))
+        scaled_rect = scaled_text.get_rect(center=(surface.get_width() // 2, 30))
+        
+        # Create a glowing effect
+        for i in range(3, 0, -1):
+            glow_size = i * 4
+            glow_alpha = 150 - i * 40
+            glow_surf = pygame.Surface((scaled_rect.width + glow_size, scaled_rect.height + glow_size), pygame.SRCALPHA)
+            pygame.draw.rect(glow_surf, (255, 50, 50, glow_alpha), 
+                           (0, 0, glow_surf.get_width(), glow_surf.get_height()), 
+                           border_radius=15)
+            glow_rect = glow_surf.get_rect(center=(surface.get_width() // 2, 30))
+            surface.blit(glow_surf, glow_rect)
+        
+        # Draw the text
+        surface.blit(scaled_text, scaled_rect)
+        
+        # Draw warning triangles on the sides
+        triangle_size = 20 + int(pulse * 10)  # 20-30 pixels
+        triangle_y = 30
+        triangle_margin = 50
+        
+        # Left triangle
+        left_points = [
+            (triangle_margin, triangle_y),
+            (triangle_margin + triangle_size, triangle_y - triangle_size//2),
+            (triangle_margin + triangle_size, triangle_y + triangle_size//2)
+        ]
+        pygame.draw.polygon(surface, (255, 50, 50), left_points)
+        
+        # Right triangle
+        right_points = [
+            (surface.get_width() - triangle_margin, triangle_y),
+            (surface.get_width() - triangle_margin - triangle_size, triangle_y - triangle_size//2),
+            (surface.get_width() - triangle_margin - triangle_size, triangle_y + triangle_size//2)
+        ]
+        pygame.draw.polygon(surface, (255, 50, 50), right_points)
+        
+        # Draw time remaining
+        if self.frenzy_start_time > 0:
+            time_remaining = max(0, self.frenzy_duration - (self.game_time - self.frenzy_start_time))
+            time_font = pygame.font.SysFont('Arial', 16)
+            time_text = time_font.render(f"{time_remaining:.1f}s", True, (255, 255, 255))
+            time_rect = time_text.get_rect(center=(surface.get_width() // 2, 60))
+            surface.blit(time_text, time_rect)

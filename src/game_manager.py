@@ -701,6 +701,10 @@ class GameManager:
                 # Draw game timer below chapter title
                 self.phase_manager.draw_game_timer(self.screen)
                 
+                # Draw frenzy mode indicator if active
+                if self.phase_manager.frenzy_mode:
+                    self.phase_manager.draw_frenzy_mode(self.screen)
+                
                 # Draw boss warning effect if active
                 if self.showing_boss_warning:
                     self.phase_manager.draw_boss_warning(self.screen, self.boss_warning_type)
