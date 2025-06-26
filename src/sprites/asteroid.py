@@ -52,7 +52,7 @@ class Asteroid(pygame.sprite.Sprite):
         self.powerup_type = random.choice(['health', 'speed', 'rapid_fire', 'score_multiplier'])
         
         # Chance to drop a powerup (can be modified by game phases)
-        self.powerup_drop_chance = 0.125  # 12.5% chance by default (reduced by 75% from 50%)
+        self.powerup_drop_chance = 0.3  # 30% chance (3 out of 10 asteroids)
         
         # Damage to player on collision
         self.collision_damage = 1

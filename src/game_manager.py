@@ -450,8 +450,12 @@ class GameManager:
                     if self.boss_warning_timer <= 0:
                         self.showing_boss_warning = False
                 
-                # Only spawn entities if no boss is active and enemy spawn cooldown is over
-                if not self.boss_manager.has_active_boss() and self.enemy_spawn_cooldown <= 0:
+                # Only spawn entities if timer has started, no boss is active, and enemy spawn cooldown is over
+                if (not self.showing_map_name and 
+                    self.phase_manager.game_time > 0 and 
+                    not self.boss_manager.has_active_boss() and 
+                    self.enemy_spawn_cooldown <= 0):
+                    
                     # Apply frenzy mode if active - 3x faster spawning during frenzy (0.33 multiplier)
                     spawn_rate_multiplier = 0.33 if self.phase_manager.frenzy_mode else 1.0
                     
