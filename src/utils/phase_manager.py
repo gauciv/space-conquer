@@ -91,10 +91,11 @@ class PhaseManager:
         if self.is_on_cooldown and current_time - self.last_phase_selection_time >= self.phase_selection_cooldown:
             self.is_on_cooldown = False
         
-        # Update game timer if not paused, not showing map name, and no active boss
+        # Update game timer if not paused, not showing map name, no active boss, and settings not open
         if (not self.timer_paused and 
             not self.game_manager.showing_map_name and 
-            not self.game_manager.boss_manager.has_active_boss()):
+            not self.game_manager.boss_manager.has_active_boss() and
+            not self.game_manager.ui_manager.settings_open):
             
             # Use real time for accurate timing
             current_time_ms = time.time() * 1000  # Convert to milliseconds for more precision
