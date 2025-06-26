@@ -15,6 +15,8 @@ class BossManager:
         self.main_boss = None
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
+        self.mini_boss_dying = False
+        self.main_boss_dying = False
     
     def reset(self):
         """Reset boss state."""
@@ -22,6 +24,8 @@ class BossManager:
         self.main_boss = None
         self.mini_boss_spawned = False
         self.main_boss_spawned = False
+        self.mini_boss_dying = False
+        self.main_boss_dying = False
     
     def spawn_boss(self, boss_type):
         """Spawn a boss of the specified type."""
@@ -45,11 +49,27 @@ class BossManager:
     
     def update(self):
         """Update all active bosses."""
+        # Update mini boss
         if self.mini_boss:
-            self.mini_boss.update()
+            # Update boss and check if death animation is complete
+            animation_complete = self.mini_boss.update()
+            if animation_complete:
+                # Death animation complete, remove boss from all sprite groups
+                self.mini_boss.kill()  # Remove from all sprite groups
+                self.mini_boss = None
+                self.mini_boss_dying = False
+                print("Mini boss destroyed and removed!")
         
+        # Update main boss
         if self.main_boss:
-            self.main_boss.update()
+            # Update boss and check if death animation is complete
+            animation_complete = self.main_boss.update()
+            if animation_complete:
+                # Death animation complete, remove boss from all sprite groups
+                self.main_boss.kill()  # Remove from all sprite groups
+                self.main_boss = None
+                self.main_boss_dying = False
+                print("Main boss destroyed and removed!")
     
     def draw(self, surface):
         """Draw all active bosses."""
@@ -65,11 +85,11 @@ class BossManager:
             return
         
         # Process mini-boss collisions
-        if self.mini_boss:
+        if self.mini_boss and not self.mini_boss.dying:
             self._handle_boss_collision(self.mini_boss, player)
         
         # Process main-boss collisions
-        if self.main_boss:
+        if self.main_boss and not self.main_boss.dying:
             self._handle_boss_collision(self.main_boss, player)
     
     def _handle_boss_collision(self, boss, player):
@@ -87,14 +107,12 @@ class BossManager:
                     points = boss.score_value * player.score_multiplier
                     self.game_manager.score += points
                     
-                    # Clear the appropriate boss reference
+                    # Set dying flag
                     if boss == self.mini_boss:
-                        self.mini_boss = None
+                        self.mini_boss_dying = True
                     elif boss == self.main_boss:
-                        self.main_boss = None
+                        self.main_boss_dying = True
                     
-                    # Play explosion sound
-                    self.game_manager.sound_manager.play_sound('explosion')
                     return  # Exit after boss is defeated
         
         # Check boss bullets against player
@@ -109,5 +127,10 @@ class BossManager:
                             self.game_manager.sound_manager.play_sound('game_over')
     
     def has_active_boss(self):
-        """Check if there's an active boss."""
+        """Check if there's an active boss (not including dying bosses)."""
+        return (self.mini_boss is not None and not self.mini_boss.dying) or \
+               (self.main_boss is not None and not self.main_boss.dying)
+               
+    def has_any_boss(self):
+        """Check if there's any boss, including dying ones."""
         return self.mini_boss is not None or self.main_boss is not None

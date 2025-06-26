@@ -394,8 +394,9 @@ class GameManager:
                 # Check for enemy type progression based on score
                 self.update_enemy_types()
                 
-                # Spawn enemies (only if no boss is active)
+                # Only spawn entities if no boss is active
                 if not self.boss_manager.has_active_boss():
+                    # Spawn enemies
                     now = pygame.time.get_ticks()
                     if now - self.last_enemy_spawn > self.enemy_spawn_delay:
                         self.last_enemy_spawn = now
@@ -404,22 +405,22 @@ class GameManager:
                         enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                         self.enemies.add(enemy)
                         self.all_sprites.add(enemy)
-                
-                # Spawn asteroids
-                now = pygame.time.get_ticks()
-                if now - self.last_asteroid_spawn > self.asteroid_spawn_delay:
-                    self.last_asteroid_spawn = now
-                    asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
-                    self.asteroids.add(asteroid)
-                    self.all_sprites.add(asteroid)
-                
-                # Spawn debris
-                now = pygame.time.get_ticks()
-                if now - self.last_debris_spawn > self.debris_spawn_delay:
-                    self.last_debris_spawn = now
-                    debris = Debris(self.asset_loader.images)
-                    self.debris.add(debris)
-                    self.all_sprites.add(debris)
+                    
+                    # Spawn asteroids
+                    now = pygame.time.get_ticks()
+                    if now - self.last_asteroid_spawn > self.asteroid_spawn_delay:
+                        self.last_asteroid_spawn = now
+                        asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
+                        self.asteroids.add(asteroid)
+                        self.all_sprites.add(asteroid)
+                    
+                    # Spawn debris
+                    now = pygame.time.get_ticks()
+                    if now - self.last_debris_spawn > self.debris_spawn_delay:
+                        self.last_debris_spawn = now
+                        debris = Debris(self.asset_loader.images)
+                        self.debris.add(debris)
+                        self.all_sprites.add(debris)
                 
                 # Spawn power-ups (only from asteroids now)
                 # We'll keep this code commented out as reference

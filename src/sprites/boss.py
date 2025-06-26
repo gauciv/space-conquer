@@ -65,8 +65,21 @@ class Boss(pygame.sprite.Sprite):
         self.center_y = SCREEN_HEIGHT // 2
         self.amplitude = 100  # How far up/down the boss moves
         self.frequency = 0.02  # How fast the boss moves up/down
+        
+        # Death animation properties
+        self.dying = False
+        self.death_animation_start = 0
+        self.death_animation_duration = 1500  # 1.5 seconds
+        self.explosion_particles = []
     
     def update(self):
+        """Update the boss state."""
+        # If dying, update death animation
+        if self.dying:
+            # Update death animation and check if it's complete
+            animation_complete = self.update_death_animation()
+            return animation_complete
+            
         # Entry movement - move from right edge to battle position
         if not self.entry_complete:
             self.rect.x -= 3
@@ -108,6 +121,8 @@ class Boss(pygame.sprite.Sprite):
         
         # Update bullets
         self.bullets.update()
+        
+        return False  # Not finished dying
     
     def shoot(self):
         now = pygame.time.get_ticks()
@@ -138,10 +153,63 @@ class Boss(pygame.sprite.Sprite):
         """Handle boss taking damage."""
         self.health -= damage
         self.sound_manager.play_sound('explosion')
-        return self.health <= 0
+        
+        # Check if boss is defeated
+        if self.health <= 0 and not self.dying:
+            self.destroy()
+            return True
+        return False
+    
+    def destroy(self):
+        """Handle boss destruction with animation."""
+        # Set dying state
+        self.dying = True
+        self.death_animation_start = pygame.time.get_ticks()
+        self.explosion_particles = []
+        
+        # Create explosion particles
+        for _ in range(20):
+            particle = {
+                'x': self.rect.centerx + random.randint(-self.rect.width//2, self.rect.width//2),
+                'y': self.rect.centery + random.randint(-self.rect.height//2, self.rect.height//2),
+                'size': random.randint(5, 15),
+                'speed_x': random.uniform(-3, 3),
+                'speed_y': random.uniform(-3, 3),
+                'color': random.choice([(255, 100, 0), (255, 200, 0), (255, 50, 0), (200, 0, 0)]),
+                'lifetime': random.randint(30, 60)  # frames
+            }
+            self.explosion_particles.append(particle)
+        
+        # Play explosion sound
+        self.sound_manager.play_sound('explosion')
+        
+    def update_death_animation(self):
+        """Update the death animation."""
+        # Update explosion particles
+        for particle in self.explosion_particles[:]:
+            particle['x'] += particle['speed_x']
+            particle['y'] += particle['speed_y']
+            particle['lifetime'] -= 1
+            
+            if particle['lifetime'] <= 0:
+                self.explosion_particles.remove(particle)
+        
+        # Check if animation is complete
+        current_time = pygame.time.get_ticks()
+        if current_time - self.death_animation_start > self.death_animation_duration:
+            # Clear any remaining bullets
+            for bullet in list(self.bullets):
+                bullet.kill()
+            self.bullets.empty()
+            return True  # Animation complete, boss can be removed
+        return False
     
     def draw_health_bar(self, surface):
         """Draw the boss health bar at the top of the screen."""
+        # Don't draw health bar if dying
+        if self.dying:
+            return
+            
         # Position the health bar at the top center
         bar_x = (SCREEN_WIDTH - self.health_bar_bg.get_width()) // 2
         bar_y = 10
@@ -165,14 +233,40 @@ class Boss(pygame.sprite.Sprite):
     
     def draw(self, surface):
         """Draw the boss and its bullets."""
-        surface.blit(self.image, self.rect)
+        if self.dying:
+            self.draw_death_animation(surface)
+        else:
+            surface.blit(self.image, self.rect)
+            
+            # Draw hitbox if debug mode is enabled
+            if DEBUG_HITBOXES:
+                pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
-        # Draw hitbox if debug mode is enabled
-        if DEBUG_HITBOXES:
-            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
-        
+        # Always draw bullets
         self.bullets.draw(surface)
-        self.draw_health_bar(surface)
+        
+        # Draw health bar if not dying
+        if not self.dying:
+            self.draw_health_bar(surface)
+            
+    def draw_death_animation(self, surface):
+        """Draw the death animation."""
+        # Draw explosion particles
+        for particle in self.explosion_particles:
+            pygame.draw.circle(
+                surface, 
+                particle['color'], 
+                (int(particle['x']), int(particle['y'])), 
+                particle['size']
+            )
+            
+        # Draw fading boss sprite
+        alpha = 255 * (1 - (pygame.time.get_ticks() - self.death_animation_start) / self.death_animation_duration)
+        if alpha > 0:
+            # Create a copy of the image with transparency
+            temp_image = self.image.copy()
+            temp_image.set_alpha(int(alpha))
+            surface.blit(temp_image, self.rect)
 
 
 class BossBullet(pygame.sprite.Sprite):
@@ -199,7 +293,7 @@ class BossBullet(pygame.sprite.Sprite):
         # Update hitbox position to follow the rect
         self.hitbox.center = self.rect.center
         
-        # Remove if it goes off-screen
+        # Remove if off-screen
         if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH or \
            self.rect.bottom < 0 or self.rect.top > SCREEN_HEIGHT:
             self.kill()
