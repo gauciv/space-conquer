@@ -272,6 +272,14 @@ class GameManager:
                                 self.sound_manager.play_sound('select')
                             continue
                     
+                    # Handle phase marker clicks in testing mode
+                    if self.testing_mode and self.game_active:
+                        if self.phase_manager.handle_click(event.pos):
+                            # Play a sound effect for feedback
+                            if 'select' in self.sound_manager.sounds:
+                                self.sound_manager.play_sound('select')
+                            continue
+                    
                     # Handle settings button click
                     settings_result = self.ui_manager.handle_settings_click(event.pos)
                     if settings_result:
