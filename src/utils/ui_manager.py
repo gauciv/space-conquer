@@ -609,7 +609,13 @@ class UIManager:
     def show_score(self, surface, score, health, max_health=3, testing_mode=False, player=None, fps=0):
         """Display score and health with enhanced visual styling."""
         # Create a semi-transparent panel for the score
-        score_panel_width = 150
+        # Adjust panel width based on score length
+        score_digits = len(str(score))
+        base_width = 150
+        extra_width_per_digit = 15
+        
+        # Calculate panel width based on score length (minimum 150px)
+        score_panel_width = max(base_width, base_width + (score_digits - 6) * extra_width_per_digit)
         score_panel_height = 40
         score_panel_rect = pygame.Rect(10, 10, score_panel_width, score_panel_height)
         

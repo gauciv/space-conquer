@@ -85,10 +85,10 @@ class GameManager:
         ]
         self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each map
         self.enemy_points = {
-            'normal': 10,
-            'fast': 15,
-            'tank': 25,
-            'bomber': 30
+            'normal': 30,  # Increased from 10 to 30 (3x)
+            'fast': 45,    # Increased from 15 to 45 (3x)
+            'tank': 75,    # Increased from 25 to 75 (3x)
+            'bomber': 90   # Increased from 30 to 90 (3x)
         }
         
         # Testing mode

@@ -26,16 +26,16 @@ class Asteroid(pygame.sprite.Sprite):
         self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
         
-        # Create a hitbox (90% of sprite size)
-        hitbox_width = int(self.rect.width * 0.9)
-        hitbox_height = int(self.rect.height * 0.9)
+        # Create a hitbox (100% of sprite size for better collision detection)
+        hitbox_width = self.rect.width
+        hitbox_height = self.rect.height
         self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
         self.hitbox.center = self.rect.center
         
         # Asteroid properties
         self.health = 3  # Takes 3 hits to destroy
         self.speed = 1   # Very slow movement
-        self.points = 15  # Points awarded for destroying
+        self.points = 45  # Points awarded for destroying (increased from 15 to 45, 3x)
         
         # Rotation properties
         self.angle = random.randint(0, 360)

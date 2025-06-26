@@ -35,7 +35,7 @@ class Debris(pygame.sprite.Sprite):
         self.speed_multiplier = 1.0  # Can be modified by game phases
         self.speed = self.base_speed
         self.damage = 1  # Damage dealt to player on collision
-        self.points = 5  # Points awarded for destroying
+        self.points = 15  # Points awarded for destroying (increased from 5 to 15, 3x)
         self.health = 1  # Takes 1 hit to destroy
         
         # Add slight rotation for visual effect
