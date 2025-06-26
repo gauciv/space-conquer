@@ -74,7 +74,7 @@ class GameManager:
         self.current_map = 0
         self.map_transition_timer = 0
         self.showing_map_name = False
-        self.map_name_duration = 180  # 3 seconds at 60 FPS
+        self.map_name_duration = 60  # 1 second at 60 FPS (further reduced from 1.5 seconds)
         self.show_chapter_header = False  # Flag to control when to show the chapter name at the top
         
         # Enemy progression
