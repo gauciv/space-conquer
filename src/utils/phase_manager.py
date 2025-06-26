@@ -1,15 +1,16 @@
 """
 Phase Manager for the Space Impact game.
-Handles game phases, difficulty progression, and enemy types.
+Handles game phases, difficulty progression, and enemy types based on time.
 """
 import pygame
 import time
 
 class Phase:
     """Represents a game phase with specific enemy types and difficulty settings."""
-    def __init__(self, name, score_threshold, enemy_types, spawn_rate=None, boss_type=None):
+    def __init__(self, name, time_threshold, enemy_types, spawn_rate=None, boss_type=None, 
+                 speed_multiplier=1.0, powerup_drop_chance_modifier=0.0):
         self.name = name
-        self.score_threshold = score_threshold
+        self.time_threshold = time_threshold  # Time in seconds when this phase starts
         self.enemy_types = enemy_types
         self.spawn_rate = spawn_rate  # milliseconds between enemy spawns
         self.boss_type = boss_type    # 'mini', 'main', or None
@@ -17,12 +18,20 @@ class Phase:
         self.completed = False
         self.transition_time = 0      # For phase transition effects
         self.rect = None              # For click detection
+        self.speed_multiplier = speed_multiplier  # Multiplier for enemy speed
+        self.powerup_drop_chance_modifier = powerup_drop_chance_modifier  # Modifier for powerup drop chance
         
     def __str__(self):
-        return f"Phase: {self.name} (Score: {self.score_threshold})"
+        return f"Phase: {self.name} (Time: {self.format_time(self.time_threshold)})"
+        
+    def format_time(self, seconds):
+        """Format seconds as MM:SS"""
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes:02d}:{seconds:02d}"
 
 class PhaseManager:
-    """Manages game phases and progression."""
+    """Manages game phases and progression based on time."""
     def __init__(self, game_manager):
         self.game_manager = game_manager
         self.phases = []
@@ -30,6 +39,19 @@ class PhaseManager:
         self.showing_phase_transition = False
         self.transition_timer = 0
         self.transition_duration = 60  # frames (1 second at 60 FPS)
+        
+        # Game timer
+        self.game_time = 0  # Time in seconds
+        self.timer_paused = False
+        self.timer_start_time = 0
+        self.timer_paused_time = 0
+        
+        # Frenzy mode
+        self.frenzy_mode = False
+        self.frenzy_start_time = 0
+        self.frenzy_duration = 8  # seconds
+        self.next_frenzy_time = 25  # seconds until first frenzy
+        self.frenzy_interval = 25  # seconds between frenzies
         
         # Phase selection cooldown
         self.phase_selection_cooldown = 3.0  # 3 seconds
@@ -44,39 +66,45 @@ class PhaseManager:
         self._init_phases()
     
     def _init_phases(self):
-        """Initialize all game phases."""
+        """Initialize all game phases based on time thresholds."""
         self.phases = [
-            Phase("Start", 0, ['normal'], spawn_rate=1500),
-            Phase("Fast Enemies", 200, ['normal', 'fast'], spawn_rate=1200),
-            Phase("Tank Enemies", 400, ['normal', 'fast', 'tank'], spawn_rate=1000),
-            Phase("Bomber Enemies", 600, ['normal', 'fast', 'tank', 'bomber'], spawn_rate=800),
-            Phase("Mini-Boss", 750, ['normal', 'fast', 'tank'], spawn_rate=1000, boss_type='mini'),
-            Phase("Main Boss", 1500, ['normal', 'fast', 'tank', 'bomber'], spawn_rate=800, boss_type='main')
+            Phase("Start", 0, ['normal'], spawn_rate=2500),
+            Phase("Low Enemies Speed Up", 15, ['normal'], spawn_rate=2500, speed_multiplier=1.25),
+            Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=5000, powerup_drop_chance_modifier=-0.25),
+            Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=8000),
+            Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=10000, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),
+            Phase("Mini-Boss", 90, [], boss_type='mini'),
+            Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=2500),
+            Phase("Final Boss", 180, [], boss_type='main')
         ]
         
         # Set the first phase (Start) as active by default
         self._deselect_all_phases()
         self.phases[0].active = True
     
-    def update(self, score):
-        """Update phases based on current score."""
+    def update(self):
+        """Update phases based on current game time."""
         # Update cooldown state
         current_time = time.time()
         if self.is_on_cooldown and current_time - self.last_phase_selection_time >= self.phase_selection_cooldown:
             self.is_on_cooldown = False
         
-        # Find the current phase based on score
+        # Update game timer if not paused
+        if not self.timer_paused:
+            self.game_time = pygame.time.get_ticks() / 1000  # Convert to seconds
+        
+        # Find the current phase based on time
         old_phase_index = self.current_phase_index
         
-        # In testing mode, we don't automatically change phases based on score
+        # In testing mode, we don't automatically change phases based on time
         # The active phase is set manually through skip_to_phase
         if not self.game_manager.testing_mode:
             # First, deselect all phases
             self._deselect_all_phases()
             
             for i, phase in enumerate(self.phases):
-                # Mark phases as completed if score is past their threshold
-                if score >= phase.score_threshold:
+                # Mark phases as completed if time is past their threshold
+                if self.game_time >= phase.time_threshold:
                     phase.completed = True
                     
                     # Check if this is the highest completed phase
@@ -85,9 +113,9 @@ class PhaseManager:
                 
                 # Determine which phase is currently active
                 is_last_phase = (i == len(self.phases) - 1)
-                next_threshold = float('inf') if is_last_phase else self.phases[i+1].score_threshold
+                next_threshold = float('inf') if is_last_phase else self.phases[i+1].time_threshold
                 
-                if score >= phase.score_threshold and score < next_threshold:
+                if self.game_time >= phase.time_threshold and self.game_time < next_threshold:
                     # This is the current active phase
                     phase.active = True
                     
@@ -102,6 +130,35 @@ class PhaseManager:
             # If phase changed, trigger transition effects
             if old_phase_index != self.current_phase_index:
                 self._handle_phase_transition()
+                
+            # Check for frenzy mode
+            self._update_frenzy_mode()
+    
+    def _update_frenzy_mode(self):
+        """Update frenzy mode status based on time."""
+        # Skip frenzy mode if a boss is active
+        if self.game_manager.boss_manager.has_active_boss():
+            return
+            
+        # Check if we should start a frenzy
+        if not self.frenzy_mode:
+            # Check if it's time for a frenzy
+            if self.game_time >= self.next_frenzy_time:
+                self.frenzy_mode = True
+                self.frenzy_start_time = self.game_time
+                self.next_frenzy_time = self.game_time + self.frenzy_duration + self.frenzy_interval
+                print(f"Frenzy mode activated at {self.format_time(self.game_time)}!")
+        else:
+            # Check if frenzy should end
+            if self.game_time >= self.frenzy_start_time + self.frenzy_duration:
+                self.frenzy_mode = False
+                print(f"Frenzy mode ended at {self.format_time(self.game_time)}")
+    
+    def format_time(self, seconds):
+        """Format seconds as MM:SS"""
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes:02d}:{seconds:02d}"
     
     def _handle_phase_transition(self):
         """Handle visual and gameplay effects when transitioning to a new phase."""
