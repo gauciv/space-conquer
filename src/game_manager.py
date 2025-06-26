@@ -935,7 +935,8 @@ class GameManager:
                         source_id = f"asteroid_{asteroid.rect.x}_{asteroid.rect.y}"
                         damage_applied = self.player.take_damage(
                             self.testing_mode and self.ui_manager.god_mode,  # Only god mode if both testing AND god mode enabled
-                            source_id=source_id
+                            source_id=source_id,
+                            damage=asteroid.collision_damage  # Use asteroid's collision damage
                         )
                         
                         # Only damage the asteroid if player damage was applied
