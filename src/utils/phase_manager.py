@@ -169,7 +169,7 @@ class PhaseManager:
                 self.game_manager.sound_manager.play_sound('phase_change')
             
             # Log phase change
-            print(f"Entering new phase: {current_phase.name} (Score: {current_phase.score_threshold})")
+            print(f"Entering new phase: {current_phase.name} (Time: {self.format_time(current_phase.time_threshold)})")
     
     def _apply_phase_settings(self, phase):
         """Apply the settings for the given phase to the game."""
@@ -180,6 +180,14 @@ class PhaseManager:
         if phase.spawn_rate is not None:
             self.game_manager.enemy_spawn_delay = phase.spawn_rate
         
+        # Apply speed multiplier to enemies
+        if hasattr(phase, 'speed_multiplier'):
+            self.game_manager.enemy_speed_multiplier = phase.speed_multiplier
+        
+        # Apply powerup drop chance modifier
+        if hasattr(phase, 'powerup_drop_chance_modifier'):
+            self.game_manager.powerup_drop_chance_modifier = phase.powerup_drop_chance_modifier
+        
         # Clear existing bosses when changing phases
         self.game_manager.boss_manager.reset()
         
@@ -189,10 +197,17 @@ class PhaseManager:
             self.showing_phase_transition = True
             self.transition_timer = self.transition_duration
             
+            # Pause the timer during boss fights
+            self.pause_timer()
+            
             # Spawn the appropriate boss
             boss = self.game_manager.boss_manager.spawn_boss(phase.boss_type)
             if boss:
                 print(f"Boss spawned: {boss.name}")
+                
+                # Show warning effect for boss
+                if hasattr(self.game_manager, 'show_boss_warning'):
+                    self.game_manager.show_boss_warning(phase.boss_type)
             else:
                 print(f"Failed to spawn boss for phase: {phase.name}")
         else:
@@ -231,15 +246,44 @@ class PhaseManager:
             target_phase.active = True  # Mark only this phase as active
             self.current_phase_index = phase_index  # Update current phase index
             
-            # Set score to phase threshold
-            self.game_manager.score = target_phase.score_threshold
+            # Set game time to phase threshold
+            self.game_time = target_phase.time_threshold
             
             # Apply phase settings directly
             self._apply_phase_settings(target_phase)
             
-            print(f"Skipped to phase: {target_phase.name} (Score: {target_phase.score_threshold})")
+            print(f"Skipped to phase: {target_phase.name} (Time: {self.format_time(target_phase.time_threshold)})")
             return True
         return False
+        
+    def pause_timer(self):
+        """Pause the game timer."""
+        if not self.timer_paused:
+            self.timer_paused = True
+            self.timer_paused_time = self.game_time
+            print(f"Timer paused at {self.format_time(self.game_time)}")
+    
+    def resume_timer(self):
+        """Resume the game timer."""
+        if self.timer_paused:
+            self.timer_paused = False
+            print(f"Timer resumed at {self.format_time(self.game_time)}")
+            
+    def handle_boss_defeated(self, boss_type):
+        """Handle boss defeat events."""
+        # Resume the timer after boss is defeated
+        self.resume_timer()
+        
+        # Set a cooldown before enemies start spawning again
+        if hasattr(self.game_manager, 'enemy_spawn_cooldown'):
+            self.game_manager.enemy_spawn_cooldown = 2.5  # 2.5 seconds
+        
+        # If it was the mini-boss, move to the post-mini-boss phase
+        if boss_type == 'mini':
+            for i, phase in enumerate(self.phases):
+                if phase.name == "Post Mini-Boss":
+                    self.skip_to_phase(i)
+                    break
     
     def draw_phase_transition(self, surface):
         """Draw phase transition effect."""
@@ -335,6 +379,10 @@ class PhaseManager:
         title_text = marker_title.render("Phase Markers:", True, (255, 255, 100))
         surface.blit(title_text, (panel_x, panel_y))
         
+        # Draw current game time
+        time_text = marker_title.render(f"Time: {self.format_time(self.game_time)}", True, (255, 255, 255))
+        surface.blit(time_text, (panel_x, panel_y + 20))
+        
         # If collapsed, don't draw the phase markers
         if self.panel_collapsed:
             return
@@ -349,7 +397,7 @@ class PhaseManager:
         marker_font = pygame.font.SysFont('Arial', 16)
         for i, phase in enumerate(self.phases):
             # Create marker rectangle
-            marker_rect = pygame.Rect(panel_x, panel_y + 30 + i * 30, panel_width, 25)
+            marker_rect = pygame.Rect(panel_x, panel_y + 50 + i * 30, panel_width, 25)
             phase.rect = marker_rect  # Store rect for click detection
             
             # Determine marker color based on state
@@ -374,20 +422,43 @@ class PhaseManager:
             pygame.draw.rect(surface, border_color, marker_rect, 1)
             
             # Draw marker text
-            text = marker_font.render(f"{phase.name}", True, text_color)
-            surface.blit(text, (panel_x + 5, panel_y + 33 + i * 30))
+            text = marker_font.render(f"{phase.name} ({self.format_time(phase.time_threshold)})", True, text_color)
+            surface.blit(text, (panel_x + 5, panel_y + 53 + i * 30))
         
         # Draw cooldown indicator if on cooldown
         if self.is_on_cooldown:
-            cooldown_rect = pygame.Rect(panel_x, panel_y + 30 + len(self.phases) * 30, panel_width, 5)
+            cooldown_rect = pygame.Rect(panel_x, panel_y + 50 + len(self.phases) * 30, panel_width, 5)
             pygame.draw.rect(surface, (50, 50, 50), cooldown_rect)
             progress_width = int(cooldown_progress * panel_width)
             if progress_width > 0:
-                progress_rect = pygame.Rect(panel_x, panel_y + 30 + len(self.phases) * 30, progress_width, 5)
+                progress_rect = pygame.Rect(panel_x, panel_y + 50 + len(self.phases) * 30, progress_width, 5)
                 pygame.draw.rect(surface, (100, 200, 100), progress_rect)
             
             # Draw cooldown text
             cooldown_font = pygame.font.SysFont('Arial', 12)
             cooldown_text = cooldown_font.render(f"Cooldown: {self.phase_selection_cooldown - (time.time() - self.last_phase_selection_time):.1f}s", 
                                                True, (200, 200, 200))
-            surface.blit(cooldown_text, (panel_x, panel_y + 35 + len(self.phases) * 30))
+            surface.blit(cooldown_text, (panel_x, panel_y + 55 + len(self.phases) * 30))
+            
+        # Draw frenzy mode indicator if active
+        if self.frenzy_mode:
+            frenzy_font = pygame.font.SysFont('Arial', 20, bold=True)
+            frenzy_text = frenzy_font.render("FRENZY MODE!", True, (255, 50, 50))
+            frenzy_rect = frenzy_text.get_rect(center=(surface.get_width() // 2, 30))
+            
+            # Add a pulsing effect
+            pulse = (math.sin(pygame.time.get_ticks() / 200) + 1) * 0.5  # 0 to 1
+            size_multiplier = 1.0 + pulse * 0.2  # 1.0 to 1.2
+            
+            # Scale the text
+            scaled_text = pygame.transform.scale(frenzy_text, 
+                                               (int(frenzy_text.get_width() * size_multiplier),
+                                                int(frenzy_text.get_height() * size_multiplier)))
+            scaled_rect = scaled_text.get_rect(center=(surface.get_width() // 2, 30))
+            
+            # Draw with a glow effect
+            glow_surf = pygame.Surface((scaled_rect.width + 10, scaled_rect.height + 10), pygame.SRCALPHA)
+            pygame.draw.rect(glow_surf, (255, 50, 50, 100), (0, 0, glow_surf.get_width(), glow_surf.get_height()), 
+                           border_radius=10)
+            surface.blit(glow_surf, glow_surf.get_rect(center=(surface.get_width() // 2, 30)))
+            surface.blit(scaled_text, scaled_rect)
