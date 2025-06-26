@@ -420,6 +420,9 @@ class GameManager:
                     if self.map_transition_timer <= 0:
                         self.showing_map_name = False
                         self.show_chapter_header = True  # Now show the chapter header at the top
+                        # Reset the game timer to 0:00 when chapter showcase ends
+                        self.phase_manager.game_time = 0
+                        self.phase_manager.last_update_time_ms = time.time() * 1000
                 
                 # Update player and sprites
                 self.player.update()
