@@ -46,6 +46,7 @@ class PhaseManager:
         self.timer_paused = False
         self.timer_start_time = 0
         self.timer_paused_time = 0
+        self.last_update_time = pygame.time.get_ticks()
         
         # Frenzy mode
         self.frenzy_mode = False
@@ -90,9 +91,15 @@ class PhaseManager:
         if self.is_on_cooldown and current_time - self.last_phase_selection_time >= self.phase_selection_cooldown:
             self.is_on_cooldown = False
         
-        # Update game timer if not paused
-        if not self.timer_paused:
-            self.game_time = pygame.time.get_ticks() / 1000  # Convert to seconds
+        # Update game timer if not paused and not showing map name
+        if not self.timer_paused and not self.game_manager.showing_map_name:
+            # Use real time for accurate timing
+            current_ticks = pygame.time.get_ticks()
+            if hasattr(self, 'last_update_time'):
+                # Calculate elapsed time since last update in seconds
+                elapsed = (current_ticks - self.last_update_time) / 1000
+                self.game_time += elapsed
+            self.last_update_time = current_ticks
         
         # Find the current phase based on time
         old_phase_index = self.current_phase_index

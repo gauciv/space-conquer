@@ -448,8 +448,8 @@ class GameManager:
                 
                 # Only spawn entities if no boss is active and enemy spawn cooldown is over
                 if not self.boss_manager.has_active_boss() and self.enemy_spawn_cooldown <= 0:
-                    # Apply frenzy mode if active - 2.5x faster spawning during frenzy (0.4 multiplier)
-                    spawn_rate_multiplier = 0.4 if self.phase_manager.frenzy_mode else 1.0
+                    # Apply frenzy mode if active - 3x faster spawning during frenzy (0.33 multiplier)
+                    spawn_rate_multiplier = 0.33 if self.phase_manager.frenzy_mode else 1.0
                     
                     # Spawn enemies if available in current phase
                     if self.enemy_types_available:
