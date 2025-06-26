@@ -163,10 +163,14 @@ class GameManager:
         self.debris_spawn_delay = 3000  # 3 seconds between debris spawns
         self.last_debris_spawn = pygame.time.get_ticks()
         
-        # If testing mode, give player some advantages
+        # If testing mode, give player some advantages but not extra health by default
         if testing_mode:
-            self.player.health = 10  # Extra health for testing
-            self.player.max_health = 10
+            # Only give extra health if god mode is enabled
+            if self.ui_manager.god_mode:
+                self.player.health = 10
+                self.player.max_health = 10
+            
+            # Always give extra speed for better testing experience
             self.player.speed = 8    # Extra speed for testing
     
     def handle_events(self):
@@ -491,7 +495,7 @@ class GameManager:
                         # Use the new take_damage method with source ID for cooldown
                         source_id = f"enemy_{enemy.rect.x}_{enemy.rect.y}"
                         damage_applied = self.player.take_damage(
-                            self.ui_manager.god_mode if self.testing_mode else False,
+                            self.testing_mode and self.ui_manager.god_mode,  # Only god mode if both testing AND god mode enabled
                             source_id=source_id
                         )
                         
@@ -516,7 +520,7 @@ class GameManager:
                         # Use the take_damage method with source ID for cooldown
                         source_id = f"debris_{debris_obj.rect.x}_{debris_obj.rect.y}"
                         damage_applied = self.player.take_damage(
-                            self.ui_manager.god_mode if self.testing_mode else False,
+                            self.testing_mode and self.ui_manager.god_mode,  # Only god mode if both testing AND god mode enabled
                             source_id=source_id
                         )
                         
@@ -853,7 +857,7 @@ class GameManager:
                         # Use the take_damage method with source ID for cooldown
                         source_id = f"asteroid_{asteroid.rect.x}_{asteroid.rect.y}"
                         damage_applied = self.player.take_damage(
-                            self.ui_manager.god_mode if self.testing_mode else False,
+                            self.testing_mode and self.ui_manager.god_mode,  # Only god mode if both testing AND god mode enabled
                             source_id=source_id
                         )
                         
