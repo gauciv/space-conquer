@@ -317,6 +317,13 @@ class PhaseManager:
             text.set_alpha(int(alpha))
             surface.blit(text, (surface.get_width() // 2 - text.get_width() // 2, 
                                surface.get_height() // 2 - text.get_height() // 2))
+            
+            # Draw time threshold
+            time_font = pygame.font.SysFont('Arial', 20)
+            time_text = time_font.render(f"Time: {self.format_time(current_phase.time_threshold)}", True, (200, 200, 255))
+            time_text.set_alpha(int(alpha))
+            surface.blit(time_text, (surface.get_width() // 2 - time_text.get_width() // 2, 
+                                   surface.get_height() // 2 + 20))
     
     def toggle_panel_collapse(self):
         """Toggle the collapsed state of the phase markers panel."""
@@ -462,3 +469,45 @@ class PhaseManager:
                            border_radius=10)
             surface.blit(glow_surf, glow_surf.get_rect(center=(surface.get_width() // 2, 30)))
             surface.blit(scaled_text, scaled_rect)
+    def draw_game_timer(self, surface):
+        """Draw the game timer below the chapter title."""
+        if self.game_manager.show_chapter_header:
+            font = pygame.font.SysFont('Arial', 18)
+            timer_text = font.render(f"Time: {self.format_time(self.game_time)}", True, (200, 200, 255))
+            surface.blit(timer_text, (surface.get_width() // 2 - timer_text.get_width() // 2, 40))
+            
+    def draw_boss_warning(self, surface, boss_type):
+        """Draw warning effect for boss appearance."""
+        # This is called when a boss is about to appear
+        
+        # Calculate pulsing effect
+        pulse = (math.sin(pygame.time.get_ticks() / 100) + 1) * 0.5  # 0 to 1
+        alpha = int(100 + pulse * 155)  # 100 to 255
+        
+        # Create overlay with pulsing red
+        overlay = pygame.Surface((surface.get_width(), surface.get_height()), pygame.SRCALPHA)
+        overlay.fill((255, 0, 0, alpha // 4))  # Transparent red
+        surface.blit(overlay, (0, 0))
+        
+        # Draw warning text
+        font = pygame.font.SysFont('Arial', 48, bold=True)
+        if boss_type == 'mini':
+            warning_text = font.render("WARNING!", True, (255, 50, 50))
+        else:
+            warning_text = font.render("FINAL BOSS APPROACHING!", True, (255, 50, 50))
+            
+        # Add a pulsing effect to the text
+        size_multiplier = 1.0 + pulse * 0.3  # 1.0 to 1.3
+        scaled_text = pygame.transform.scale(warning_text, 
+                                           (int(warning_text.get_width() * size_multiplier),
+                                            int(warning_text.get_height() * size_multiplier)))
+        
+        # Position the text in the center of the screen
+        text_rect = scaled_text.get_rect(center=(surface.get_width() // 2, surface.get_height() // 2))
+        
+        # Draw with a glow effect
+        glow_surf = pygame.Surface((text_rect.width + 20, text_rect.height + 20), pygame.SRCALPHA)
+        pygame.draw.rect(glow_surf, (255, 0, 0, 100), (0, 0, glow_surf.get_width(), glow_surf.get_height()), 
+                       border_radius=15)
+        surface.blit(glow_surf, glow_surf.get_rect(center=(surface.get_width() // 2, surface.get_height() // 2)))
+        surface.blit(scaled_text, text_rect)

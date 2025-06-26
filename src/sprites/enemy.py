@@ -15,7 +15,7 @@ class Enemy(pygame.sprite.Sprite):
         if enemy_type == 'normal':
             self.image = images.get('normal_enemy')
             self.health = 1
-            self.speed = 3
+            self.base_speed = 3
             self.points = 10
             self.movement_pattern = "straight"
             # Normal enemy has a slightly smaller hitbox (80% of sprite size)
@@ -23,7 +23,7 @@ class Enemy(pygame.sprite.Sprite):
         elif enemy_type == 'fast':
             self.image = images.get('fast_enemy')
             self.health = 1
-            self.speed = 5
+            self.base_speed = 5
             self.points = 15
             self.movement_pattern = "zigzag"
             # Fast enemy has an even smaller hitbox (70% of sprite size) since it's harder to hit
@@ -31,7 +31,7 @@ class Enemy(pygame.sprite.Sprite):
         elif enemy_type == 'tank':
             self.image = images.get('tank_enemy')
             self.health = 3
-            self.speed = 2
+            self.base_speed = 2
             self.points = 25
             self.movement_pattern = "straight"
             # Tank enemy has a larger hitbox (90% of sprite size) since it's a bigger target
@@ -40,7 +40,7 @@ class Enemy(pygame.sprite.Sprite):
             # Fallback to normal enemy if drone image is not available
             self.image = images.get('normal_enemy')
             self.health = 1
-            self.speed = 4
+            self.base_speed = 4
             self.points = 20
             self.movement_pattern = "sine"
             # Drone enemy has a medium hitbox (75% of sprite size)
@@ -49,7 +49,7 @@ class Enemy(pygame.sprite.Sprite):
             # Fallback to tank enemy if bomber image is not available
             self.image = images.get('tank_enemy')
             self.health = 2
-            self.speed = 2
+            self.base_speed = 2
             self.points = 30
             self.movement_pattern = "dive"
             # Bomber enemy has a larger hitbox (85% of sprite size)
@@ -58,10 +58,14 @@ class Enemy(pygame.sprite.Sprite):
             # Default to normal enemy for any unknown type
             self.image = images.get('normal_enemy')
             self.health = 1
-            self.speed = 3
+            self.base_speed = 3
             self.points = 10
             self.movement_pattern = "straight"
             self.hitbox_ratio = 0.8
+        
+        # Speed multiplier (for time-based difficulty)
+        self.speed_multiplier = 1.0
+        self.speed = self.base_speed
         
         # Check if image is None and provide a fallback
         if self.image is None:

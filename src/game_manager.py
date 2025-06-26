@@ -149,7 +149,6 @@ class GameManager:
         
         # Reset phase manager
         self.phase_manager = PhaseManager(self)
-        self.phase_manager.update(self.score)
         
         # Enemy spawn timer
         self.enemy_spawn_delay = self.enemy_spawn_rates[0]
@@ -164,8 +163,21 @@ class GameManager:
         self.last_asteroid_spawn = pygame.time.get_ticks()
         
         # Debris spawn timer
-        self.debris_spawn_delay = 3000  # 3 seconds between debris spawns
+        self.debris_spawn_delay = 8000  # 8 seconds between debris spawns
         self.last_debris_spawn = pygame.time.get_ticks()
+        
+        # Enemy speed and powerup drop chance modifiers
+        self.enemy_speed_multiplier = 1.0
+        self.powerup_drop_chance_modifier = 0.0
+        
+        # Enemy spawn cooldown (after boss defeat)
+        self.enemy_spawn_cooldown = 0
+        
+        # Boss warning effect
+        self.showing_boss_warning = False
+        self.boss_warning_timer = 0
+        self.boss_warning_duration = 180  # 3 seconds at 60 FPS
+        self.boss_warning_type = None
         
         # If testing mode, give player some advantages but not extra health by default
         if testing_mode:
@@ -411,6 +423,12 @@ class GameManager:
                 
                 # Update player and sprites
                 self.player.update()
+                
+                # Apply speed multiplier to enemies
+                for enemy in self.enemies:
+                    enemy.speed_multiplier = self.enemy_speed_multiplier
+                
+                # Update all sprites
                 self.enemies.update()
                 self.powerups.update()
                 self.asteroids.update()
@@ -419,45 +437,65 @@ class GameManager:
                 # Update bosses
                 self.boss_manager.update()
                 
-                # Check for enemy type progression based on score
-                self.update_enemy_types()
+                # Update phase manager based on time
+                self.phase_manager.update()
                 
-                # Only spawn entities if no boss is active
-                if not self.boss_manager.has_active_boss():
-                    # Spawn enemies
-                    now = pygame.time.get_ticks()
-                    if now - self.last_enemy_spawn > self.enemy_spawn_delay:
-                        self.last_enemy_spawn = now
-                        enemy_type = random.choice(self.enemy_types_available)
-                        enemy = Enemy(enemy_type, self.asset_loader.images)
-                        enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
-                        self.enemies.add(enemy)
-                        self.all_sprites.add(enemy)
-                    
-                    # Spawn asteroids
-                    now = pygame.time.get_ticks()
-                    if now - self.last_asteroid_spawn > self.asteroid_spawn_delay:
-                        self.last_asteroid_spawn = now
-                        asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
-                        self.asteroids.add(asteroid)
-                        self.all_sprites.add(asteroid)
-                    
-                    # Spawn debris
-                    now = pygame.time.get_ticks()
-                    if now - self.last_debris_spawn > self.debris_spawn_delay:
-                        self.last_debris_spawn = now
-                        debris = Debris(self.asset_loader.images)
-                        self.debris.add(debris)
-                        self.all_sprites.add(debris)
+                # Update boss warning effect
+                if self.showing_boss_warning:
+                    self.boss_warning_timer -= 1
+                    if self.boss_warning_timer <= 0:
+                        self.showing_boss_warning = False
                 
-                # Spawn power-ups (only from asteroids now)
-                # We'll keep this code commented out as reference
-                # now = pygame.time.get_ticks()
-                # if now - self.last_powerup_spawn > self.powerup_spawn_delay:
-                #     self.last_powerup_spawn = now
-                #     powerup = PowerUp(self.asset_loader.images)
-                #     self.powerups.add(powerup)
-                #     self.all_sprites.add(powerup)
+                # Only spawn entities if no boss is active and enemy spawn cooldown is over
+                if not self.boss_manager.has_active_boss() and self.enemy_spawn_cooldown <= 0:
+                    # Apply frenzy mode if active
+                    spawn_rate_multiplier = 0.5 if self.phase_manager.frenzy_mode else 1.0
+                    
+                    # Spawn enemies if available in current phase
+                    if self.enemy_types_available:
+                        now = pygame.time.get_ticks()
+                        if now - self.last_enemy_spawn > self.enemy_spawn_delay * spawn_rate_multiplier:
+                            self.last_enemy_spawn = now
+                            enemy_type = random.choice(self.enemy_types_available)
+                            enemy = Enemy(enemy_type, self.asset_loader.images)
+                            enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
+                            enemy.speed_multiplier = self.enemy_speed_multiplier  # Apply speed multiplier
+                            self.enemies.add(enemy)
+                            self.all_sprites.add(enemy)
+                    
+                    # Spawn asteroids after 30 seconds
+                    current_phase = self.phase_manager.get_current_phase()
+                    if current_phase and current_phase.time_threshold >= 30:
+                        now = pygame.time.get_ticks()
+                        if now - self.last_asteroid_spawn > self.asteroid_spawn_delay * spawn_rate_multiplier:
+                            self.last_asteroid_spawn = now
+                            asteroid = Asteroid(self.asset_loader.images, self.sound_manager)
+                            
+                            # Apply powerup drop chance modifier
+                            base_drop_chance = asteroid.powerup_drop_chance
+                            modified_chance = base_drop_chance + self.powerup_drop_chance_modifier
+                            asteroid.powerup_drop_chance = max(0.0, min(1.0, modified_chance))  # Clamp between 0 and 1
+                            
+                            self.asteroids.add(asteroid)
+                            self.all_sprites.add(asteroid)
+                    
+                    # Spawn debris after 45 seconds
+                    if current_phase and current_phase.time_threshold >= 45:
+                        now = pygame.time.get_ticks()
+                        if now - self.last_debris_spawn > self.debris_spawn_delay * spawn_rate_multiplier:
+                            self.last_debris_spawn = now
+                            debris = Debris(self.asset_loader.images)
+                            
+                            # Apply speed multiplier if in super monsters phase or later
+                            if current_phase and current_phase.time_threshold >= 60:
+                                debris.speed_multiplier = 1.15
+                                
+                            self.debris.add(debris)
+                            self.all_sprites.add(debris)
+                else:
+                    # Decrease enemy spawn cooldown if it's active
+                    if self.enemy_spawn_cooldown > 0:
+                        self.enemy_spawn_cooldown -= 1/60  # Decrease by 1 second per 60 frames
                 
                 # Check for bullet collisions with enemies
                 for enemy in self.enemies:
@@ -659,6 +697,13 @@ class GameManager:
                 # Draw enemies with enhanced effects
                 for enemy in self.enemies:
                     enemy.draw(self.screen)
+                    
+                # Draw game timer below chapter title
+                self.phase_manager.draw_game_timer(self.screen)
+                
+                # Draw boss warning effect if active
+                if self.showing_boss_warning:
+                    self.phase_manager.draw_boss_warning(self.screen, self.boss_warning_type)
                 
                 # Draw asteroids with enhanced effects
                 for asteroid in self.asteroids:
@@ -1001,3 +1046,17 @@ class GameManager:
     def should_use_respawn(self):
         """Check if we should use respawn instead of game over."""
         return self.testing_mode and not self.ui_manager.god_mode
+    def show_boss_warning(self, boss_type):
+        """Show warning effect for boss appearance."""
+        self.showing_boss_warning = True
+        self.boss_warning_timer = self.boss_warning_duration
+        self.boss_warning_type = boss_type
+        
+        # Play warning sound if available
+        if 'warning' in self.sound_manager.sounds:
+            self.sound_manager.play_sound('warning')
+        elif 'alert' in self.sound_manager.sounds:
+            self.sound_manager.play_sound('alert')
+        else:
+            # Use explosion sound as fallback
+            self.sound_manager.play_sound('explosion')
