@@ -26,7 +26,11 @@ class Boss(pygame.sprite.Sprite):
             self.bullet_damage = 1
             self.score_value = 250
             self.movement_pattern = "sine"
-            self.battle_distance = 150  # Distance from right edge during battle
+            self.battle_distance = 15  # Distance from right edge during battle (reduced to 15px)
+            
+            # Scale the mini boss to 1.5x size
+            new_width = int(original_image.get_width() * 1.5)
+            new_height = int(original_image.get_height() * 1.5)
         else:  # main boss
             original_image = asset_loader.get_image('main_boss')
             self.name = "Dreadnought"
@@ -38,11 +42,13 @@ class Boss(pygame.sprite.Sprite):
             self.bullet_damage = 2
             self.score_value = 500
             self.movement_pattern = "complex"
-            self.battle_distance = 200  # Distance from right edge during battle
+            self.battle_distance = 15  # Distance from right edge during battle (reduced to 15px)
             
-        # Scale the image to 1.5x size
-        new_width = int(original_image.get_width() * 1.5)
-        new_height = int(original_image.get_height() * 1.5)
+            # Scale the main boss to 0.975x size (1.5 * 0.65 = 0.975, reducing by 35% from the 1.5x size)
+            new_width = int(original_image.get_width() * 0.975)
+            new_height = int(original_image.get_height() * 0.975)
+            
+        # Scale the image to the calculated size
         self.image = pygame.transform.scale(original_image, (new_width, new_height))
         
         # Common properties
@@ -221,9 +227,9 @@ class Boss(pygame.sprite.Sprite):
         if self.dying:
             return
             
-        # Position the health bar at the top center
+        # Position the health bar lower to avoid overlap with chapter header and time
         bar_x = (SCREEN_WIDTH - self.health_bar_bg.get_width()) // 2
-        bar_y = 10
+        bar_y = 70  # Moved down from 10 to 70
         
         # Draw the background
         surface.blit(self.health_bar_bg, (bar_x, bar_y))

@@ -80,9 +80,9 @@ class PhaseManager:
             Phase("Asteroids & Elite Enemies", 30, ['normal', 'fast'], spawn_rate=1667, powerup_drop_chance_modifier=-0.25),  # 3333/2 = ~1667 (2x faster for elite)
             Phase("Flying Debris", 45, ['normal', 'fast'], spawn_rate=2667),  # 5333/2 = ~2667 (2x faster for elite)
             Phase("Super Monsters", 60, ['normal', 'fast', 'tank'], spawn_rate=3333, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 6667/2 = ~3333 (2x faster for super)
-            Phase("Mini-Boss", 90, [], boss_type='mini'),
+            Phase("Mini-Boss", 90, [], boss_type='mini'),  # 90 seconds = 1:30
             Phase("Post Mini-Boss", 91, ['normal', 'fast', 'tank'], spawn_rate=1667),  # 2500/1.5 = ~1667
-            Phase("Final Boss", 180, [], boss_type='main')
+            Phase("Final Boss", 180, [], boss_type='main')  # 180 seconds = 3:00
         ]
         
         # Set the first phase (Start) as active by default
