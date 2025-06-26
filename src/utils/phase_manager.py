@@ -48,6 +48,12 @@ class PhaseManager:
         self.timer_paused_time = 0
         self.last_update_time_ms = time.time() * 1000  # Use milliseconds for more precision
         
+        # Boss timer (separate from game timer)
+        self.boss_timer = 0  # Time in seconds for boss fights
+        self.boss_timer_active = False
+        self.last_boss_update_time_ms = time.time() * 1000
+        self.boss_asteroid_spawn_timer = 0  # Timer for spawning asteroids during boss fights
+        
         # Frenzy mode
         self.frenzy_mode = False
         self.frenzy_start_time = 0
@@ -91,10 +97,35 @@ class PhaseManager:
         if self.is_on_cooldown and current_time - self.last_phase_selection_time >= self.phase_selection_cooldown:
             self.is_on_cooldown = False
         
+        # Check if boss is active
+        boss_active = self.game_manager.boss_manager.has_active_boss()
+        
+        # Update boss timer if a boss is active and settings not open
+        if boss_active and not self.game_manager.ui_manager.settings_open:
+            # Start boss timer if it just became active
+            if not self.boss_timer_active:
+                self.boss_timer = 0
+                self.boss_timer_active = True
+                self.last_boss_update_time_ms = time.time() * 1000
+                self.boss_asteroid_spawn_timer = 0
+            
+            # Update boss timer
+            current_time_ms = time.time() * 1000
+            elapsed = (current_time_ms - self.last_boss_update_time_ms) / 1000
+            self.boss_timer += elapsed
+            self.last_boss_update_time_ms = current_time_ms
+            
+            # Update asteroid spawn timer during boss fights
+            self.boss_asteroid_spawn_timer += elapsed
+        else:
+            # Reset boss timer when no boss is active
+            if self.boss_timer_active:
+                self.boss_timer_active = False
+        
         # Update game timer if not paused, not showing map name, no active boss, and settings not open
         if (not self.timer_paused and 
             not self.game_manager.showing_map_name and 
-            not self.game_manager.boss_manager.has_active_boss() and
+            not boss_active and
             not self.game_manager.ui_manager.settings_open):
             
             # Use real time for accurate timing
