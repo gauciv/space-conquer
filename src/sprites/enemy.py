@@ -26,9 +26,9 @@ class Enemy(pygame.sprite.Sprite):
         elif enemy_type == 'elite':
             self.image = images.get('elite_enemy') or images.get('fast_enemy')
             self.health = 1
-            self.base_speed = 5
+            self.base_speed = 8  # Increased from 5 to 8 for even faster movement
             self.points = 45  # Already includes 3x multiplier
-            self.movement_pattern = "zigzag"
+            self.movement_pattern = "zigzag"  # We keep this name but changed the behavior
             # Elite enemy has an even smaller hitbox (70% of sprite size) since it's harder to hit
             self.hitbox_ratio = 0.7
             
@@ -128,6 +128,26 @@ class Enemy(pygame.sprite.Sprite):
     
     def draw(self, surface):
         """Draw the enemy with visual effects."""
+        # Add trail effect for elite-type enemy
+        if self.enemy_type == 'elite' and hasattr(self, 'has_trail') and self.has_trail:
+            # Create a trail effect to emphasize speed
+            trail_length = 4  # Number of trail segments
+            alpha_step = 180 // (trail_length + 1)  # Decreasing alpha for each segment
+            
+            for i in range(trail_length):
+                # Calculate position and alpha for this trail segment
+                trail_x = self.rect.x + (i + 1) * 5  # Each segment is 5 pixels apart
+                trail_alpha = 180 - (i + 1) * alpha_step  # Decreasing alpha
+                
+                # Create a semi-transparent copy of the image
+                trail_image = self.image.copy()
+                trail_image.set_alpha(trail_alpha)
+                
+                # Draw the trail segment
+                trail_rect = self.rect.copy()
+                trail_rect.x = trail_x
+                surface.blit(trail_image, trail_rect)
+        
         # Draw the enemy ship
         surface.blit(self.image, self.rect)
         
@@ -150,14 +170,27 @@ class Enemy(pygame.sprite.Sprite):
             glow_color = (255, 50, 50)  # Red
         elif self.enemy_type == 'elite':
             glow_color = (255, 150, 0)  # Orange
+            
+            # For elite-type, add a more intense engine glow to emphasize speed
+            if hasattr(self, 'has_trail') and self.has_trail:
+                # Create a larger engine glow
+                glow_size = 8
+                pygame.draw.circle(surface, glow_color, (engine_x, engine_y), glow_size)
+                
+                # Add inner bright core
+                pygame.draw.circle(surface, (255, 255, 200), (engine_x, engine_y), glow_size // 2)
+                
+                # Skip the regular engine glow for elite-type
+                glow_color = None
         elif self.enemy_type == 'super':
             glow_color = (150, 0, 255)  # Purple
         else:
             glow_color = (255, 0, 0)  # Default red
         
-        # Draw simplified engine glow (just a rectangle)
-        glow_rect = pygame.Rect(engine_x - 2, engine_y - 3, 6, 6)
-        pygame.draw.rect(surface, glow_color, glow_rect)
+        # Draw simplified engine glow (just a rectangle) for non-elite types
+        if glow_color:
+            glow_rect = pygame.Rect(engine_x - 2, engine_y - 3, 6, 6)
+            pygame.draw.rect(surface, glow_color, glow_rect)
         
         # Draw flickering light for drifter enemy
         if self.enemy_type == 'low' and self.movement_pattern == "drifter" and hasattr(self, 'light_brightness'):

@@ -99,14 +99,14 @@ class EnemyBehaviorManager:
         enemy.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
     
     def _init_zigzag(self, enemy):
-        """Initialize zigzag behavior."""
-        enemy.direction = 1  # 1 for down, -1 for up
-        enemy.direction_change_timer = 0
-        enemy.direction_change_delay = random.randint(20, 40)
-        
+        """Initialize elite-type enemy behavior (straight line with high speed)."""
         # Position from the right side
         enemy.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         enemy.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
+        
+        # Elite-type enemies have higher speed
+        if enemy.enemy_type == 'elite':
+            enemy.base_speed = 7  # Increased from 5 to 7 for even faster movement
     
     def _init_sine(self, enemy):
         """Initialize sine wave behavior."""
@@ -307,28 +307,35 @@ class EnemyBehaviorManager:
             enemy.kill()
     
     def zigzag_behavior(self, enemy, delta_time):
-        """Update zigzag behavior."""
-        enemy.rect.x -= enemy.speed
-        enemy.rect.y += enemy.speed * enemy.direction
-        
-        # Change direction periodically
-        enemy.direction_change_timer += 1
-        if enemy.direction_change_timer >= enemy.direction_change_delay:
-            enemy.direction *= -1
-            enemy.direction_change_timer = 0
-            enemy.direction_change_delay = random.randint(20, 40)
-        
-        # Keep within screen bounds
-        if enemy.rect.top < 10:
-            enemy.rect.top = 10
-            enemy.direction = 1
-        elif enemy.rect.bottom > SCREEN_HEIGHT - 10:
-            enemy.rect.bottom = SCREEN_HEIGHT - 10
-            enemy.direction = -1
-        
-        # Remove if it goes off-screen
-        if enemy.rect.right < 0:
-            enemy.kill()
+        """Update elite-type enemy behavior (straight line with high speed)."""
+        # For elite-type enemies, move in a straight horizontal line
+        if enemy.enemy_type == 'elite':
+            # Apply speed multiplier for time-based difficulty
+            actual_speed = enemy.base_speed * enemy.speed_multiplier
+            
+            # Move horizontally at high speed
+            enemy.rect.x -= actual_speed
+            
+            # Add a slight trail effect in the draw method
+            if not hasattr(enemy, 'has_trail'):
+                enemy.has_trail = True
+            
+            # Remove if it goes off-screen
+            if enemy.rect.right < 0:
+                enemy.kill()
+        else:
+            # Legacy zigzag behavior for other enemy types (fallback)
+            enemy.rect.x -= enemy.speed
+            
+            # Keep within screen bounds
+            if enemy.rect.top < 10:
+                enemy.rect.top = 10
+            elif enemy.rect.bottom > SCREEN_HEIGHT - 10:
+                enemy.rect.bottom = SCREEN_HEIGHT - 10
+            
+            # Remove if it goes off-screen
+            if enemy.rect.right < 0:
+                enemy.kill()
     
     def sine_behavior(self, enemy, delta_time):
         """Update sine wave behavior."""
