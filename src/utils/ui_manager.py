@@ -866,6 +866,51 @@ class UIManager:
         title_text = title_font.render('SPACE CONQUER', True, (150, 150, 255))
         surface.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 150))
         
+        # Add developer name with lightning effects under the title
+        dev_font = pygame.font.SysFont('Arial', 18, bold=True)
+        by_text = dev_font.render('By ', True, (150, 150, 200))
+        dev_text = dev_font.render('Gauciv', True, (200, 200, 255))
+        
+        # Calculate positions
+        combined_width = by_text.get_width() + dev_text.get_width()
+        by_pos = (SCREEN_WIDTH // 2 - combined_width // 2, 210)
+        dev_pos = (by_pos[0] + by_text.get_width(), 210)
+        
+        # Draw "By" text (always static)
+        surface.blit(by_text, by_pos)
+        
+        # Create lightning effect only for the developer name
+        current_time = pygame.time.get_ticks()
+        if current_time % 2000 < 150:  # Flash every 2 seconds for 150ms
+            # Draw lightning bolts around the name
+            lightning_points = [
+                # Left lightning
+                [(dev_pos[0] - 10, dev_pos[1] + 10),
+                 (dev_pos[0] - 5, dev_pos[1] + 5),
+                 (dev_pos[0] - 8, dev_pos[1] + 15),
+                 (dev_pos[0] - 3, dev_pos[1] + 10)],
+                # Right lightning
+                [(dev_pos[0] + dev_text.get_width() + 10, dev_pos[1] + 10),
+                 (dev_pos[0] + dev_text.get_width() + 5, dev_pos[1] + 5),
+                 (dev_pos[0] + dev_text.get_width() + 8, dev_pos[1] + 15),
+                 (dev_pos[0] + dev_text.get_width() + 3, dev_pos[1] + 10)]
+            ]
+            
+            # Draw each lightning bolt
+            for points in lightning_points:
+                pygame.draw.lines(surface, (100, 150, 255), False, points, 2)
+            
+            # Add glow to the dev text
+            glow_text = dev_font.render('Gauciv', True, (100, 150, 255))
+            surface.blit(glow_text, (dev_pos[0] + 1, dev_pos[1] + 1))
+            
+            # Draw the text with a brighter color during flash
+            bright_text = dev_font.render('Gauciv', True, (220, 220, 255))
+            surface.blit(bright_text, dev_pos)
+        else:
+            # Draw normal text
+            surface.blit(dev_text, dev_pos)
+        
         # Create stylized buttons
         button_width, button_height = 250, 50
         
@@ -914,43 +959,6 @@ class UIManager:
         tagline_font = pygame.font.SysFont('Arial', 18, italic=True)
         tagline_text = tagline_font.render('The void awaits...', True, (150, 150, 200))
         surface.blit(tagline_text, (SCREEN_WIDTH // 2 - tagline_text.get_width() // 2, 520))
-        
-        # Add developer name with lightning effects
-        dev_font = pygame.font.SysFont('Arial', 18, bold=True)
-        dev_text = dev_font.render('Gauciv', True, (200, 200, 255))
-        dev_text_pos = (SCREEN_WIDTH // 2 - dev_text.get_width() // 2, 550)
-        
-        # Create lightning effect
-        current_time = pygame.time.get_ticks()
-        if current_time % 2000 < 150:  # Flash every 2 seconds for 150ms
-            # Draw lightning bolts around the name
-            lightning_points = [
-                # Left lightning
-                [(dev_text_pos[0] - 30, dev_text_pos[1] + 10),
-                 (dev_text_pos[0] - 20, dev_text_pos[1] + 5),
-                 (dev_text_pos[0] - 25, dev_text_pos[1] + 15),
-                 (dev_text_pos[0] - 15, dev_text_pos[1] + 10)],
-                # Right lightning
-                [(dev_text_pos[0] + dev_text.get_width() + 30, dev_text_pos[1] + 10),
-                 (dev_text_pos[0] + dev_text.get_width() + 20, dev_text_pos[1] + 5),
-                 (dev_text_pos[0] + dev_text.get_width() + 25, dev_text_pos[1] + 15),
-                 (dev_text_pos[0] + dev_text.get_width() + 15, dev_text_pos[1] + 10)]
-            ]
-            
-            # Draw each lightning bolt
-            for points in lightning_points:
-                pygame.draw.lines(surface, (100, 150, 255), False, points, 2)
-            
-            # Add glow to the text
-            glow_text = dev_font.render('Gauciv', True, (100, 150, 255))
-            surface.blit(glow_text, (dev_text_pos[0] + 1, dev_text_pos[1] + 1))
-            
-            # Draw the text with a brighter color during flash
-            bright_text = dev_font.render('Gauciv', True, (220, 220, 255))
-            surface.blit(bright_text, dev_text_pos)
-        else:
-            # Draw normal text
-            surface.blit(dev_text, dev_text_pos)
         
         # Store button rectangles for click detection
         self.start_button_rect = start_button_rect
