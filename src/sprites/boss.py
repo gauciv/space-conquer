@@ -151,6 +151,10 @@ class Boss(pygame.sprite.Sprite):
     
     def take_damage(self, damage=1):
         """Handle boss taking damage."""
+        # Prevent damage during entrance
+        if not self.entry_complete:
+            return False
+            
         self.health -= damage
         self.sound_manager.play_sound('explosion')
         

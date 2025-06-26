@@ -219,6 +219,10 @@ class PhaseManager:
             if boss:
                 print(f"Boss spawned: {boss.name}")
                 
+                # For main boss, kill all remaining enemies with explosion effects
+                if phase.boss_type == 'main':
+                    self._clear_all_enemies_with_explosion()
+                
                 # Show warning effect for boss
                 if hasattr(self.game_manager, 'show_boss_warning'):
                     self.game_manager.show_boss_warning(phase.boss_type)
@@ -544,3 +548,47 @@ class PhaseManager:
             time_text = time_font.render(f"{time_remaining:.1f}s", True, (255, 255, 255))
             time_rect = time_text.get_rect(center=(surface.get_width() // 2, 60))
             surface.blit(time_text, time_rect)
+    def _clear_all_enemies_with_explosion(self):
+        """Clear all enemies with explosion effects when main boss appears."""
+        # Get all enemies, asteroids, and debris
+        enemies = list(self.game_manager.enemies)
+        asteroids = list(self.game_manager.asteroids)
+        debris = list(self.game_manager.debris)
+        
+        # Create a delayed explosion effect for each enemy
+        for i, enemy in enumerate(enemies):
+            # Destroy the enemy
+            enemy.health = 0
+            
+            # Play explosion sound with slight delay to avoid sound overload
+            if i % 3 == 0 and 'explosion' in self.game_manager.sound_manager.sounds:
+                self.game_manager.sound_manager.play_sound('explosion')
+                
+            # Remove from sprite groups
+            enemy.kill()
+        
+        # Create a delayed explosion effect for each asteroid
+        for i, asteroid in enumerate(asteroids):
+            # Destroy the asteroid
+            asteroid.health = 0
+            
+            # Play explosion sound with slight delay
+            if i % 3 == 0 and 'explosion' in self.game_manager.sound_manager.sounds:
+                self.game_manager.sound_manager.play_sound('explosion')
+                
+            # Remove from sprite groups
+            asteroid.kill()
+        
+        # Create a delayed explosion effect for each debris
+        for i, debris_obj in enumerate(debris):
+            # Destroy the debris
+            debris_obj.health = 0
+            
+            # Play explosion sound with slight delay
+            if i % 3 == 0 and 'explosion' in self.game_manager.sound_manager.sounds:
+                self.game_manager.sound_manager.play_sound('explosion')
+                
+            # Remove from sprite groups
+            debris_obj.kill()
+            
+        print(f"Cleared {len(enemies)} enemies, {len(asteroids)} asteroids, and {len(debris)} debris for main boss entrance")
