@@ -16,7 +16,7 @@ class Boss(pygame.sprite.Sprite):
         
         # Set image based on boss type
         if boss_type == 'mini':
-            self.image = asset_loader.get_image('mini_boss')
+            original_image = asset_loader.get_image('mini_boss')
             self.name = "Vanguard"
             self.max_health = 50  # Doubled from 25 to 50
             self.health = self.max_health
@@ -26,8 +26,9 @@ class Boss(pygame.sprite.Sprite):
             self.bullet_damage = 1
             self.score_value = 250
             self.movement_pattern = "sine"
+            self.battle_distance = 150  # Distance from right edge during battle
         else:  # main boss
-            self.image = asset_loader.get_image('main_boss')
+            original_image = asset_loader.get_image('main_boss')
             self.name = "Dreadnought"
             self.max_health = 100  # Doubled from 50 to 100
             self.health = self.max_health
@@ -37,6 +38,12 @@ class Boss(pygame.sprite.Sprite):
             self.bullet_damage = 2
             self.score_value = 500
             self.movement_pattern = "complex"
+            self.battle_distance = 200  # Distance from right edge during battle
+            
+        # Scale the image to 1.5x size
+        new_width = int(original_image.get_width() * 1.5)
+        new_height = int(original_image.get_height() * 1.5)
+        self.image = pygame.transform.scale(original_image, (new_width, new_height))
         
         # Common properties
         self.rect = self.image.get_rect()
@@ -83,7 +90,7 @@ class Boss(pygame.sprite.Sprite):
         # Entry movement - move from right edge to battle position
         if not self.entry_complete:
             self.rect.x -= 3
-            if self.rect.right < SCREEN_WIDTH - 100:
+            if self.rect.right < SCREEN_WIDTH - self.battle_distance:
                 self.entry_complete = True
                 self.last_shot = pygame.time.get_ticks()  # Reset shot timer when entry is complete
         else:

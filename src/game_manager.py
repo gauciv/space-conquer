@@ -6,6 +6,7 @@ import pygame
 import sys
 import random
 import math
+import time
 from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, POWERUP_SPAWN_DELAY, DEBUG_HITBOXES
 from .utils.sound_manager import SoundManager
 from .utils.asset_loader import AssetLoader
