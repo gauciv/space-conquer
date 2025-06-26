@@ -223,12 +223,12 @@ class GameManager:
                 if self.testing_mode and self.game_active:
                     if event.key == pygame.K_1:
                         # Spawn mini-boss
-                        if not self.mini_boss and not self.main_boss:
-                            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
+                        if not self.boss_manager.has_active_boss():
+                            self.boss_manager.spawn_boss('mini')
                     elif event.key == pygame.K_2:
                         # Spawn main boss
-                        if not self.mini_boss and not self.main_boss:
-                            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
+                        if not self.boss_manager.has_active_boss():
+                            self.boss_manager.spawn_boss('main')
                     elif event.key == pygame.K_3:
                         # Add 100 score
                         self.score += 100
@@ -643,11 +643,8 @@ class GameManager:
                 for powerup in self.powerups:
                     powerup.draw(self.screen)
                 
-                # Draw bosses if they exist
-                if self.mini_boss is not None:
-                    self.mini_boss.draw(self.screen)
-                if self.main_boss is not None:
-                    self.main_boss.draw(self.screen)
+                # Draw bosses
+                self.boss_manager.draw(self.screen)
                 
                 # Show current map name at the top only after intro
                 if self.show_chapter_header:
@@ -701,8 +698,8 @@ class GameManager:
                         f"Player Speed: {self.player.speed}",
                         f"Rapid Fire: {'On' if self.player.rapid_fire else 'Off'}",
                         f"Enemy Spawn Rate: {self.enemy_spawn_delay}ms",
-                        f"Mini-Boss: {'Active' if self.mini_boss else 'Inactive'}",
-                        f"Main Boss: {'Active' if self.main_boss else 'Inactive'}",
+                        f"Mini-Boss: {'Active' if self.boss_manager.mini_boss else 'Inactive'}",
+                        f"Main Boss: {'Active' if self.boss_manager.main_boss else 'Inactive'}",
                         f"Enemy Types: {', '.join(self.enemy_types_available)}",
                         f"Debug Hitboxes: {'ON' if DEBUG_HITBOXES else 'OFF'} (Press D to toggle)"
                     ]
