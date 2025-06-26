@@ -488,9 +488,16 @@ class GameManager:
                 # Check for player collision with enemies
                 for enemy in self.enemies:
                     if self.player.hitbox.colliderect(enemy.hitbox):
-                        # Use the new take_damage method which handles invulnerability and sound
-                        damage_applied = self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False)
-                        enemy.kill()  # Remove the enemy that collided with player
+                        # Use the new take_damage method with source ID for cooldown
+                        source_id = f"enemy_{enemy.rect.x}_{enemy.rect.y}"
+                        damage_applied = self.player.take_damage(
+                            self.ui_manager.god_mode if self.testing_mode else False,
+                            source_id=source_id
+                        )
+                        
+                        # Only kill the enemy if damage was applied
+                        if damage_applied:
+                            enemy.kill()  # Remove the enemy that collided with player
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER
@@ -506,9 +513,16 @@ class GameManager:
                 # Check for player collision with debris
                 for debris_obj in self.debris:
                     if self.player.hitbox.colliderect(debris_obj.hitbox):
-                        # Use the take_damage method which handles invulnerability and sound
-                        damage_applied = self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False)
-                        debris_obj.kill()  # Remove the debris that collided with player
+                        # Use the take_damage method with source ID for cooldown
+                        source_id = f"debris_{debris_obj.rect.x}_{debris_obj.rect.y}"
+                        damage_applied = self.player.take_damage(
+                            self.ui_manager.god_mode if self.testing_mode else False,
+                            source_id=source_id
+                        )
+                        
+                        # Only kill the debris if damage was applied
+                        if damage_applied:
+                            debris_obj.kill()  # Remove the debris that collided with player
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER
@@ -833,3 +847,32 @@ class GameManager:
                                 if self.player.health <= 0:
                                     self.game_state = self.GAME_STATE_GAME_OVER
                                     self.sound_manager.play_sound('game_over')
+                # Check for player collision with asteroids
+                for asteroid in self.asteroids:
+                    if self.player.hitbox.colliderect(asteroid.hitbox):
+                        # Use the take_damage method with source ID for cooldown
+                        source_id = f"asteroid_{asteroid.rect.x}_{asteroid.rect.y}"
+                        damage_applied = self.player.take_damage(
+                            self.ui_manager.god_mode if self.testing_mode else False,
+                            source_id=source_id
+                        )
+                        
+                        # Only damage the asteroid if player damage was applied
+                        if damage_applied:
+                            if asteroid.take_damage(1):
+                                # Asteroid destroyed, spawn a powerup
+                                powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
+                                powerup.rect.center = asteroid.rect.center
+                                self.powerups.add(powerup)
+                                self.all_sprites.add(powerup)
+                        
+                        if damage_applied and self.player.health <= 0:
+                            self.game_state = self.GAME_STATE_GAME_OVER
+                            self.game_active = False
+                            # Play game over sound
+                            self.sound_manager.play_sound('game_over')
+                            # Lower music volume for game over sound
+                            if self.sound_manager.music_enabled:
+                                self.sound_manager.temporarily_lower_music(duration=1500)
+                            # Schedule music volume restoration
+                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds

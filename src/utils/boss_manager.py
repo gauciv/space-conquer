@@ -133,10 +133,20 @@ class BossManager:
                 if player.hitbox.colliderect(bullet.hitbox):
                     bullet.kill()
                     god_mode = self.game_manager.testing_mode and self.game_manager.ui_manager.god_mode
-                    if player.take_damage(god_mode):
+                    source_id = f"boss_bullet_{bullet.rect.x}_{bullet.rect.y}"
+                    if player.take_damage(god_mode, source_id=source_id):
                         if player.health <= 0:
                             self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
                             self.game_manager.sound_manager.play_sound('game_over')
+        
+        # Check direct collision between player and boss
+        if player.hitbox.colliderect(boss.hitbox):
+            god_mode = self.game_manager.testing_mode and self.game_manager.ui_manager.god_mode
+            source_id = f"boss_body_{boss.boss_type}"
+            if player.take_damage(god_mode, source_id=source_id):
+                if player.health <= 0:
+                    self.game_manager.game_state = self.game_manager.GAME_STATE_GAME_OVER
+                    self.game_manager.sound_manager.play_sound('game_over')
     
     def has_active_boss(self):
         """Check if there's an active boss (not including dying bosses)."""

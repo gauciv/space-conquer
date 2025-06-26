@@ -42,6 +42,10 @@ class Player(pygame.sprite.Sprite):
         self.blink_interval = 100  # Blink every 100ms
         self.visible = True
         self.blink_color = (255, 255, 255)  # White for contrast
+        
+        # Damage cooldown system
+        self.damage_cooldown = {}  # Dictionary to track cooldown for different damage sources
+        self.damage_cooldown_duration = 1000  # 1 second cooldown between damage from same source
     
     def update(self):
         # Get keyboard input
@@ -64,34 +68,28 @@ class Player(pygame.sprite.Sprite):
             self.rect.top = 0
         if self.rect.bottom > SCREEN_HEIGHT:
             self.rect.bottom = SCREEN_HEIGHT
-            
+        
         # Update hitbox position to follow the rect
         self.hitbox.center = self.rect.center
-        
-        # Shoot bullets
-        if keys[pygame.K_SPACE]:
-            self.shoot()
         
         # Update bullets
         self.bullets.update()
         
-        # Check rapid fire timer
+        # Check for rapid fire timer
         if self.rapid_fire:
             self.rapid_fire_timer -= 1
             if self.rapid_fire_timer <= 0:
                 self.rapid_fire = False
-                self.shoot_delay = PLAYER_SHOOT_DELAY
         
-        # Check score multiplier timer
+        # Check for score multiplier timer
         if self.score_multiplier > 1:
             self.score_multiplier_timer -= 1
             if self.score_multiplier_timer <= 0:
                 self.score_multiplier = 1
         
-        # Update invulnerability
+        # Check for invulnerability timer
         current_time = pygame.time.get_ticks()
         if self.invulnerable:
-            # Check if invulnerability period is over
             if current_time - self.invulnerable_timer > self.invulnerable_duration:
                 self.invulnerable = False
                 self.visible = True
@@ -109,6 +107,12 @@ class Player(pygame.sprite.Sprite):
                         colored_image = self.original_image.copy()
                         colored_image.fill(self.blink_color, special_flags=pygame.BLEND_ADD)
                         self.image = colored_image
+        
+        # Update damage cooldowns
+        current_time = pygame.time.get_ticks()
+        for source_id in list(self.damage_cooldown.keys()):
+            if current_time - self.damage_cooldown[source_id] > self.damage_cooldown_duration:
+                del self.damage_cooldown[source_id]
     
     def shoot(self, bullet_image=None):
         now = pygame.time.get_ticks()
@@ -129,38 +133,63 @@ class Player(pygame.sprite.Sprite):
         if powerup_type == 'health':
             if self.health < self.max_health:
                 self.health += 1
+                return True
+            return False
         elif powerup_type == 'speed':
             self.speed += 1
+            return True
         elif powerup_type == 'rapid_fire':
             self.rapid_fire = True
-            self.shoot_delay = 100
-            self.rapid_fire_timer = 300  # Lasts for 300 frames (5 seconds at 60 FPS)
+            self.rapid_fire_timer = 300  # 5 seconds at 60 FPS
+            return True
         elif powerup_type == 'score_multiplier':
             self.score_multiplier = 2
             self.score_multiplier_timer = self.score_multiplier_duration
+            return True
+        return False
     
-    def take_damage(self, god_mode=False):
-        """Handle player taking damage with invulnerability period."""
-        # If in god mode, play sound but don't reduce health
+    def take_damage(self, god_mode=False, source_id=None):
+        """
+        Apply damage to the player with cooldown system.
+        
+        Args:
+            god_mode (bool): If True, player takes no damage
+            source_id: Unique identifier for the damage source (enemy, boss, etc.)
+                      Used to track cooldown for each source separately
+        
+        Returns:
+            bool: True if damage was applied, False otherwise
+        """
         if god_mode:
-            self.sound_manager.play_sound('explosion')
-            # Start invulnerability period
-            self.invulnerable = True
-            self.invulnerable_timer = pygame.time.get_ticks()
+            return False
+            
+        # If no source_id provided, generate a random one (not ideal but prevents errors)
+        if source_id is None:
+            source_id = f"unknown_{pygame.time.get_ticks()}"
+            
+        # Check if this source is on cooldown
+        current_time = pygame.time.get_ticks()
+        if source_id in self.damage_cooldown:
+            return False  # Still on cooldown, no damage applied
+            
+        # Check if player is invulnerable
+        if self.invulnerable:
             self.blink_timer = pygame.time.get_ticks()
             return False  # No actual damage applied
             
-        if not self.invulnerable:
-            self.health -= 1
-            self.sound_manager.play_sound('explosion')
-            
-            # Start invulnerability period
-            self.invulnerable = True
-            self.invulnerable_timer = pygame.time.get_ticks()
-            self.blink_timer = pygame.time.get_ticks()
-            
-            return True  # Damage was applied
-        return False  # Player was invulnerable, no damage applied
+        # Apply damage and start cooldown
+        self.health -= 1
+        self.sound_manager.play_sound('explosion')
+        
+        # Start invulnerability period
+        self.invulnerable = True
+        self.invulnerable_timer = pygame.time.get_ticks()
+        self.blink_timer = pygame.time.get_ticks()
+        
+        # Set cooldown for this damage source
+        self.damage_cooldown[source_id] = current_time
+        
+        return True  # Damage was applied
     
     def draw(self, surface):
         """Draw the player with simplified visual effects for better performance."""
@@ -178,20 +207,11 @@ class Player(pygame.sprite.Sprite):
             engine_y = self.rect.centery
             
             # Draw simplified engine glow (just a rectangle)
-            glow_color = (50, 100, 255, 150)
-            glow_rect = pygame.Rect(engine_x - 8, engine_y - 4, 8, 8)
-            pygame.draw.rect(surface, glow_color, glow_rect)
+            glow_width = 10
+            glow_height = 6
+            glow_rect = pygame.Rect(engine_x - glow_width, engine_y - glow_height//2, glow_width, glow_height)
+            pygame.draw.rect(surface, (255, 150, 50), glow_rect)
             
-            # Add simplified shield effect when invulnerable
-            if self.invulnerable:
-                shield_color = (100, 150, 255, 100)
-                pygame.draw.rect(surface, shield_color, self.rect.inflate(10, 10), 2)
-        
-        # Draw bullets (simplified)
-        for bullet in self.bullets:
-            bullet.draw(surface)
-        
-        # Draw rapid fire indicator if active (simplified)
-        if self.rapid_fire:
-            # Draw indicator
-            pygame.draw.circle(surface, (255, 255, 0), (self.rect.right + 10, self.rect.top - 5), 5)
+            # Draw a smaller, brighter inner glow
+            inner_glow_rect = pygame.Rect(engine_x - glow_width//2, engine_y - glow_height//4, glow_width//2, glow_height//2)
+            pygame.draw.rect(surface, (255, 255, 150), inner_glow_rect)
