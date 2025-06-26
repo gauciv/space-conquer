@@ -24,7 +24,7 @@ class Boss(pygame.sprite.Sprite):
             self.shoot_delay = 1000  # milliseconds
             self.bullet_speed = -8  # Negative because bullets move left
             self.bullet_damage = 1
-            self.score_value = 250
+            self.score_value = 750  # Increased from 250 to 750 (3x)
             self.movement_pattern = "sine"
             self.battle_distance = 15  # Distance from right edge during battle (reduced to 15px)
             
@@ -40,7 +40,7 @@ class Boss(pygame.sprite.Sprite):
             self.shoot_delay = 800  # milliseconds
             self.bullet_speed = -10
             self.bullet_damage = 2
-            self.score_value = 500
+            self.score_value = 1500  # Increased from 500 to 1500 (3x)
             self.movement_pattern = "complex"
             self.battle_distance = 15  # Distance from right edge during battle (reduced to 15px)
             

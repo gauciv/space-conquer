@@ -915,6 +915,43 @@ class UIManager:
         tagline_text = tagline_font.render('The void awaits...', True, (150, 150, 200))
         surface.blit(tagline_text, (SCREEN_WIDTH // 2 - tagline_text.get_width() // 2, 520))
         
+        # Add developer name with lightning effects
+        dev_font = pygame.font.SysFont('Arial', 18, bold=True)
+        dev_text = dev_font.render('Gauciv', True, (200, 200, 255))
+        dev_text_pos = (SCREEN_WIDTH // 2 - dev_text.get_width() // 2, 550)
+        
+        # Create lightning effect
+        current_time = pygame.time.get_ticks()
+        if current_time % 2000 < 150:  # Flash every 2 seconds for 150ms
+            # Draw lightning bolts around the name
+            lightning_points = [
+                # Left lightning
+                [(dev_text_pos[0] - 30, dev_text_pos[1] + 10),
+                 (dev_text_pos[0] - 20, dev_text_pos[1] + 5),
+                 (dev_text_pos[0] - 25, dev_text_pos[1] + 15),
+                 (dev_text_pos[0] - 15, dev_text_pos[1] + 10)],
+                # Right lightning
+                [(dev_text_pos[0] + dev_text.get_width() + 30, dev_text_pos[1] + 10),
+                 (dev_text_pos[0] + dev_text.get_width() + 20, dev_text_pos[1] + 5),
+                 (dev_text_pos[0] + dev_text.get_width() + 25, dev_text_pos[1] + 15),
+                 (dev_text_pos[0] + dev_text.get_width() + 15, dev_text_pos[1] + 10)]
+            ]
+            
+            # Draw each lightning bolt
+            for points in lightning_points:
+                pygame.draw.lines(surface, (100, 150, 255), False, points, 2)
+            
+            # Add glow to the text
+            glow_text = dev_font.render('Gauciv', True, (100, 150, 255))
+            surface.blit(glow_text, (dev_text_pos[0] + 1, dev_text_pos[1] + 1))
+            
+            # Draw the text with a brighter color during flash
+            bright_text = dev_font.render('Gauciv', True, (220, 220, 255))
+            surface.blit(bright_text, dev_text_pos)
+        else:
+            # Draw normal text
+            surface.blit(dev_text, dev_text_pos)
+        
         # Store button rectangles for click detection
         self.start_button_rect = start_button_rect
         # Make sure we clear the main menu button rect when showing the start screen
