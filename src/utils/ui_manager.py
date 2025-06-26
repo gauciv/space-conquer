@@ -63,6 +63,10 @@ class UIManager:
         self.show_player_coords = False
         self.show_fps = True
         
+        # Phase selection dropdown
+        self.phase_dropdown_open = False
+        self.selected_phase_index = 0
+        
         # Music slider
         self.music_slider_rect = pygame.Rect(self.panel_x + 130, SCREEN_HEIGHT // 2 + 10, self.slider_width, 10)
         self.music_handle_rect = pygame.Rect(0, 0, 24, 24)  # Larger clickable area
@@ -672,22 +676,9 @@ class UIManager:
                 # Just draw the empty heart
                 surface.blit(self.empty_heart_img, (heart_x, heart_y))
         
-        # Set robot button position below health panel
-        self.robot_button_rect = pygame.Rect(10, health_panel_rect.bottom + 10, 40, 40)
-        
-        # Draw player coordinates if enabled
-        if testing_mode and self.show_player_coords and player:
-            # Draw coordinates at the top of the screen
-            coords_font = pygame.font.SysFont('Arial', 16)
-            coords_text = coords_font.render(f"X:{int(player.rect.x)}, Y:{int(player.rect.y)}", True, (200, 200, 255))
-            surface.blit(coords_text, (SCREEN_WIDTH // 2 - 150, 10))
-        
-        # Draw FPS if enabled
-        if testing_mode and self.show_fps:
-            # Draw FPS at the top of the screen
-            fps_font = pygame.font.SysFont('Arial', 16)
-            fps_text = fps_font.render(f"FPS: {int(fps)}", True, (200, 200, 255))
-            surface.blit(fps_text, (SCREEN_WIDTH // 2 + 50, 10))
+        # Set robot button position below health panel for in-game
+        if testing_mode:
+            self.robot_button_rect = pygame.Rect(10, health_panel_rect.bottom + 10, 40, 40)
     
     def show_game_over(self, surface, score):
         """Display an enhanced game over screen."""
@@ -883,6 +874,7 @@ class UIManager:
             glow_color = (100, 150, 255, 30)
             pygame.draw.circle(glow_surface, glow_color, (30, 30), 25)
             surface.blit(glow_surface, (robot_rect.x - 10, robot_rect.y - 10))
+            # Center the robot icon properly in its rect
             surface.blit(self.robot_icon, (robot_rect.x, robot_rect.y))
             
             # Add a subtle glow effect if hovered
@@ -1094,7 +1086,7 @@ class UIManager:
         """Toggle the visibility of the robot button."""
         self.show_robot_button = not self.show_robot_button
         return self.show_robot_button
-    def draw_testing_panel(self, surface, player=None, fps=0):
+    def draw_testing_panel(self, surface, player=None, fps=0, phase_manager=None):
         """Draw a compact testing panel with toggle options."""
         if not self.testing_panel_open:
             return
@@ -1108,6 +1100,7 @@ class UIManager:
             glow_color = (100, 150, 255, 30)
             pygame.draw.circle(glow_surface, glow_color, (25, 25), 20)
             surface.blit(glow_surface, (robot_rect.x - 5, robot_rect.y - 5))
+            # Center the robot icon properly in its rect
             surface.blit(self.robot_icon, (robot_rect.x, robot_rect.y))
             
             # Draw testing mode indicator
@@ -1121,11 +1114,11 @@ class UIManager:
                 surface.blit(god_text, (robot_rect.right + 5, robot_rect.centery + 10))
             return
             
-        # Draw a small popup panel near the robot icon position
-        panel_width = 220
-        panel_height = 130
+        # Draw a larger popup panel that doesn't overlap with the robot icon
+        panel_width = 250
+        panel_height = 200  # Increased height for phase selector
         panel_x = 10
-        panel_y = 110
+        panel_y = 120
         
         # Draw panel background
         panel_color = (20, 20, 40, 220)
@@ -1176,11 +1169,102 @@ class UIManager:
         # Show FPS button
         fps_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
         self._draw_toggle_button(surface, fps_rect, "Show FPS", self.show_fps)
+        button_y += button_height + button_spacing
+        
+        # Phase selection dropdown
+        if phase_manager:
+            # Draw phase selection label
+            phase_label = self.font_small.render("Select Phase:", True, (200, 200, 255))
+            surface.blit(phase_label, (panel_x + 10, button_y))
+            button_y += 20
+            
+            # Draw dropdown button
+            dropdown_rect = pygame.Rect(panel_x + 10, button_y, panel_width - 20, button_height)
+            
+            # Get current phase name
+            current_phase_name = "Select Phase"
+            if 0 <= self.selected_phase_index < len(phase_manager.phases):
+                current_phase_name = phase_manager.phases[self.selected_phase_index].name
+                
+            # Draw dropdown button
+            pygame.draw.rect(surface, (40, 40, 80), dropdown_rect)
+            pygame.draw.rect(surface, (80, 80, 120), dropdown_rect, 1)
+            
+            # Draw selected phase name
+            phase_text = self.font_small.render(current_phase_name, True, (200, 200, 255))
+            surface.blit(phase_text, (dropdown_rect.x + 10, dropdown_rect.centery - phase_text.get_height() // 2))
+            
+            # Draw dropdown arrow
+            arrow_points = [
+                (dropdown_rect.right - 15, dropdown_rect.centery - 3),
+                (dropdown_rect.right - 5, dropdown_rect.centery - 3),
+                (dropdown_rect.right - 10, dropdown_rect.centery + 5)
+            ]
+            pygame.draw.polygon(surface, (200, 200, 255), arrow_points)
+            
+            # Store dropdown rect for click detection
+            self.phase_dropdown_rect = dropdown_rect
+            
+            # Draw dropdown options if open
+            if self.phase_dropdown_open:
+                option_height = 25
+                dropdown_options_height = len(phase_manager.phases) * option_height
+                dropdown_options_rect = pygame.Rect(dropdown_rect.x, dropdown_rect.bottom, 
+                                                  dropdown_rect.width, dropdown_options_height)
+                
+                # Draw options background
+                pygame.draw.rect(surface, (30, 30, 60), dropdown_options_rect)
+                pygame.draw.rect(surface, (80, 80, 120), dropdown_options_rect, 1)
+                
+                # Draw each option
+                for i, phase in enumerate(phase_manager.phases):
+                    option_rect = pygame.Rect(dropdown_options_rect.x, dropdown_options_rect.y + i * option_height,
+                                            dropdown_options_rect.width, option_height)
+                    
+                    # Highlight selected or hovered option
+                    if i == self.selected_phase_index or option_rect.collidepoint(pygame.mouse.get_pos()):
+                        pygame.draw.rect(surface, (60, 60, 100), option_rect)
+                    
+                    # Draw option text
+                    option_text = self.font_small.render(phase.name, True, (200, 200, 255))
+                    surface.blit(option_text, (option_rect.x + 10, option_rect.centery - option_text.get_height() // 2))
+                    
+                    # Store option rect for click detection
+                    phase.option_rect = option_rect
         
         # Store button rectangles for click detection
         self.god_mode_button_rect = god_mode_rect
         self.player_coords_button_rect = coords_rect
         self.fps_button_rect = fps_rect
+        
+        # Draw stats in the bottom right corner if enabled
+        if self.show_player_coords and player:
+            coords_font = pygame.font.SysFont('Arial', 14)
+            coords_text = coords_font.render(f"X:{int(player.rect.x)}, Y:{int(player.rect.y)}", True, (200, 200, 255))
+            
+            # Create background with padding
+            coords_bg_width = coords_text.get_width() + 20
+            coords_bg = pygame.Surface((coords_bg_width, 25), pygame.SRCALPHA)
+            coords_bg.fill((20, 20, 40, 180))
+            
+            # Right-align the coordinates
+            coords_x = SCREEN_WIDTH - coords_bg_width - 10
+            surface.blit(coords_bg, (coords_x, SCREEN_HEIGHT - 60))
+            surface.blit(coords_text, (coords_x + 10, SCREEN_HEIGHT - 55))
+        
+        if self.show_fps:
+            fps_font = pygame.font.SysFont('Arial', 14)
+            fps_text = fps_font.render(f"FPS: {int(fps)}", True, (200, 200, 255))
+            
+            # Create background with padding
+            fps_bg_width = fps_text.get_width() + 20
+            fps_bg = pygame.Surface((fps_bg_width, 25), pygame.SRCALPHA)
+            fps_bg.fill((20, 20, 40, 180))
+            
+            # Right-align the FPS counter
+            fps_x = SCREEN_WIDTH - fps_bg_width - 10
+            surface.blit(fps_bg, (fps_x, SCREEN_HEIGHT - 30))
+            surface.blit(fps_text, (fps_x + 10, SCREEN_HEIGHT - 25))
     
     def _draw_toggle_button(self, surface, rect, text, is_active):
         """Draw a toggle button with on/off state."""
@@ -1207,7 +1291,7 @@ class UIManager:
         handle_color = (100, 200, 100) if is_active else (150, 150, 150)
         pygame.draw.rect(surface, handle_color, handle_rect, border_radius=6)
         
-    def handle_testing_panel_click(self, pos):
+    def handle_testing_panel_click(self, pos, phase_manager=None):
         """Handle clicks on the testing panel."""
         if not self.testing_panel_open:
             return False
@@ -1220,6 +1304,7 @@ class UIManager:
         # Check if the collapse button was clicked when panel is expanded
         if not self.testing_panel_collapsed and hasattr(self, 'collapse_button_rect') and self.collapse_button_rect.collidepoint(pos):
             self.testing_panel_collapsed = True
+            self.phase_dropdown_open = False  # Close dropdown when collapsing panel
             return True
             
         # If collapsed, don't check the rest of the panel
@@ -1237,6 +1322,24 @@ class UIManager:
             
         if self.fps_button_rect and self.fps_button_rect.collidepoint(pos):
             self.show_fps = not self.show_fps
+            return True
+            
+        # Check phase dropdown
+        if hasattr(self, 'phase_dropdown_rect') and self.phase_dropdown_rect.collidepoint(pos):
+            self.phase_dropdown_open = not self.phase_dropdown_open
+            return True
+            
+        # Check phase dropdown options
+        if self.phase_dropdown_open and phase_manager:
+            for i, phase in enumerate(phase_manager.phases):
+                if hasattr(phase, 'option_rect') and phase.option_rect.collidepoint(pos):
+                    self.selected_phase_index = i
+                    self.phase_dropdown_open = False
+                    phase_manager.skip_to_phase(i)
+                    return True
+            
+            # Close dropdown if clicked outside
+            self.phase_dropdown_open = False
             return True
             
         return False

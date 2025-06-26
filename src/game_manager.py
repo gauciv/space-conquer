@@ -11,13 +11,14 @@ from .utils.sound_manager import SoundManager
 from .utils.asset_loader import AssetLoader
 from .utils.ui_manager import UIManager
 from .utils.background_manager import BackgroundManager
+from .utils.phase_manager import PhaseManager
+from .utils.boss_manager import BossManager
 from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
 from .sprites.asteroid import Asteroid
 from .sprites.debris import Debris
-from .sprites.boss import Boss
 
 class GameManager:
     def __init__(self):
@@ -58,13 +59,8 @@ class GameManager:
         # Game active property
         self.game_active = False
         
-        # Boss variables
-        self.mini_boss = None
-        self.main_boss = None
-        self.mini_boss_spawned = False
-        self.main_boss_spawned = False
-        self.mini_boss_score_threshold = 750
-        self.main_boss_score_threshold = 1500
+        # Boss manager
+        self.boss_manager = BossManager(self)
         
         # Map system
         self.maps = [
@@ -95,14 +91,9 @@ class GameManager:
         # Testing mode
         self.testing_mode = False
         self.show_debug_info = False
-        self.phase_markers = [
-            {'name': 'Start', 'score': 0},
-            {'name': 'Fast Enemies', 'score': 200},
-            {'name': 'Tank Enemies', 'score': 400},
-            {'name': 'Bomber Enemies', 'score': 600},
-            {'name': 'Mini-Boss', 'score': 750},
-            {'name': 'Main Boss', 'score': 1500}
-        ]
+        
+        # Initialize phase manager
+        self.phase_manager = PhaseManager(self)
         
         # Start background music
         self.sound_manager.play_music()
@@ -136,11 +127,8 @@ class GameManager:
         self.player = Player(self.asset_loader.get_image('player'), self.sound_manager)
         self.all_sprites.add(self.player)
         
-        # Reset boss variables
-        self.mini_boss = None
-        self.main_boss = None
-        self.mini_boss_spawned = False
-        self.main_boss_spawned = False
+        # Reset boss manager
+        self.boss_manager.reset()
         
         # If testing mode, open testing panel
         if testing_mode:
@@ -154,6 +142,10 @@ class GameManager:
         self.showing_map_name = True
         self.map_transition_timer = self.map_name_duration
         self.show_chapter_header = False  # Don't show the chapter header until intro is done
+        
+        # Reset phase manager
+        self.phase_manager = PhaseManager(self)
+        self.phase_manager.update(self.score)
         
         # Enemy spawn timer
         self.enemy_spawn_delay = self.enemy_spawn_rates[0]
@@ -270,7 +262,7 @@ class GameManager:
                 if event.button == 1:  # Left mouse button
                     # Handle testing panel clicks if in testing mode
                     if self.testing_mode and self.ui_manager.testing_panel_open:
-                        if self.ui_manager.handle_testing_panel_click(event.pos):
+                        if self.ui_manager.handle_testing_panel_click(event.pos, self.phase_manager):
                             # Apply god mode if enabled
                             if self.player and self.ui_manager.god_mode:
                                 self.player.health = self.player.max_health
@@ -349,12 +341,10 @@ class GameManager:
                                 self.sound_manager.play_sound('select')
                     # Handle phase marker clicks in testing mode
                     elif self.testing_mode and self.game_active:
-                        for marker in self.phase_markers:
-                            marker_rect = pygame.Rect(SCREEN_WIDTH - 150, 150 + self.phase_markers.index(marker) * 30, 140, 25)
-                            if marker_rect.collidepoint(event.pos):
-                                self.score = marker['score']
-                                self.update_enemy_types()
-                                print(f"Skipped to phase: {marker['name']} (Score: {marker['score']})")
+                        for i, phase in enumerate(self.phase_manager.phases):
+                            if hasattr(phase, 'rect') and phase.rect.collidepoint(event.pos):
+                                self.phase_manager.skip_to_phase(i)
+                                print(f"Skipped to phase: {phase.name} (Score: {phase.score_threshold})")
                                 break
             
             elif event.type == pygame.MOUSEBUTTONUP:
@@ -380,7 +370,7 @@ class GameManager:
             
         if not self.ui_manager.settings_open:
             if self.game_state == self.GAME_STATE_PLAYING and self.player:
-                # Apply God Mode if enabled in testing mode
+                # Apply God Mode if enabled in testing mode (only restore health, don't make invulnerable)
                 if self.testing_mode and self.ui_manager.god_mode and self.player:
                     self.player.health = self.player.max_health
                 
@@ -398,21 +388,14 @@ class GameManager:
                 self.asteroids.update()
                 self.debris.update()
                 
-                # Update bosses if they exist
-                if self.mini_boss is not None:
-                    self.mini_boss.update()
-                if self.main_boss is not None:
-                    self.main_boss.update()
+                # Update bosses
+                self.boss_manager.update()
                 
                 # Check for enemy type progression based on score
                 self.update_enemy_types()
                 
-                # Check for boss spawning based on score
-                if not self.testing_mode:  # Only auto-spawn bosses in normal mode
-                    self.check_boss_spawning()
-                
                 # Spawn enemies (only if no boss is active)
-                if not self.mini_boss and not self.main_boss:
+                if not self.boss_manager.has_active_boss():
                     now = pygame.time.get_ticks()
                     if now - self.last_enemy_spawn > self.enemy_spawn_delay:
                         self.last_enemy_spawn = now
@@ -490,39 +473,14 @@ class GameManager:
                                 # Play explosion sound
                                 self.sound_manager.play_sound('explosion')
                 
-                # Check for bullet collisions with mini-boss
-                if self.mini_boss is not None:
-                    for bullet in self.player.bullets:
-                        if self.mini_boss.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.mini_boss.take_damage(1):
-                                # Mini-boss defeated
-                                # Apply score multiplier if active
-                                points = self.mini_boss.score_value * self.player.score_multiplier
-                                self.score += points
-                                self.mini_boss = None
-                                # Play explosion sound (could be a special boss explosion)
-                                self.sound_manager.play_sound('explosion')
-                
-                # Check for bullet collisions with main boss
-                if self.main_boss is not None:
-                    for bullet in self.player.bullets:
-                        if self.main_boss.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.main_boss.take_damage(1):
-                                # Main boss defeated
-                                # Apply score multiplier if active
-                                points = self.main_boss.score_value * self.player.score_multiplier
-                                self.score += points
-                                self.main_boss = None
-                                # Play explosion sound (could be a special boss explosion)
-                                self.sound_manager.play_sound('explosion')
+                # Handle all boss-related collisions
+                self.boss_manager.handle_collisions(self.player)
                 
                 # Check for player collision with enemies
                 for enemy in self.enemies:
                     if self.player.hitbox.colliderect(enemy.hitbox):
                         # Use the new take_damage method which handles invulnerability and sound
-                        damage_applied = self.player.take_damage()
+                        damage_applied = self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False)
                         enemy.kill()  # Remove the enemy that collided with player
                         
                         if damage_applied and self.player.health <= 0:
@@ -540,7 +498,7 @@ class GameManager:
                 for debris_obj in self.debris:
                     if self.player.hitbox.colliderect(debris_obj.hitbox):
                         # Use the take_damage method which handles invulnerability and sound
-                        damage_applied = self.player.take_damage()
+                        damage_applied = self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False)
                         debris_obj.kill()  # Remove the debris that collided with player
                         
                         if damage_applied and self.player.health <= 0:
@@ -556,30 +514,17 @@ class GameManager:
                 
                 # Check for player collision with boss bullets
                 if self.mini_boss is not None:
-                    for bullet in self.mini_boss.bullets:
-                        if self.player.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.player.take_damage():
-                                if self.player.health <= 0:
-                                    self.game_state = self.GAME_STATE_GAME_OVER
-                                    # Play game over sound
-                                    self.sound_manager.play_sound('game_over')
-                                    # Lower music volume for game over sound
-                                    if self.sound_manager.music_enabled:
-                                        self.sound_manager.temporarily_lower_music(duration=1500)
-                                    # Schedule music volume restoration
-                                    pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
-                
-                if self.main_boss is not None:
-                    for bullet in self.main_boss.bullets:
-                        if self.player.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.player.take_damage():
-                                if self.player.health <= 0:
-                                    self.game_state = self.GAME_STATE_GAME_OVER
-                                    # Play game over sound
-                                    self.sound_manager.play_sound('game_over')
-                                    # Lower music volume for game over sound
+                    # Make sure the mini boss has been properly initialized with bullets
+                    if hasattr(self.mini_boss, 'bullets') and hasattr(self.player, 'hitbox'):
+                        for bullet in list(self.mini_boss.bullets):  # Create a copy of the bullets list
+                            if self.player.hitbox.colliderect(bullet.hitbox):
+                                bullet.kill()
+                                if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
+                                    if self.player.health <= 0:
+                                        self.game_state = self.GAME_STATE_GAME_OVER
+                                        # Play game over sound
+                                        self.sound_manager.play_sound('game_over')
+                                        # Lower music volume for game over sound
                                     if self.sound_manager.music_enabled:
                                         self.sound_manager.temporarily_lower_music(duration=1500)
                                     # Schedule music volume restoration
@@ -595,21 +540,72 @@ class GameManager:
     
     def update_enemy_types(self):
         """Update available enemy types based on score."""
-        for progression in self.enemy_progression:
-            if self.score >= progression['score']:
-                self.enemy_types_available = progression['types']
+        # Use the phase manager to update phases based on score
+        self.phase_manager.update(self.score)
+    
+    def handle_boss_collisions(self):
+        """Handle all boss-related collisions in a robust way."""
+        # Only process if player exists and has bullets
+        if not self.player or not hasattr(self.player, 'bullets'):
+            return
+            
+        # Process mini-boss collisions
+        if self.mini_boss:
+            # Check if mini-boss is properly initialized
+            if hasattr(self.mini_boss, 'hitbox'):
+                # Check player bullets against mini-boss
+                for bullet in list(self.player.bullets):
+                    if bullet.hitbox.colliderect(self.mini_boss.hitbox):
+                        bullet.kill()
+                        if self.mini_boss.take_damage(1):
+                            # Mini-boss defeated
+                            points = self.mini_boss.score_value * self.player.score_multiplier
+                            self.score += points
+                            self.mini_boss = None
+                            self.sound_manager.play_sound('explosion')
+                            break  # Exit loop since mini_boss is now None
+                
+                # Check mini-boss bullets against player
+                if self.mini_boss and hasattr(self.mini_boss, 'bullets'):
+                    for bullet in list(self.mini_boss.bullets):
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.sound_manager.play_sound('game_over')
+        
+        # Process main-boss collisions
+        if self.main_boss:
+            # Check if main-boss is properly initialized
+            if hasattr(self.main_boss, 'hitbox'):
+                # Check player bullets against main-boss
+                for bullet in list(self.player.bullets):
+                    if bullet.hitbox.colliderect(self.main_boss.hitbox):
+                        bullet.kill()
+                        if self.main_boss.take_damage(1):
+                            # Main-boss defeated
+                            points = self.main_boss.score_value * self.player.score_multiplier
+                            self.score += points
+                            self.main_boss = None
+                            self.sound_manager.play_sound('explosion')
+                            break  # Exit loop since main_boss is now None
+                
+                # Check main-boss bullets against player
+                if self.main_boss and hasattr(self.main_boss, 'bullets'):
+                    for bullet in list(self.main_boss.bullets):
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.sound_manager.play_sound('game_over')
     
     def check_boss_spawning(self):
         """Check if it's time to spawn a boss based on score."""
-        # Spawn mini-boss at score threshold
-        if self.score >= self.mini_boss_score_threshold and not self.mini_boss_spawned and not self.mini_boss and not self.main_boss:
-            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
-            self.mini_boss_spawned = True
-        
-        # Spawn main boss at score threshold
-        if self.score >= self.main_boss_score_threshold and not self.main_boss_spawned and not self.main_boss and not self.mini_boss:
-            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
-            self.main_boss_spawned = True
+        # This is now handled by the phase manager
+        # We keep this method for compatibility
+        pass
     
     def draw(self):
         """Draw the game screen."""
@@ -682,7 +678,7 @@ class GameManager:
                 
                 # Draw testing panel if in testing mode
                 if self.testing_mode and self.ui_manager.testing_panel_open:
-                    self.ui_manager.draw_testing_panel(self.screen, self.player, self.clock.get_fps())
+                    self.ui_manager.draw_testing_panel(self.screen, self.player, self.clock.get_fps(), self.phase_manager)
                 
                 # Show score multiplier if active
                 if self.player.score_multiplier > 1:
@@ -717,29 +713,10 @@ class GameManager:
                 
                 # Draw phase markers in testing mode
                 if self.testing_mode:
-                    marker_font = pygame.font.SysFont('Arial', 16)
-                    marker_title = pygame.font.SysFont('Arial', 18, bold=True)
-                    
-                    # Draw title
-                    title_text = marker_title.render("Phase Markers:", True, (255, 255, 100))
-                    self.screen.blit(title_text, (SCREEN_WIDTH - 150, 120))
-                    
-                    # Draw markers
-                    for i, marker in enumerate(self.phase_markers):
-                        # Create marker rectangle
-                        marker_rect = pygame.Rect(SCREEN_WIDTH - 150, 150 + i * 30, 140, 25)
-                        
-                        # Highlight current phase
-                        if self.score >= marker['score'] and (i == len(self.phase_markers) - 1 or self.score < self.phase_markers[i + 1]['score']):
-                            pygame.draw.rect(self.screen, (100, 100, 50), marker_rect)
-                            pygame.draw.rect(self.screen, (255, 255, 100), marker_rect, 2)
-                        else:
-                            pygame.draw.rect(self.screen, (50, 50, 50), marker_rect)
-                            pygame.draw.rect(self.screen, (150, 150, 150), marker_rect, 1)
-                        
-                        # Draw marker text
-                        text = marker_font.render(f"{marker['name']}", True, (255, 255, 255))
-                        self.screen.blit(text, (SCREEN_WIDTH - 145, 153 + i * 30))
+                    self.phase_manager.draw_phase_markers(self.screen, True)
+                
+                # Draw phase transition effect if active
+                self.phase_manager.draw_phase_transition(self.screen)
             
             # Draw appropriate screen based on game state
             elif self.game_state == self.GAME_STATE_GAME_OVER:
@@ -781,3 +758,80 @@ def main():
     """Entry point when run as a module."""
     game = GameManager()
     game.run()
+    def create_boss(self, boss_type):
+        """Create a boss of the specified type."""
+        return Boss(boss_type, self.asset_loader, self.sound_manager)
+    def initialize_boss(self, boss_type):
+        """Initialize a boss of the specified type and add it to the game."""
+        if boss_type == 'mini':
+            # Create mini boss
+            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
+            self.all_sprites.add(self.mini_boss)
+            self.mini_boss_spawned = True
+            print("Mini boss initialized!")
+            return self.mini_boss
+        elif boss_type == 'main':
+            # Create main boss
+            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
+            self.all_sprites.add(self.main_boss)
+            self.main_boss_spawned = True
+            print("Main boss initialized!")
+            return self.main_boss
+        return None
+    def handle_boss_collisions(self):
+        """Handle all boss-related collisions in a robust way."""
+        # Only process if player exists and has bullets
+        if not self.player or not hasattr(self.player, 'bullets'):
+            return
+            
+        # Process mini-boss collisions
+        if self.mini_boss:
+            # Check if mini-boss is properly initialized
+            if hasattr(self.mini_boss, 'hitbox'):
+                # Check player bullets against mini-boss
+                for bullet in list(self.player.bullets):
+                    if bullet.hitbox.colliderect(self.mini_boss.hitbox):
+                        bullet.kill()
+                        if self.mini_boss.take_damage(1):
+                            # Mini-boss defeated
+                            points = self.mini_boss.score_value * self.player.score_multiplier
+                            self.score += points
+                            self.mini_boss = None
+                            self.sound_manager.play_sound('explosion')
+                            break  # Exit loop since mini_boss is now None
+                
+                # Check mini-boss bullets against player
+                if self.mini_boss and hasattr(self.mini_boss, 'bullets'):
+                    for bullet in list(self.mini_boss.bullets):
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.sound_manager.play_sound('game_over')
+        
+        # Process main-boss collisions
+        if self.main_boss:
+            # Check if main-boss is properly initialized
+            if hasattr(self.main_boss, 'hitbox'):
+                # Check player bullets against main-boss
+                for bullet in list(self.player.bullets):
+                    if bullet.hitbox.colliderect(self.main_boss.hitbox):
+                        bullet.kill()
+                        if self.main_boss.take_damage(1):
+                            # Main-boss defeated
+                            points = self.main_boss.score_value * self.player.score_multiplier
+                            self.score += points
+                            self.main_boss = None
+                            self.sound_manager.play_sound('explosion')
+                            break  # Exit loop since main_boss is now None
+                
+                # Check main-boss bullets against player
+                if self.main_boss and hasattr(self.main_boss, 'bullets'):
+                    for bullet in list(self.main_boss.bullets):
+                        if self.player.hitbox.colliderect(bullet.hitbox):
+                            bullet.kill()
+                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
+                                if self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.sound_manager.play_sound('game_over')

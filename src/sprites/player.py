@@ -139,8 +139,17 @@ class Player(pygame.sprite.Sprite):
             self.score_multiplier = 2
             self.score_multiplier_timer = self.score_multiplier_duration
     
-    def take_damage(self):
+    def take_damage(self, god_mode=False):
         """Handle player taking damage with invulnerability period."""
+        # If in god mode, play sound but don't reduce health
+        if god_mode:
+            self.sound_manager.play_sound('explosion')
+            # Start invulnerability period
+            self.invulnerable = True
+            self.invulnerable_timer = pygame.time.get_ticks()
+            self.blink_timer = pygame.time.get_ticks()
+            return False  # No actual damage applied
+            
         if not self.invulnerable:
             self.health -= 1
             self.sound_manager.play_sound('explosion')
