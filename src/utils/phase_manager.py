@@ -79,9 +79,9 @@ class PhaseManager:
             Phase("Low Enemies Speed Up", 15, ['low'], spawn_rate=1667, speed_multiplier=1.25),
             Phase("Asteroids & Elite Enemies", 30, ['low', 'elite'], spawn_rate=1667, powerup_drop_chance_modifier=-0.25),  # 3333/2 = ~1667 (2x faster for elite)
             Phase("Flying Debris", 45, ['low', 'elite'], spawn_rate=2667),  # 5333/2 = ~2667 (2x faster for elite)
-            Phase("Super Monsters", 60, ['low', 'elite', 'super'], spawn_rate=3333, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # 6667/2 = ~3333 (2x faster for super)
+            Phase("Super Monsters", 60, ['low', 'elite', 'super'], spawn_rate=2500, speed_multiplier=1.15, powerup_drop_chance_modifier=0.1),  # Reduced from 1667 to 2500 (50% decrease)
             Phase("Mini-Boss", 90, [], boss_type='mini'),  # 90 seconds = 1:30
-            Phase("Post Mini-Boss", 91, ['low', 'elite', 'super'], spawn_rate=1667),  # 2500/1.5 = ~1667
+            Phase("Post Mini-Boss", 91, ['low', 'elite', 'super'], spawn_rate=1500),  # Reduced from 1000 to 1500 (50% decrease)
             Phase("Final Boss", 180, [], boss_type='main')  # 180 seconds = 3:00
         ]
         

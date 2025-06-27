@@ -87,8 +87,8 @@ class GameManager:
         self.enemy_spawn_rates = [1500, 1200, 900, 700, 500]  # ms between spawns for each map
         self.enemy_points = {
             'low': 30,    # Low-type enemy
-            'elite': 45,  # Elite-type enemy
-            'super': 75   # Super-type enemy
+            'elite': 50,  # Elite-type enemy (increased from 45 to 50 due to enhanced burst capability)
+            'super': 150  # Super-type enemy (doubled from 75 to 150 due to enhanced juggernaut capabilities)
         }
         
         # Testing mode
@@ -472,12 +472,64 @@ class GameManager:
                         now = pygame.time.get_ticks()
                         if now - self.last_enemy_spawn > self.enemy_spawn_delay * spawn_rate_multiplier:
                             self.last_enemy_spawn = now
-                            enemy_type = random.choice(self.enemy_types_available)
+                            
+                            # Enhanced enemy type selection with weighted probabilities
+                            weighted_types = self.enemy_types_available.copy()
+                            
+                            # Check if we're in a phase with super enemies
+                            if 'super' in self.enemy_types_available:
+                                # Create a weighted list with 25% more super enemies (reduced from 50%)
+                                base_count = len(weighted_types)
+                                super_boost = max(1, int(base_count * 0.25))
+                                
+                                # Add extra super entries
+                                for _ in range(super_boost):
+                                    weighted_types.append('super')
+                                    
+                                print("Super enemy spawn chance boosted by 25%")
+                            
+                            # Also boost elite enemies if available
+                            if 'elite' in self.enemy_types_available:
+                                # Create a weighted list with 15% more elite enemies
+                                base_count = len(weighted_types)
+                                elite_boost = max(1, int(base_count * 0.15))
+                                
+                                # Add extra elite entries
+                                for _ in range(elite_boost):
+                                    weighted_types.append('elite')
+                            
+                            # Select from weighted list
+                            enemy_type = random.choice(weighted_types)
+                            
+                            # Check if we're trying to spawn a super-type enemy
+                            if enemy_type == 'super':
+                                # Count current super enemies on screen
+                                super_count = sum(1 for e in self.enemies if hasattr(e, 'enemy_type') and e.enemy_type == 'super')
+                                
+                                # Limit to maximum of 2 super enemies on screen at once
+                                if super_count >= 2:
+                                    print("Maximum super enemies already on screen, spawning elite instead")
+                                    # Spawn elite enemy instead if available, otherwise low
+                                    if 'elite' in self.enemy_types_available:
+                                        enemy_type = 'elite'
+                                    else:
+                                        enemy_type = 'low'
+                            
                             # Create enemy with behavior manager
                             enemy = Enemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
                             enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                             enemy.speed_multiplier = self.enemy_speed_multiplier  # Apply speed multiplier
                             enemy.game_manager = self  # Give enemy a reference to the game manager
+                            
+                            # Debug message for elite enemies
+                            if enemy_type == 'elite':
+                                print(f"Elite enemy spawned with enhanced burst capability!")
+                            # Debug message for super enemies
+                            elif enemy_type == 'super':
+                                # Count super enemies again for the message
+                                super_count = sum(1 for e in self.enemies if hasattr(e, 'enemy_type') and e.enemy_type == 'super')
+                                print(f"Super enemy (Juggernaut) spawned with shield and multi-phase attacks! ({super_count}/2 on screen)")
+                                
                             self.enemies.add(enemy)
                             self.all_sprites.add(enemy)
                     
@@ -836,6 +888,7 @@ class GameManager:
                         f"Testing Mode: Active",
                         f"FPS: {int(self.clock.get_fps())}",
                         f"Enemies: {len(self.enemies)}",
+                        f"Super Enemies: {self.get_super_enemy_count()}/2 (Max)",
                         f"Player Speed: {self.player.speed}",
                         f"Rapid Fire: {'On' if self.player.rapid_fire else 'Off'}",
                         f"Enemy Spawn Rate: {self.enemy_spawn_delay}ms",
@@ -1129,3 +1182,6 @@ class GameManager:
         else:
             # Use explosion sound as fallback
             self.sound_manager.play_sound('explosion')
+    def get_super_enemy_count(self):
+        """Return the number of super-type enemies currently on screen."""
+        return sum(1 for e in self.enemies if hasattr(e, 'enemy_type') and e.enemy_type == 'super')

@@ -54,8 +54,8 @@ class Asteroid(pygame.sprite.Sprite):
         # Chance to drop a powerup (can be modified by game phases)
         self.powerup_drop_chance = 0.3  # 30% chance (3 out of 10 asteroids)
         
-        # Damage to player on collision
-        self.collision_damage = 1
+        # Damage to player on collision - increased to make asteroids more dangerous
+        self.collision_damage = 3  # Increased from 1 to 3 (asteroids are massive and should be very dangerous)
         
         # Visual effect properties
         self.glow_alpha = 0
@@ -140,9 +140,14 @@ class Asteroid(pygame.sprite.Sprite):
                 # Draw the asteroid image
                 surface.blit(self.image, self.rect)
             
-            # Draw hitbox if debug mode is enabled (but we're disabling this)
-            # if DEBUG_HITBOXES:
-            #     pygame.draw.rect(surface, (150, 150, 0), self.hitbox, 1)
+            # Draw danger warning indicator (red outline)
+            danger_pulse = abs(math.sin(pygame.time.get_ticks() * 0.005)) * 255
+            danger_color = (255, int(danger_pulse * 0.3), 0)  # Pulsing red-orange
+            pygame.draw.rect(surface, danger_color, self.rect.inflate(4, 4), 2)
+            
+            # Draw hitbox if debug mode is enabled
+            if DEBUG_HITBOXES:
+                pygame.draw.rect(surface, (150, 150, 0), self.hitbox, 1)
     def should_drop_powerup(self):
         """Determine if the asteroid should drop a powerup based on the current chance."""
         return random.random() < self.powerup_drop_chance

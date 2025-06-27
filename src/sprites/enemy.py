@@ -1,6 +1,13 @@
 """
 Enemy sprites for the Space Impact game.
 Five enemy types: low-type, elite-type, super-type, mini-boss, and boss.
+
+Enemy Types:
+- Low-type: Basic enemy with drifting movement and single shot capability
+- Elite-type: Fast enemy with burst speed capability and player targeting
+- Super-type: Tanky enemy with high health
+- Mini-boss: Appears at 1:30 mark
+- Boss: Final boss at 3:00 mark
 """
 import pygame
 import random
@@ -34,12 +41,29 @@ class Enemy(pygame.sprite.Sprite):
             
         elif enemy_type == 'super':
             self.image = images.get('super_enemy') or images.get('tank_enemy')
-            self.health = 3
-            self.base_speed = 2
-            self.points = 75  # Already includes 3x multiplier
-            self.movement_pattern = "straight"
+            self.original_image = self.image.copy()
+            self.health = 4  # Increased from 3 to 4
+            self.base_speed = 1.5  # Slightly slower base speed
+            self.points = 100  # Increased from 75 to 100 due to enhanced difficulty
+            self.movement_pattern = "juggernaut"  # New custom movement pattern
             # Super enemy has a larger hitbox (90% of sprite size) since it's a bigger target
             self.hitbox_ratio = 0.9
+            
+            # Shield system
+            self.has_shield = True
+            self.shield_health = 1  # One-hit shield
+            self.shield_regen_cooldown = 0
+            self.shield_pulse_cooldown = 0
+            self.shield_pulse_active = False
+            self.shield_pulse_radius = 0
+            
+            # Attack system
+            self.attack_cooldown = random.uniform(3.0, 5.0)  # Initial cooldown
+            self.attack_phase = 1  # Current attack phase (1-3)
+            self.is_charging = False
+            self.charge_cooldown = 0
+            self.retreat_active = False
+            self.berserk_mode = False
             
         else:
             # Default to low-type enemy for any unknown type
@@ -104,7 +128,30 @@ class Enemy(pygame.sprite.Sprite):
     
     def take_damage(self, damage=1):
         """Take damage and return True if destroyed."""
+        # Handle shield for super-type enemy
+        if self.enemy_type == 'super' and hasattr(self, 'has_shield') and self.has_shield:
+            # Damage shield first
+            self.shield_health -= damage
+            
+            # Set damage flash effect
+            if hasattr(self, 'damage_flash'):
+                self.damage_flash = 5.0
+            
+            # Check if shield is destroyed
+            if self.shield_health <= 0:
+                self.has_shield = False
+                self.shield_regen_cooldown = getattr(self, 'shield_regen_time', 8.0)
+                return False  # Not destroyed, just shield broken
+            
+            return False  # Not destroyed, shield absorbed damage
+        
+        # Normal damage handling
         self.health -= damage
+        
+        # Set damage flash effect for super-type
+        if self.enemy_type == 'super' and hasattr(self, 'damage_flash'):
+            self.damage_flash = 10.0
+        
         if self.health <= 0:
             return True
         return False
@@ -166,8 +213,13 @@ class Enemy(pygame.sprite.Sprite):
                 trail_rect.x = trail_x
                 surface.blit(trail_image, trail_rect)
         
-        # Draw the enemy ship
-        surface.blit(self.image, self.rect)
+        # Draw special effects for super-type enemy (shield, etc.)
+        if self.enemy_type == 'super':
+            self.draw_super_effects(surface)
+        
+        # Draw the enemy ship (only if not a flashing super-type)
+        if not (self.enemy_type == 'super' and hasattr(self, 'damage_flash') and self.damage_flash > 0):
+            surface.blit(self.image, self.rect)
         
         # Draw hitbox if debug mode is enabled
         if DEBUG_HITBOXES:
@@ -419,3 +471,178 @@ class Enemy(pygame.sprite.Sprite):
     def get_bullets(self):
         """Return the enemy's bullets for collision detection."""
         return self.bullets
+    def draw_super_effects(self, surface):
+        """Draw special effects for super-type enemy."""
+        if self.enemy_type != 'super':
+            return
+            
+        # Draw shield if active
+        if hasattr(self, 'has_shield') and self.has_shield:
+            # Create shield surface with transparency
+            shield_radius = max(self.rect.width, self.rect.height) // 2 + 5
+            shield_surface = pygame.Surface((shield_radius*2, shield_radius*2), pygame.SRCALPHA)
+            
+            # Get shield opacity
+            shield_opacity = getattr(self, 'shield_opacity', 255)
+            
+            # Draw shield with gradient effect
+            for i in range(3):
+                thickness = 3 - i
+                radius = shield_radius - i*2
+                alpha = min(255, shield_opacity - i*30)
+                shield_color = (100, 150, 255, alpha)  # Blue shield
+                pygame.draw.circle(shield_surface, shield_color, (shield_radius, shield_radius), radius, thickness)
+            
+            # Draw shield on surface
+            shield_rect = shield_surface.get_rect(center=self.rect.center)
+            surface.blit(shield_surface, shield_rect)
+        
+        # Draw shield pulse if active
+        if hasattr(self, 'shield_pulse_active') and self.shield_pulse_active:
+            pulse_radius = getattr(self, 'shield_pulse_radius', 0)
+            if pulse_radius > 0:
+                # Calculate pulse opacity (fades as it expands)
+                pulse_opacity = max(0, 255 - int(pulse_radius * 2.5))
+                pulse_color = (100, 150, 255, pulse_opacity)
+                
+                # Create pulse surface
+                pulse_surface = pygame.Surface((pulse_radius*2, pulse_radius*2), pygame.SRCALPHA)
+                pygame.draw.circle(pulse_surface, pulse_color, (pulse_radius, pulse_radius), pulse_radius, 2)
+                
+                # Draw pulse on surface
+                pulse_rect = pulse_surface.get_rect(center=self.rect.center)
+                surface.blit(pulse_surface, pulse_rect)
+        
+        # Get engine position based on direction
+        if hasattr(self, 'direction') and self.direction == 1:
+            # Moving right, engine on left
+            engine_x = self.rect.left
+            engine_y = self.rect.centery
+        else:
+            # Moving left or default, engine on right
+            engine_x = self.rect.right
+            engine_y = self.rect.centery
+        
+        # Draw engine flare for juggernaut
+        if hasattr(self, 'engine_flare') and self.engine_flare > 0:
+            flare_intensity = self.engine_flare
+            flare_size = int(10 * flare_intensity)
+            
+            # Draw engine flare
+            pygame.draw.circle(surface, (255, 100, 0), (engine_x, engine_y), flare_size)
+            pygame.draw.circle(surface, (255, 200, 0), (engine_x, engine_y), flare_size // 2)
+            
+            # Add particles during high flare
+            if flare_intensity > 0.7:
+                for _ in range(2):
+                    particle_size = random.randint(2, 4)
+                    offset_x = random.randint(5, 15)
+                    offset_y = random.randint(-5, 5)
+                    particle_x = engine_x + offset_x
+                    particle_y = engine_y + offset_y
+                    particle_color = (255, 150 + random.randint(0, 105), 0)
+                    pygame.draw.circle(surface, particle_color, (particle_x, particle_y), particle_size)
+        
+        # Draw attack warning if active
+        if hasattr(self, 'attack_warning') and self.attack_warning:
+            # Get attack type
+            attack_type = getattr(self, 'attack_type', None)
+            
+            if attack_type == "shield_pulse":
+                # Draw charging shield pulse
+                warning_color = (100, 150, 255, 150)  # Blue warning
+                warning_radius = 30
+                warning_surface = pygame.Surface((warning_radius*2, warning_radius*2), pygame.SRCALPHA)
+                
+                # Pulsing effect
+                pulse = abs(math.sin(time.time() * 10)) * 5
+                pygame.draw.circle(warning_surface, warning_color, (warning_radius, warning_radius), warning_radius - pulse, 2)
+                
+                # Draw warning on surface
+                warning_rect = warning_surface.get_rect(center=self.rect.center)
+                surface.blit(warning_surface, warning_rect)
+            
+            elif attack_type == "single_shot" or attack_type == "twin_shot":
+                # Draw charging cannon
+                warning_color = (200, 50, 200, 150)  # Purple warning
+                
+                # Draw warning line
+                start_pos = (self.rect.left, self.rect.centery)
+                end_pos = (self.rect.left - 20, self.rect.centery)
+                pygame.draw.line(surface, warning_color, start_pos, end_pos, 3)
+                
+                # Draw pulsing dot at end
+                pulse = abs(math.sin(time.time() * 10)) * 2
+                pygame.draw.circle(surface, warning_color, end_pos, 3 + pulse)
+            
+            elif attack_type == "missile_barrage":
+                # Draw multiple missile warnings
+                warning_color = (255, 100, 0, 150)  # Orange warning
+                
+                for angle in [-20, -10, 0, 10, 20]:
+                    # Calculate angle in radians
+                    angle_rad = math.radians(angle)
+                    
+                    # Calculate end position
+                    dx = -math.cos(angle_rad) * 25
+                    dy = math.sin(angle_rad) * 25
+                    start_pos = (self.rect.left, self.rect.centery)
+                    end_pos = (self.rect.left + dx, self.rect.centery + dy)
+                    
+                    # Draw warning line
+                    pygame.draw.line(surface, warning_color, start_pos, end_pos, 2)
+                    
+                    # Draw pulsing dot at end
+                    pulse = abs(math.sin(time.time() * 10 + angle)) * 2
+                    pygame.draw.circle(surface, warning_color, end_pos, 2 + pulse)
+        
+        # Draw damage flash effect
+        if hasattr(self, 'damage_flash') and self.damage_flash > 0:
+            # Create a copy of the image with damage flash
+            flash_image = self.image.copy()
+            flash_overlay = pygame.Surface(flash_image.get_size(), pygame.SRCALPHA)
+            
+            # Calculate flash intensity
+            flash_intensity = int(min(255, self.damage_flash * 25))
+            
+            # Different colors based on phase
+            if hasattr(self, 'attack_phase'):
+                if self.attack_phase == 3:
+                    # Red flash for critical phase
+                    flash_color = (flash_intensity, 0, 0, 0)
+                elif self.attack_phase == 2:
+                    # Orange flash for damaged phase
+                    flash_color = (flash_intensity, flash_intensity // 2, 0, 0)
+                else:
+                    # White flash for normal phase
+                    flash_color = (flash_intensity, flash_intensity, flash_intensity, 0)
+            else:
+                # Default white flash
+                flash_color = (flash_intensity, flash_intensity, flash_intensity, 0)
+            
+            flash_overlay.fill(flash_color)
+            flash_image.blit(flash_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            
+            # Draw the flashed image
+            surface.blit(flash_image, self.rect)
+        
+        # Draw damage state visual effects
+        if hasattr(self, 'attack_phase'):
+            if self.attack_phase == 3:
+                # Critical damage: add sparks
+                for _ in range(2):
+                    if random.random() < 0.3:  # 30% chance per frame
+                        spark_x = self.rect.x + random.randint(0, self.rect.width)
+                        spark_y = self.rect.y + random.randint(0, self.rect.height)
+                        spark_size = random.randint(1, 3)
+                        spark_color = (255, 200, 50)
+                        pygame.draw.circle(surface, spark_color, (spark_x, spark_y), spark_size)
+            
+            elif self.attack_phase == 2:
+                # Moderate damage: add occasional spark
+                if random.random() < 0.1:  # 10% chance per frame
+                    spark_x = self.rect.x + random.randint(0, self.rect.width)
+                    spark_y = self.rect.y + random.randint(0, self.rect.height)
+                    spark_size = random.randint(1, 2)
+                    spark_color = (255, 200, 50)
+                    pygame.draw.circle(surface, spark_color, (spark_x, spark_y), spark_size)
