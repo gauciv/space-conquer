@@ -99,14 +99,26 @@ class EnemyBehaviorManager:
         enemy.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
     
     def _init_zigzag(self, enemy):
-        """Initialize elite-type enemy behavior (straight line with high speed)."""
+        """Initialize elite-type enemy behavior with burst speed capability."""
         # Position from the right side
         enemy.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         enemy.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
         
-        # Elite-type enemies have higher speed
+        # Elite-type enemies have higher speed with burst capability
         if enemy.enemy_type == 'elite':
-            enemy.base_speed = 7  # Increased from 5 to 7 for even faster movement
+            # Base movement properties
+            enemy.base_speed = 5  # Normal speed (still faster than most enemies)
+            enemy.burst_speed = 12  # Burst speed (more than double normal speed)
+            enemy.burst_available = True  # Can use burst once
+            enemy.burst_duration = 0.0  # Current burst duration
+            enemy.burst_max_duration = 0.6  # Maximum burst duration in seconds
+            enemy.burst_cooldown = 0.0  # Cooldown after burst
+            enemy.is_bursting = False  # Currently in burst mode
+            enemy.target_acquired = False  # Whether a target position has been selected
+            enemy.target_y = 0  # Target Y position for burst
+            enemy.detection_range = 250  # How far ahead the enemy can detect the player
+            enemy.lane_change_cooldown = 0.0  # Cooldown for changing lanes
+            enemy.pre_burst_delay = 0.0  # Telegraph delay before bursting
     
     def _init_sine(self, enemy):
         """Initialize sine wave behavior."""
@@ -307,18 +319,130 @@ class EnemyBehaviorManager:
             enemy.kill()
     
     def zigzag_behavior(self, enemy, delta_time):
-        """Update elite-type enemy behavior (straight line with high speed)."""
-        # For elite-type enemies, move in a straight horizontal line
+        """Update elite-type enemy behavior with burst speed and targeting."""
+        # For elite-type enemies, implement the enhanced behavior
         if enemy.enemy_type == 'elite':
             # Apply speed multiplier for time-based difficulty
-            actual_speed = enemy.base_speed * enemy.speed_multiplier
+            base_speed = enemy.base_speed * enemy.speed_multiplier
             
-            # Move horizontally at high speed
-            enemy.rect.x -= actual_speed
+            # Check if player exists and get reference
+            player = None
+            if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
+                player = enemy.game_manager.player
             
-            # Add a slight trail effect in the draw method
-            if not hasattr(enemy, 'has_trail'):
+            # Update lane change cooldown
+            if enemy.lane_change_cooldown > 0:
+                enemy.lane_change_cooldown -= delta_time
+            
+            # Handle burst cooldown
+            if enemy.burst_cooldown > 0:
+                enemy.burst_cooldown -= delta_time
+            
+            # Handle pre-burst delay (telegraph)
+            if enemy.pre_burst_delay > 0:
+                # During telegraph, flash the enemy to indicate imminent burst
+                enemy.pre_burst_delay -= delta_time
+                
+                # Visual telegraph effect - flash between normal and bright
+                flash_intensity = int(abs(math.sin(enemy.pre_burst_delay * 20)) * 100)
+                bright_image = enemy.original_image.copy()
+                bright_overlay = pygame.Surface(bright_image.get_size(), pygame.SRCALPHA)
+                bright_overlay.fill((flash_intensity, flash_intensity, 0, 0))
+                bright_image.blit(bright_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+                enemy.image = bright_image
+                
+                # When telegraph is complete, start the burst
+                if enemy.pre_burst_delay <= 0:
+                    enemy.is_bursting = True
+                    enemy.burst_duration = enemy.burst_max_duration
+                    # Reset image
+                    enemy.image = enemy.original_image.copy()
+                
+                # Move at reduced speed during telegraph
+                enemy.rect.x -= base_speed * 0.5
+                
+                # If we have a target Y position, gradually move toward it
+                if enemy.target_acquired and enemy.target_y != enemy.rect.centery:
+                    # Calculate direction to move (up or down)
+                    direction = 1 if enemy.target_y > enemy.rect.centery else -1
+                    # Move at a moderate speed toward target
+                    enemy.rect.y += direction * base_speed * 0.8 * delta_time * 60
+                    
+                    # Check if we've reached the target
+                    if (direction == 1 and enemy.rect.centery >= enemy.target_y) or \
+                       (direction == -1 and enemy.rect.centery <= enemy.target_y):
+                        enemy.rect.centery = enemy.target_y  # Snap to exact position
+            
+            # Handle burst mode
+            elif enemy.is_bursting:
+                # Move at burst speed
+                enemy.rect.x -= enemy.burst_speed * delta_time * 60
+                
+                # Update burst duration
+                enemy.burst_duration -= delta_time
+                if enemy.burst_duration <= 0:
+                    enemy.is_bursting = False
+                    enemy.burst_available = False  # Can only burst once
+                    enemy.burst_cooldown = 1.0  # Cooldown after burst
+                
+                # Intensify trail effect during burst
                 enemy.has_trail = True
+                if not hasattr(enemy, 'trail_intensity'):
+                    enemy.trail_intensity = 2.0  # Double intensity during burst
+            
+            # Normal movement (not bursting or telegraphing)
+            else:
+                # Move at normal speed
+                enemy.rect.x -= base_speed * delta_time * 60
+                
+                # Reset trail intensity if it was set
+                if hasattr(enemy, 'trail_intensity'):
+                    enemy.trail_intensity = 1.0
+                
+                # Check if we can detect the player for a potential burst
+                if player and enemy.burst_available and enemy.burst_cooldown <= 0 and enemy.lane_change_cooldown <= 0:
+                    # Calculate horizontal distance to player
+                    distance_x = enemy.rect.x - player.rect.x
+                    
+                    # Only consider bursting if player is within detection range and ahead of us
+                    if 0 < distance_x < enemy.detection_range:
+                        # Determine if player is in one of three lanes relative to enemy
+                        player_lane = 0  # 0 = same lane, -1 = above, 1 = below
+                        lane_threshold = 80  # Vertical distance to consider a different lane
+                        
+                        if player.rect.centery < enemy.rect.centery - lane_threshold:
+                            player_lane = -1  # Player is above
+                        elif player.rect.centery > enemy.rect.centery + lane_threshold:
+                            player_lane = 1  # Player is below
+                        
+                        # 70% chance to target player's lane, 30% chance to predict movement
+                        if random.random() < 0.7 or player_lane == 0:
+                            # Target player's current position
+                            enemy.target_y = player.rect.centery
+                        else:
+                            # Try to predict where player is moving
+                            if hasattr(player, 'last_y'):
+                                # Calculate player's vertical movement direction
+                                player_moving_down = player.rect.centery > player.last_y
+                                # Predict further movement in that direction
+                                prediction_offset = random.randint(30, 70) * (1 if player_moving_down else -1)
+                                enemy.target_y = player.rect.centery + prediction_offset
+                                # Keep within screen bounds
+                                enemy.target_y = max(50, min(SCREEN_HEIGHT - 50, enemy.target_y))
+                            else:
+                                # If we can't predict, just target current position
+                                enemy.target_y = player.rect.centery
+                        
+                        # Set flags for burst
+                        enemy.target_acquired = True
+                        enemy.pre_burst_delay = 0.4  # Telegraph for 0.4 seconds before burst
+                        enemy.lane_change_cooldown = 2.0  # Prevent rapid lane changes
+            
+            # Keep within screen bounds
+            if enemy.rect.top < 10:
+                enemy.rect.top = 10
+            elif enemy.rect.bottom > SCREEN_HEIGHT - 10:
+                enemy.rect.bottom = SCREEN_HEIGHT - 10
             
             # Remove if it goes off-screen
             if enemy.rect.right < 0:

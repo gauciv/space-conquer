@@ -130,18 +130,36 @@ class Enemy(pygame.sprite.Sprite):
         """Draw the enemy with visual effects."""
         # Add trail effect for elite-type enemy
         if self.enemy_type == 'elite' and hasattr(self, 'has_trail') and self.has_trail:
+            # Get trail intensity multiplier (default to 1.0 if not set)
+            trail_intensity = getattr(self, 'trail_intensity', 1.0)
+            
             # Create a trail effect to emphasize speed
-            trail_length = 4  # Number of trail segments
+            trail_length = int(4 * trail_intensity)  # Number of trail segments, increased during burst
             alpha_step = 180 // (trail_length + 1)  # Decreasing alpha for each segment
+            
+            # Determine if we're in burst mode for special effects
+            is_bursting = hasattr(self, 'is_bursting') and self.is_bursting
             
             for i in range(trail_length):
                 # Calculate position and alpha for this trail segment
-                trail_x = self.rect.x + (i + 1) * 5  # Each segment is 5 pixels apart
-                trail_alpha = 180 - (i + 1) * alpha_step  # Decreasing alpha
+                segment_spacing = 5 if not is_bursting else 8  # Wider spacing during burst
+                trail_x = self.rect.x + (i + 1) * segment_spacing
+                
+                # Higher base alpha during burst
+                base_alpha = 180 if not is_bursting else 220
+                trail_alpha = base_alpha - (i + 1) * alpha_step
                 
                 # Create a semi-transparent copy of the image
                 trail_image = self.image.copy()
                 trail_image.set_alpha(trail_alpha)
+                
+                # During burst, add color tint to trail
+                if is_bursting:
+                    # Create a colored overlay
+                    overlay = pygame.Surface(trail_image.get_size(), pygame.SRCALPHA)
+                    overlay_color = (255, 200, 0, min(150, int(80 * (trail_length - i) / trail_length)))
+                    overlay.fill(overlay_color)
+                    trail_image.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
                 
                 # Draw the trail segment
                 trail_rect = self.rect.copy()
@@ -169,16 +187,76 @@ class Enemy(pygame.sprite.Sprite):
         if self.enemy_type == 'low':
             glow_color = (255, 50, 50)  # Red
         elif self.enemy_type == 'elite':
-            glow_color = (255, 150, 0)  # Orange
+            # Check if we're in burst mode
+            is_bursting = hasattr(self, 'is_bursting') and self.is_bursting
+            is_preparing_burst = hasattr(self, 'pre_burst_delay') and self.pre_burst_delay > 0
             
-            # For elite-type, add a more intense engine glow to emphasize speed
-            if hasattr(self, 'has_trail') and self.has_trail:
-                # Create a larger engine glow
-                glow_size = 8
-                pygame.draw.circle(surface, glow_color, (engine_x, engine_y), glow_size)
+            if is_bursting:
+                # Intense yellow-white glow during burst
+                glow_color = (255, 220, 100)  # Bright yellow-orange
                 
-                # Add inner bright core
-                pygame.draw.circle(surface, (255, 255, 200), (engine_x, engine_y), glow_size // 2)
+                # For elite-type in burst mode, add an extra intense engine glow
+                if hasattr(self, 'has_trail') and self.has_trail:
+                    # Create a larger engine glow with pulsing effect
+                    pulse_factor = 0.7 + 0.3 * abs(math.sin(time.time() * 15))  # Fast pulsing
+                    glow_size = int(12 * pulse_factor)  # Larger, pulsing glow
+                    
+                    # Outer glow (large)
+                    pygame.draw.circle(surface, glow_color, (engine_x, engine_y), glow_size)
+                    
+                    # Middle glow (medium)
+                    pygame.draw.circle(surface, (255, 240, 150), (engine_x, engine_y), glow_size * 0.7)
+                    
+                    # Inner bright core (small)
+                    pygame.draw.circle(surface, (255, 255, 255), (engine_x, engine_y), glow_size * 0.4)
+                    
+                    # Add energy particles during burst
+                    for _ in range(3):
+                        particle_size = random.randint(2, 4)
+                        offset_x = random.randint(10, 25)
+                        offset_y = random.randint(-8, 8)
+                        particle_x = engine_x + offset_x
+                        particle_y = engine_y + offset_y
+                        particle_color = (255, 220 + random.randint(0, 35), 100 + random.randint(0, 155))
+                        pygame.draw.circle(surface, particle_color, (particle_x, particle_y), particle_size)
+                    
+                    # Skip the regular engine glow
+                    glow_color = None
+            elif is_preparing_burst:
+                # Charging glow during pre-burst telegraph
+                glow_color = (255, 180, 0)  # Orange
+                
+                # For elite-type preparing to burst, add a charging effect
+                if hasattr(self, 'has_trail') and self.has_trail:
+                    # Create a pulsing engine glow that grows as we approach burst
+                    progress = 1.0 - (self.pre_burst_delay / 0.4)  # Assuming 0.4s telegraph time
+                    pulse_factor = 0.5 + 0.5 * abs(math.sin(time.time() * 10))  # Medium pulsing
+                    base_size = 8 + int(4 * progress)  # Grows as we approach burst
+                    glow_size = int(base_size * pulse_factor)
+                    
+                    # Draw the charging glow
+                    pygame.draw.circle(surface, glow_color, (engine_x, engine_y), glow_size)
+                    
+                    # Inner bright core
+                    pygame.draw.circle(surface, (255, 255, 200), (engine_x, engine_y), glow_size // 2)
+                    
+                    # Skip the regular engine glow
+                    glow_color = None
+            else:
+                # Normal elite enemy glow
+                glow_color = (255, 150, 0)  # Orange
+                
+                # For elite-type, add a more intense engine glow to emphasize speed
+                if hasattr(self, 'has_trail') and self.has_trail:
+                    # Create a larger engine glow
+                    glow_size = 8
+                    pygame.draw.circle(surface, glow_color, (engine_x, engine_y), glow_size)
+                    
+                    # Add inner bright core
+                    pygame.draw.circle(surface, (255, 255, 200), (engine_x, engine_y), glow_size // 2)
+                    
+                    # Skip the regular engine glow
+                    glow_color = None
                 
                 # Skip the regular engine glow for elite-type
                 glow_color = None

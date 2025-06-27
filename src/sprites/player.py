@@ -19,6 +19,10 @@ class Player(pygame.sprite.Sprite):
         # Create a smaller hitbox for more precise collision detection
         self.hitbox = self.rect.inflate(-30, -20)  # 30px smaller on width, 20px smaller on height
         
+        # Store previous position for movement prediction by enemies
+        self.last_x = self.rect.x
+        self.last_y = self.rect.y
+        
         self.speed = PLAYER_INITIAL_SPEED
         self.bullets = pygame.sprite.Group()
         self.shoot_delay = PLAYER_SHOOT_DELAY
@@ -48,6 +52,10 @@ class Player(pygame.sprite.Sprite):
         self.damage_cooldown_duration = 1000  # 1 second cooldown between damage from same source
     
     def update(self):
+        # Store last position for movement prediction by enemies
+        self.last_x = self.rect.x
+        self.last_y = self.rect.y
+        
         # Get keyboard input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
