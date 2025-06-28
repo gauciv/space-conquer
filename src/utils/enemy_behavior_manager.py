@@ -632,67 +632,77 @@ class EnemyBehaviorManager:
         enemy.bullets.append(bullet)
     def _init_juggernaut(self, enemy):
         """Initialize juggernaut behavior for super-type enemy."""
-        # Position from the right side of the screen, just like other enemies
-        enemy.rect.x = SCREEN_WIDTH + random.randint(20, 100)
-        enemy.rect.y = random.randint(100, SCREEN_HEIGHT - 100)
+        # Position far to the right of the screen for dramatic entrance
+        # Note: For SuperEnemy class, this is already set in the constructor
+        if not hasattr(enemy, 'is_exploding'):  # Only set if not a SuperEnemy
+            enemy.rect.x = SCREEN_WIDTH + 300
+            enemy.rect.y = random.randint(80, SCREEN_HEIGHT - 80)
         
         # Movement direction (always start moving left)
         enemy.direction = -1
         
-        # Safe distance from player
-        enemy.safe_distance = 250  # Keep this distance from player
-        enemy.min_distance = 150   # Don't get closer than this
+        # Dynamic positioning behavior - more aggressive
+        enemy.preferred_distance = random.randint(180, 250)  # Closer preferred distance to be more threatening
+        enemy.min_distance = 120   # Can get closer to player
+        enemy.max_distance = 300   # Don't get too far
+        enemy.position_update_timer = 0  # Timer for position recalculation
+        enemy.position_update_interval = random.uniform(0.8, 1.5)  # More frequent position updates
+        enemy.current_target_x = None  # Target X position (will be calculated)
         
         # Screen boundary limits
-        enemy.min_x = 50  # Don't go further left than this
+        enemy.min_x = 100  # Increased minimum X to give more room for maneuvering
         enemy.max_x = SCREEN_WIDTH - enemy.rect.width - 20  # Don't go off right edge
         
-        # Vertical movement properties - significantly reduced
+        # Vertical movement properties - more dynamic and aggressive
         enemy.bob_angle = random.random() * 6.28
-        enemy.bob_speed = random.uniform(0.01, 0.02)  # Slower bobbing (was 0.02-0.04)
-        enemy.bob_amplitude = random.randint(3, 5)    # Smaller amplitude (was 5-10)
+        enemy.bob_speed = random.uniform(0.02, 0.04)
+        enemy.bob_amplitude = random.randint(4, 7)
         enemy.target_y = enemy.rect.y
         
-        # Attack properties
+        # Attack properties - more aggressive
         enemy.last_attack_time = time.time()
         enemy.attack_warning = False
         enemy.warning_duration = 0
         enemy.attack_type = None
-        enemy.attack_cooldown = 1.5  # Slightly longer initial cooldown
+        enemy.attack_cooldown = 1.2  # Reduced initial cooldown
         
-        # Tracking properties - much slower for tank-like movement
-        enemy.tracking_speed = 0.4  # Slower vertical tracking (was 1.0)
+        # Tracking properties - improved for more aggressive movement
+        enemy.tracking_speed = 0.7  # Increased for more responsive movement
         enemy.tracking_enabled = True
-        enemy.horizontal_speed = 0.7  # Slower horizontal speed (was 1.2)
+        enemy.horizontal_speed = 1.0  # Increased for more aggressive movement
         
-        # Charge properties - less frequent, slower charges
-        enemy.charge_speed = 2.5  # Slower charge speed (was 4.0)
+        # Charge properties - more aggressive
+        enemy.charge_speed = 3.5  # Increased for more impactful charges
         enemy.charge_duration = 0
-        enemy.charge_cooldown = random.uniform(6.0, 9.0)  # Longer cooldown between charges
+        enemy.charge_cooldown = random.uniform(4.0, 7.0)  # Reduced cooldown for more frequent charges
         
         # Shield properties
         enemy.shield_opacity = 255
         enemy.shield_pulse_speed = 0
-        enemy.shield_regen_time = 6.0
+        enemy.shield_regen_time = 5.0  # Faster shield regeneration
         
-        # Visual effect properties
+        # Visual effect properties - minimized
         enemy.damage_flash = 0
         enemy.engine_flare = 0
         
         # Bobbing offset (for visual effect)
         enemy.bob_offset = 0
         
-        # Vertical movement limits to prevent sticking to edges
-        enemy.min_y = 80  # Don't go higher than this
-        enemy.max_y = SCREEN_HEIGHT - 80  # Don't go lower than this
+        # Vertical movement limits with more freedom
+        enemy.min_y = 50  # Less restriction at the top
+        enemy.max_y = SCREEN_HEIGHT - 50  # Less restriction at the bottom
         
         # Player targeting
         enemy.target_player = True  # Always target the player
         
-        # Debug flag
-        enemy.debug_attack = True  # Force attack on first update
+        # Debug flag - removed
+        enemy.debug_attack = False  # Don't force attack on first update
     def juggernaut_behavior(self, enemy, delta_time):
         """Update juggernaut behavior for super-type enemy."""
+        # Skip behavior if enemy is exploding (for SuperEnemy class)
+        if hasattr(enemy, 'is_exploding') and enemy.is_exploding:
+            return
+            
         # Get player reference if available
         player = None
         if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
@@ -711,14 +721,57 @@ class EnemyBehaviorManager:
         else:
             enemy.attack_phase = 1  # Normal phase
         
-        # Calculate actual speed based on current state - all speeds reduced
+        # Update position target timer
+        enemy.position_update_timer -= delta_time
+        
+        # Dynamic positioning based on player location
+        if player and enemy.position_update_timer <= 0:
+            # Recalculate preferred position
+            enemy.position_update_timer = enemy.position_update_interval
+            
+            # Calculate distance to player
+            distance_to_player = player.rect.centerx - enemy.rect.centerx
+            abs_distance = abs(distance_to_player)
+            
+            # Determine if we need to adjust position
+            if abs_distance < enemy.min_distance:
+                # Too close to player, move away
+                enemy.current_target_x = player.rect.centerx - enemy.preferred_distance * (1 if distance_to_player > 0 else -1)
+                enemy.direction = -1 if distance_to_player > 0 else 1
+            elif abs_distance > enemy.max_distance:
+                # Too far from player, move closer
+                enemy.current_target_x = player.rect.centerx - enemy.preferred_distance * (1 if distance_to_player > 0 else -1)
+                enemy.direction = 1 if distance_to_player > 0 else -1
+            else:
+                # Within acceptable range, occasionally adjust position for more dynamic movement
+                if random.random() < 0.3:  # 30% chance to adjust position even when in acceptable range
+                    # Choose a new position within the acceptable range
+                    offset = random.randint(enemy.min_distance, enemy.max_distance)
+                    enemy.current_target_x = player.rect.centerx - offset * (1 if distance_to_player > 0 else -1)
+                    enemy.direction = 1 if enemy.rect.centerx < enemy.current_target_x else -1
+            
+            # Ensure target position is within screen bounds
+            enemy.current_target_x = max(enemy.min_x, min(enemy.max_x, enemy.current_target_x))
+        
+        # Calculate actual speed based on current state
         if enemy.is_charging:
             actual_speed = enemy.charge_speed * enemy.direction
         elif enemy.retreat_active:
-            actual_speed = -enemy.base_speed * 0.5 * enemy.direction  # Even slower retreat
+            actual_speed = -enemy.base_speed * 0.5 * enemy.direction  # Slower retreat
         else:
-            # Tank-like movement: much slower
-            actual_speed = enemy.horizontal_speed * enemy.speed_multiplier * enemy.direction * 0.6
+            # Tank-like movement: deliberate but with purpose
+            base_speed = enemy.horizontal_speed * enemy.speed_multiplier * 0.7
+            
+            # Adjust speed based on distance to target position
+            if enemy.current_target_x is not None:
+                distance_to_target = enemy.current_target_x - enemy.rect.centerx
+                # If very close to target, slow down
+                if abs(distance_to_target) < 20:
+                    base_speed *= 0.5
+                # Set direction based on target position
+                enemy.direction = 1 if distance_to_target > 0 else -1
+            
+            actual_speed = base_speed * enemy.direction
         
         # Always move left initially (toward the player)
         if enemy.rect.x > SCREEN_WIDTH - 100:
@@ -726,7 +779,7 @@ class EnemyBehaviorManager:
             enemy.direction = -1
             actual_speed = enemy.horizontal_speed * enemy.speed_multiplier * enemy.direction
         
-        # Apply horizontal movement - slower overall
+        # Apply horizontal movement
         enemy.rect.x += actual_speed * delta_time * 60
         
         # Keep within horizontal bounds
@@ -737,39 +790,52 @@ class EnemyBehaviorManager:
             enemy.rect.x = enemy.max_x
             enemy.direction = -1  # Reverse direction if hitting right boundary
         
-        # Handle bobbing motion - reduced effect
+        # Handle bobbing motion - more natural effect
         enemy.bob_angle += enemy.bob_speed
         enemy.bob_offset = math.sin(enemy.bob_angle) * enemy.bob_amplitude
         
-        # Track player vertically - more deliberate tracking
+        # Track player vertically - more deliberate tracking with some randomness
         if player and enemy.tracking_enabled:
             # Calculate vertical distance to player
             distance_y = player.rect.centery - enemy.rect.centery
             
-            # Only track if player is significantly above or below
-            if abs(distance_y) > 30:  # Moderate threshold for vertical movement
-                # Set target Y to player's position
-                enemy.target_y = player.rect.centery
+            # Add some randomness to vertical positioning
+            vertical_offset = random.randint(-40, 40)
+            adjusted_player_y = player.rect.centery + vertical_offset
+            adjusted_distance_y = adjusted_player_y - enemy.rect.centery
+            
+            # Only track if significantly above or below
+            if abs(adjusted_distance_y) > 30:  # Moderate threshold for vertical movement
+                # Set target Y to adjusted player position
+                enemy.target_y = adjusted_player_y
                 
-                # Move toward target Y position very deliberately
-                direction = 1 if distance_y > 0 else -1
-                enemy.rect.y += direction * enemy.tracking_speed * delta_time * 40  # Slow, deliberate movement
+                # Move toward target Y position deliberately
+                direction = 1 if adjusted_distance_y > 0 else -1
+                
+                # Vary tracking speed based on distance and phase
+                tracking_speed = enemy.tracking_speed
+                if abs(adjusted_distance_y) > 100:
+                    tracking_speed *= 1.2  # Speed up if far away
+                if enemy.attack_phase >= 2:
+                    tracking_speed *= 1.1  # Slightly faster tracking in later phases
+                
+                enemy.rect.y += direction * tracking_speed * delta_time * 40  # Deliberate movement
         
-        # Apply bobbing offset - reduced effect
-        enemy.rect.y += enemy.bob_offset * delta_time * 30  # Reduced effect
+        # Apply bobbing offset for more natural movement
+        enemy.rect.y += enemy.bob_offset * delta_time * 30
         
-        # Keep within vertical bounds - prevent sticking to edges
+        # Keep within vertical bounds with improved edge handling
         if hasattr(enemy, 'min_y') and hasattr(enemy, 'max_y'):
             if enemy.rect.top < enemy.min_y:
                 enemy.rect.top = enemy.min_y
                 # Force movement away from top edge
                 if enemy.tracking_enabled and enemy.rect.top <= enemy.min_y + 10:
-                    enemy.rect.y += 0.5  # Small downward nudge
+                    enemy.rect.y += 0.8  # Stronger downward nudge
             elif enemy.rect.bottom > enemy.max_y:
                 enemy.rect.bottom = enemy.max_y
                 # Force movement away from bottom edge
                 if enemy.tracking_enabled and enemy.rect.bottom >= enemy.max_y - 10:
-                    enemy.rect.y -= 0.5  # Small upward nudge
+                    enemy.rect.y -= 0.8  # Stronger upward nudge
         else:
             # Fallback to standard screen bounds
             if enemy.rect.top < 10:
@@ -848,7 +914,6 @@ class EnemyBehaviorManager:
                     else:
                         # If player is behind us, turn around to face them
                         enemy.direction *= -1
-                        print(f"Super enemy turned to face player before attacking")
                         # Short cooldown before attacking
                         enemy.attack_cooldown = 0.5
         
@@ -870,26 +935,56 @@ class EnemyBehaviorManager:
             enemy.engine_flare = max(0.0, enemy.engine_flare - delta_time)
     def _prepare_attack(self, enemy):
         """Prepare an attack for the juggernaut enemy."""
-        # Choose attack type based on phase
+        # Choose attack type based on phase and tactical situation
         if enemy.attack_phase == 1:
             # Phase 1: Shield pulse if shield is active, otherwise single shot
             if enemy.has_shield:
-                enemy.attack_type = "shield_pulse"
+                # Check if player is close enough for shield pulse to be effective
+                if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
+                    player = enemy.game_manager.player
+                    distance_to_player = math.sqrt((player.rect.centerx - enemy.rect.centerx)**2 + 
+                                                 (player.rect.centery - enemy.rect.centery)**2)
+                    
+                    if distance_to_player < 180:  # Only use shield pulse when player is close enough
+                        enemy.attack_type = "shield_pulse"
+                    else:
+                        enemy.attack_type = "single_shot"  # Use single shot if player is too far for shield pulse
+                else:
+                    enemy.attack_type = "shield_pulse"
             else:
                 enemy.attack_type = "single_shot"
         elif enemy.attack_phase == 2:
-            # Phase 2: Twin cannons
-            enemy.attack_type = "twin_shot"
+            # Phase 2: Twin cannons with occasional single shot for variety
+            if random.random() < 0.8:  # 80% chance for twin shot
+                enemy.attack_type = "twin_shot"
+            else:
+                enemy.attack_type = "single_shot"  # 20% chance for single shot
         else:
-            # Phase 3: Missile barrage
-            enemy.attack_type = "missile_barrage"
+            # Phase 3: Missile barrage or desperate twin shot if player is very close
+            if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
+                player = enemy.game_manager.player
+                distance_to_player = math.sqrt((player.rect.centerx - enemy.rect.centerx)**2 + 
+                                             (player.rect.centery - enemy.rect.centery)**2)
+                
+                if distance_to_player < 120:  # Player is very close
+                    # 50% chance for twin shot (faster) when player is close
+                    enemy.attack_type = "twin_shot" if random.random() < 0.5 else "missile_barrage"
+                else:
+                    enemy.attack_type = "missile_barrage"
+            else:
+                enemy.attack_type = "missile_barrage"
         
-        # Set warning duration - longer for more tank-like behavior
+        # Set warning duration - reduced for surprise attacks
         enemy.attack_warning = True
-        enemy.warning_duration = 0.8  # Longer warning (0.8 seconds)
+        if enemy.attack_type == "missile_barrage":
+            enemy.warning_duration = 0.4  # Shorter warning for more surprise
+        elif enemy.attack_type == "shield_pulse":
+            enemy.warning_duration = 0.3  # Very short warning for shield pulse
+        else:
+            enemy.warning_duration = 0.35  # Short warning for shots
         
-        # Visual indication of attack preparation
-        enemy.damage_flash = 5
+        # No visual indication of attack preparation
+        enemy.damage_flash = 0
         
         # Disable tracking during attack preparation
         enemy.tracking_enabled = False
@@ -904,34 +999,29 @@ class EnemyBehaviorManager:
                 direction = 1 if player.rect.centery > enemy.rect.centery else -1
                 enemy.rect.y += direction * 15  # Quick adjustment before attack
         
-        # Debug message
-        print(f"Super enemy preparing attack: {enemy.attack_type}")
+        # No debug message needed
     
     def _execute_attack(self, enemy):
         """Execute the prepared attack for the juggernaut enemy."""
         if enemy.attack_type == "shield_pulse":
             self._activate_shield_pulse(enemy)
-            print("Shield pulse activated!")
         elif enemy.attack_type == "single_shot":
             self._fire_juggernaut_shot(enemy, 0)
-            print("Single shot fired!")
         elif enemy.attack_type == "twin_shot":
             self._fire_juggernaut_shot(enemy, -10)
             self._fire_juggernaut_shot(enemy, 10)
-            print("Twin shot fired!")
         elif enemy.attack_type == "missile_barrage":
             # Fire multiple homing missiles
             for angle in [-20, -10, 0, 10, 20]:
                 self._fire_juggernaut_missile(enemy, angle)
-            print("Missile barrage launched!")
         
-        # Reset attack cooldown based on phase - longer cooldowns for tank-like behavior
+        # Reset attack cooldown based on phase - more aggressive
         if enemy.attack_phase == 1:
-            enemy.attack_cooldown = random.uniform(3.0, 4.0)  # Slower attacks
+            enemy.attack_cooldown = random.uniform(2.0, 3.0)  # Faster attacks
         elif enemy.attack_phase == 2:
-            enemy.attack_cooldown = random.uniform(2.5, 3.5)  # Still slower
+            enemy.attack_cooldown = random.uniform(1.8, 2.5)  # Even faster
         else:
-            enemy.attack_cooldown = random.uniform(2.0, 3.0)  # Slower even in phase 3
+            enemy.attack_cooldown = random.uniform(1.5, 2.0)  # Very aggressive in phase 3
         
         # Re-enable tracking after attack
         enemy.tracking_enabled = True
@@ -959,37 +1049,60 @@ class EnemyBehaviorManager:
                 # Apply knockback to player position
                 player.rect.x += knockback_x * 50  # Stronger knockback
                 player.rect.y += knockback_y * 50
-                
-                # Debug message
-                print("Shield pulse hit player with knockback!")
     
     def _prepare_charge(self, enemy):
         """Prepare a charge attack."""
         enemy.is_charging = True
-        enemy.charge_duration = random.uniform(0.8, 1.2)
-        enemy.engine_flare = 0.5  # Start with some engine flare
+        enemy.charge_duration = random.uniform(0.9, 1.4)  # Longer charges
+        enemy.engine_flare = 0  # No visual flare
         
-        # Visual indication of charge
-        enemy.damage_flash = 3
+        # No visual indication of charge
+        enemy.damage_flash = 0
         
-        # Ensure charge is in the direction of the player
+        # More aggressive charging behavior
         if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
             player = enemy.game_manager.player
-            # Set direction toward player
-            if player.rect.centerx < enemy.rect.centerx:
-                enemy.direction = -1  # Charge left toward player
-            else:
-                enemy.direction = 1   # Charge right toward player
             
-            print(f"Super enemy charging toward player (direction: {enemy.direction})")
+            # Calculate distance to player
+            dx = player.rect.centerx - enemy.rect.centerx
+            dy = player.rect.centery - enemy.rect.centery
+            distance = math.sqrt(dx*dx + dy*dy)
+            
+            # Determine charge strategy based on distance and phase
+            if enemy.attack_phase == 3 or distance < 200:
+                # In critical phase or player is close - direct charge
+                if player.rect.centerx < enemy.rect.centerx:
+                    enemy.direction = -1  # Charge left toward player
+                else:
+                    enemy.direction = 1   # Charge right toward player
+            else:
+                # More tactical charge - sometimes charge past player or to a strategic position
+                tactical_choice = random.random()
+                
+                if tactical_choice < 0.7:  # 70% chance for direct charge (increased from 60%)
+                    # Direct charge toward player
+                    if player.rect.centerx < enemy.rect.centerx:
+                        enemy.direction = -1  # Charge left toward player
+                    else:
+                        enemy.direction = 1   # Charge right toward player
+                elif tactical_choice < 0.9:  # 20% chance for positioning charge
+                    # Charge to a position that gives better attack angle
+                    target_x = player.rect.centerx + random.randint(100, 200) * (1 if random.random() < 0.5 else -1)
+                    enemy.direction = 1 if target_x > enemy.rect.centerx else -1
+                else:  # 10% chance for feint
+                    # Feint in opposite direction of player
+                    enemy.direction = 1 if player.rect.centerx < enemy.rect.centerx else -1
+                    enemy.charge_duration *= 0.7  # Shorter feint charge
             
             # Also adjust vertical position to better target player
             if abs(player.rect.centery - enemy.rect.centery) > 30:
-                # Move toward player's vertical position
-                enemy.target_y = player.rect.centery
-                # Adjust position immediately to better aim at player
-                direction = 1 if player.rect.centery > enemy.rect.centery else -1
-                enemy.rect.y += direction * 20  # Quick adjustment before charge
+                # Move toward player's vertical position with minimal randomness
+                vertical_offset = random.randint(-15, 15)  # Reduced randomness for more accurate targeting
+                enemy.target_y = player.rect.centery + vertical_offset
+                
+                # Adjust position immediately to better aim
+                direction = 1 if enemy.target_y > enemy.rect.centery else -1
+                enemy.rect.y += direction * 25  # Quicker adjustment before charge
     
     def _fire_juggernaut_shot(self, enemy, angle_offset=0):
         """Fire a projectile from the juggernaut enemy."""

@@ -208,6 +208,14 @@ class Player(pygame.sprite.Sprite):
         # Set cooldown for this damage source
         self.damage_cooldown[source_id] = current_time
         
+        # Start invulnerability period
+        self.invulnerable = True
+        self.invulnerable_timer = pygame.time.get_ticks()
+        self.blink_timer = pygame.time.get_ticks()
+        
+        # Set cooldown for this damage source
+        self.damage_cooldown[source_id] = current_time
+        
         # Check if player died and handle it in the game manager
         if self.health <= 0 and hasattr(pygame, 'app') and hasattr(pygame.app, 'game_manager'):
             game_manager = pygame.app.game_manager
@@ -235,7 +243,7 @@ class Player(pygame.sprite.Sprite):
             
             # Draw hitbox if debug mode is enabled
             if DEBUG_HITBOXES:
-                pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 1)
+                pygame.draw.rect(surface, (0, 255, 0), self.hitbox, 2)  # Green outline for player hitbox
             
             # Add simplified engine glow effect
             engine_x = self.rect.left

@@ -17,6 +17,7 @@ from .utils.boss_manager import BossManager
 from .utils.enemy_behavior_manager import EnemyBehaviorManager
 from .sprites.player import Player
 from .sprites.enemy import Enemy
+from .sprites.super_enemy import SuperEnemy
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
 from .sprites.asteroid import Asteroid
@@ -508,7 +509,6 @@ class GameManager:
                                 
                                 # Limit to maximum of 2 super enemies on screen at once
                                 if super_count >= 2:
-                                    print("Maximum super enemies already on screen, spawning elite instead")
                                     # Spawn elite enemy instead if available, otherwise low
                                     if 'elite' in self.enemy_types_available:
                                         enemy_type = 'elite'
@@ -516,20 +516,17 @@ class GameManager:
                                         enemy_type = 'low'
                             
                             # Create enemy with behavior manager
-                            enemy = Enemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
+                            if enemy_type == 'super':
+                                # Use the specialized SuperEnemy class for super-type enemies
+                                enemy = SuperEnemy(self.asset_loader.images, self.enemy_behavior_manager)
+                            else:
+                                # Use the regular Enemy class for other enemy types
+                                enemy = Enemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
+                                
                             enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                             enemy.speed_multiplier = self.enemy_speed_multiplier  # Apply speed multiplier
                             enemy.game_manager = self  # Give enemy a reference to the game manager
                             
-                            # Debug message for elite enemies
-                            if enemy_type == 'elite':
-                                print(f"Elite enemy spawned with enhanced burst capability!")
-                            # Debug message for super enemies
-                            elif enemy_type == 'super':
-                                # Count super enemies again for the message
-                                super_count = sum(1 for e in self.enemies if hasattr(e, 'enemy_type') and e.enemy_type == 'super')
-                                print(f"Super enemy (Juggernaut) spawned with shield and multi-phase attacks! ({super_count}/2 on screen)")
-                                
                             self.enemies.add(enemy)
                             self.all_sprites.add(enemy)
                     
@@ -664,15 +661,49 @@ class GameManager:
                             source_id=source_id
                         )
                         
-                        # Only kill the enemy if damage was applied
+                        # Only kill the enemy if damage was applied and it's not a super enemy
+                        # Super enemies have their own death sequence
                         if damage_applied:
-                            enemy.kill()  # Remove the enemy that collided with player
+                            if hasattr(enemy, 'is_exploding') and not enemy.is_exploding:
+                                enemy.kill()  # Remove the enemy that collided with player
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER
                             self.game_active = False
-                            # Play game over sound
-                            self.sound_manager.play_sound('game_over')
+                    
+                    # Check for super enemy explosions
+                    if isinstance(enemy, SuperEnemy) and enemy.is_exploding:
+                        # Check if explosion should damage player
+                        if enemy.explosion_damage_dealt and not enemy.explosion_damage_applied:
+                            # Calculate distance from explosion center to player
+                            dx = enemy.rect.centerx - self.player.rect.centerx
+                            dy = enemy.rect.centery - self.player.rect.centery
+                            distance = math.sqrt(dx*dx + dy*dy)
+                            
+                            # Check if player is within explosion radius
+                            if distance < enemy.explosion_radius:
+                                # Apply damage to player
+                                source_id = f"explosion_{enemy.rect.x}_{enemy.rect.y}"
+                                damage_applied = self.player.take_damage(
+                                    self.testing_mode and self.ui_manager.god_mode,
+                                    damage=2,  # Explosions deal 2 damage
+                                    source_id=source_id
+                                )
+                                enemy.explosion_damage_applied = True
+                                
+                                # Play explosion sound
+                                self.sound_manager.play_sound('explosion')
+                                
+                                # Check if player died
+                                if damage_applied and self.player.health <= 0:
+                                    self.game_state = self.GAME_STATE_GAME_OVER
+                                    self.game_active = False
+                        
+                        # Play shield break sound if needed
+                        if enemy.shield_broken and not enemy.shield_break_sound_played:
+                            # Play shield break sound
+                            self.sound_manager.play_sound('explosion')  # Use explosion sound for now
+                            enemy.shield_break_sound_played = True
                             # Lower music volume for game over sound
                             if self.sound_manager.music_enabled:
                                 self.sound_manager.temporarily_lower_music(duration=1500)
@@ -1047,15 +1078,15 @@ class GameManager:
                 # Check for player collision with asteroids
                 for asteroid in self.asteroids:
                     if self.player.hitbox.colliderect(asteroid.hitbox):
-                        # Use the take_damage method with source ID for cooldown
+                        # Use the same approach as enemy collisions
                         source_id = f"asteroid_{asteroid.rect.x}_{asteroid.rect.y}"
                         damage_applied = self.player.take_damage(
-                            self.testing_mode and self.ui_manager.god_mode,  # Only god mode if both testing AND god mode enabled
+                            self.testing_mode and self.ui_manager.god_mode,
                             source_id=source_id,
-                            damage=asteroid.collision_damage  # Use asteroid's collision damage
+                            damage=asteroid.collision_damage
                         )
                         
-                        # Only damage the asteroid if player damage was applied
+                        # Only damage the asteroid if damage was applied to player
                         if damage_applied:
                             if asteroid.take_damage(1):
                                 # Asteroid destroyed, check if it should drop a powerup
@@ -1064,6 +1095,12 @@ class GameManager:
                                     powerup.rect.center = asteroid.rect.center
                                     self.powerups.add(powerup)
                                     self.all_sprites.add(powerup)
+                        
+                        # Check if player died
+                        if damage_applied and self.player.health <= 0:
+                            self.game_state = self.GAME_STATE_GAME_OVER
+                            self.game_active = False
+                            self.sound_manager.play_sound('game_over')
                         
                         if damage_applied and self.player.health <= 0:
                             self.game_state = self.GAME_STATE_GAME_OVER

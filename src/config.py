@@ -23,7 +23,7 @@ GRAY = (150, 150, 150)
 DARK_GRAY = (80, 80, 80)
 
 # Debug settings
-DEBUG_HITBOXES = False  # Set to True to visualize hitboxes
+DEBUG_HITBOXES = False  # Set to False by default, can be toggled in test mode
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent

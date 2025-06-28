@@ -26,10 +26,8 @@ class Asteroid(pygame.sprite.Sprite):
         self.rect.x = SCREEN_WIDTH + random.randint(50, 200)
         self.rect.y = random.randint(50, SCREEN_HEIGHT - 50)
         
-        # Create a hitbox (100% of sprite size for better collision detection)
-        hitbox_width = self.rect.width
-        hitbox_height = self.rect.height
-        self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
+        # Create a hitbox that matches the sprite size (same as enemies)
+        self.hitbox = pygame.Rect(0, 0, self.rect.width, self.rect.height)
         self.hitbox.center = self.rect.center
         
         # Asteroid properties
@@ -56,6 +54,7 @@ class Asteroid(pygame.sprite.Sprite):
         
         # Damage to player on collision - increased to make asteroids more dangerous
         self.collision_damage = 3  # Increased from 1 to 3 (asteroids are massive and should be very dangerous)
+        print(f"Asteroid created with collision_damage: {self.collision_damage}")
         
         # Visual effect properties
         self.glow_alpha = 0
@@ -86,7 +85,8 @@ class Asteroid(pygame.sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.center = old_center
             
-            # Update hitbox position to follow the rect
+            # Update hitbox position to match the rotated image
+            self.hitbox = pygame.Rect(0, 0, self.rect.width, self.rect.height)
             self.hitbox.center = self.rect.center
             
             # Update hit flash effect
@@ -139,11 +139,6 @@ class Asteroid(pygame.sprite.Sprite):
             else:
                 # Draw the asteroid image
                 surface.blit(self.image, self.rect)
-            
-            # Draw danger warning indicator (red outline)
-            danger_pulse = abs(math.sin(pygame.time.get_ticks() * 0.005)) * 255
-            danger_color = (255, int(danger_pulse * 0.3), 0)  # Pulsing red-orange
-            pygame.draw.rect(surface, danger_color, self.rect.inflate(4, 4), 2)
             
             # Draw hitbox if debug mode is enabled
             if DEBUG_HITBOXES:
