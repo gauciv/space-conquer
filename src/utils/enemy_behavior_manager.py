@@ -63,6 +63,8 @@ class EnemyBehaviorManager:
         enemy.dash_duration = 0
         enemy.dash_speed = enemy.horizontal_speed * 0.8  # Dash speed slightly slower than horizontal
         enemy.dash_cooldown = 0  # Cooldown after a dash
+        enemy.dash_trail = []  # Store positions for trail effect
+        enemy.dash_warning = 0  # Warning time before dash
         
         # Shooting properties
         enemy.has_shot = False  # Can only shoot once
@@ -71,18 +73,32 @@ class EnemyBehaviorManager:
         enemy.shot_preparation_time = 0
         enemy.shot_preparation_duration = 0.8  # Time to prepare shot (flash warning)
         enemy.shot_flash_intensity = 0  # Flash intensity (0-100)
+        enemy.targeting_line_visible = False  # Whether to show targeting line
         
         # Stutter behavior
         enemy.stutter_timer = random.uniform(3.0, 5.0)  # Time until next stutter
         enemy.stutter_duration = 0.0  # Current stutter duration
         enemy.is_stuttering = False
         enemy.last_time = time.time()
+        enemy.stutter_warning = 0  # Warning time before stutter
         
         # Flickering light properties
         enemy.light_flicker_speed = random.uniform(0.1, 0.2)
         enemy.light_flicker_angle = random.random() * 6.28
         enemy.light_brightness = 50  # Base brightness
         enemy.light_size = 3
+        enemy.light_color_shift = random.choice([
+            (255, 100, 100),  # Red
+            (100, 100, 255),  # Blue
+            (255, 255, 100),  # Yellow
+            (100, 255, 100),  # Green
+            (255, 100, 255),  # Purple
+        ])  # Different colors for variety
+        
+        # Visual effect properties
+        enemy.engine_glow = 0  # Engine glow intensity
+        enemy.hit_flash = 0  # Flash when taking damage
+        enemy.variant = random.randint(0, 2)  # Visual variant (0-2)
         
         # Position at the right edge of the screen with random y position
         enemy.rect.x = SCREEN_WIDTH + random.randint(10, 30)  # Just off the right edge
@@ -156,10 +172,19 @@ class EnemyBehaviorManager:
         if not enemy.is_stuttering:
             enemy.stutter_timer -= delta_time
             if enemy.stutter_timer <= 0:
-                # Start stuttering
-                enemy.is_stuttering = True
-                enemy.stutter_duration = 0.5  # Stutter for 0.5 seconds
-                enemy.stutter_timer = random.uniform(3.0, 5.0)  # Reset timer for next stutter
+                # Add warning before stuttering
+                if enemy.stutter_warning <= 0:
+                    enemy.stutter_warning = 0.3  # 0.3 second warning
+                else:
+                    enemy.stutter_warning -= delta_time
+                    if enemy.stutter_warning <= 0:
+                        # Start stuttering
+                        enemy.is_stuttering = True
+                        enemy.stutter_duration = 0.5  # Stutter for 0.5 seconds
+                        enemy.stutter_timer = random.uniform(3.0, 5.0)  # Reset timer for next stutter
+                        enemy.stutter_warning = 0
+            else:
+                enemy.stutter_warning = 0
         else:
             # Currently stuttering
             enemy.stutter_duration -= delta_time
@@ -177,16 +202,42 @@ class EnemyBehaviorManager:
         if enemy.dash_cooldown > 0:
             enemy.dash_cooldown -= delta_time
         
-        # Determine if we should start a dash (only if not already dashing, not preparing to shoot, and cooldown expired)
+        # Determine if we should start a dash warning
         if (not enemy.is_dashing and not enemy.is_preparing_shot and enemy.dash_cooldown <= 0 and 
-            random.random() < enemy.dash_chance):
-            enemy.is_dashing = True
-            enemy.dash_direction = random.choice([-1, 1])  # Random up or down
-            enemy.dash_duration = random.uniform(0.3, 0.6)  # Short dash
-            enemy.dash_cooldown = random.uniform(2.0, 4.0)  # Long cooldown between dashes
+            enemy.dash_warning <= 0 and random.random() < enemy.dash_chance):
+            enemy.dash_warning = 0.4  # 0.4 second warning before dash
+            # Choose dash direction based on player position if available
+            if hasattr(enemy, 'game_manager') and enemy.game_manager and enemy.game_manager.player:
+                player = enemy.game_manager.player
+                # Dash toward player if they're above or below
+                if player.rect.centery < enemy.rect.centery - 50:
+                    enemy.dash_direction = -1  # Dash up
+                elif player.rect.centery > enemy.rect.centery + 50:
+                    enemy.dash_direction = 1  # Dash down
+                else:
+                    enemy.dash_direction = random.choice([-1, 1])  # Random direction
+            else:
+                enemy.dash_direction = random.choice([-1, 1])  # Random direction
+        
+        # Update dash warning
+        if enemy.dash_warning > 0:
+            enemy.dash_warning -= delta_time
+            if enemy.dash_warning <= 0:
+                # Start dash
+                enemy.is_dashing = True
+                enemy.dash_duration = random.uniform(0.4, 0.8)  # Slightly longer dash
+                enemy.dash_cooldown = random.uniform(2.0, 4.0)  # Long cooldown between dashes
+                enemy.dash_trail = []  # Clear trail
         
         # Handle dashing
         if enemy.is_dashing:
+            # Store position for trail effect
+            if len(enemy.dash_trail) < 5:  # Limit to 5 positions
+                enemy.dash_trail.append((enemy.rect.centerx, enemy.rect.centery))
+            else:
+                enemy.dash_trail.pop(0)
+                enemy.dash_trail.append((enemy.rect.centerx, enemy.rect.centery))
+            
             # Move vertically based on dash direction
             enemy.rect.y += enemy.dash_direction * enemy.dash_speed * speed_multiplier * delta_time * 60
             
@@ -195,18 +246,28 @@ class EnemyBehaviorManager:
             if enemy.dash_duration <= 0:
                 enemy.is_dashing = False
         
-        # Check if player is on the same horizontal line (for shooting)
-        player_on_same_line = False
-        if hasattr(enemy, 'game_manager') and enemy.game_manager and enemy.game_manager.player:
+        # Get player reference
+        player = None
+        if hasattr(enemy, 'game_manager') and enemy.game_manager and hasattr(enemy.game_manager, 'player'):
             player = enemy.game_manager.player
-            # Check if player's center is within the vertical bounds of the enemy
-            if (player.rect.centery >= enemy.rect.top and 
-                player.rect.centery <= enemy.rect.bottom):
-                player_on_same_line = True
+        
+        # Check if player is in shooting range
+        player_in_range = False
+        if player:
+            # Check if player is within vertical bounds with some leeway
+            vertical_range = 30  # Pixels above/below enemy to consider in range
+            if (player.rect.centery >= enemy.rect.top - vertical_range and 
+                player.rect.centery <= enemy.rect.bottom + vertical_range):
+                player_in_range = True
+                
+                # Show targeting line when player is in range
+                enemy.targeting_line_visible = True
+            else:
+                enemy.targeting_line_visible = False
         
         # Handle shooting preparation and execution
         if (enemy.can_shoot and not enemy.has_shot and not enemy.is_preparing_shot and 
-            not enemy.is_dashing and player_on_same_line):
+            not enemy.is_dashing and player_in_range):
             # Start preparing to shoot
             enemy.is_preparing_shot = True
             enemy.shot_preparation_time = enemy.shot_preparation_duration
@@ -220,7 +281,7 @@ class EnemyBehaviorManager:
             
             # Calculate flash intensity (0 to 100, peaking at the end)
             progress = 1.0 - (enemy.shot_preparation_time / enemy.shot_preparation_duration)
-            enemy.shot_flash_intensity = min(70, int(progress * 100))  # Reduced max intensity to 70
+            enemy.shot_flash_intensity = min(100, int(progress * 150))  # Increased max intensity
             
             # When preparation is complete, fire the shot
             if enemy.shot_preparation_time <= 0:
@@ -228,6 +289,7 @@ class EnemyBehaviorManager:
                 enemy.has_shot = True
                 enemy.is_preparing_shot = False
                 enemy.shot_flash_intensity = 0
+                enemy.targeting_line_visible = False
         else:
             # Normal horizontal movement if not preparing to shoot
             if not enemy.is_preparing_shot:
@@ -238,11 +300,37 @@ class EnemyBehaviorManager:
         
         # Base brightness plus flash intensity during shot preparation
         if enemy.is_preparing_shot:
-            enemy.light_brightness = 50 + enemy.shot_flash_intensity
+            enemy.light_brightness = 70 + enemy.shot_flash_intensity
+            enemy.light_size = 3 + int(enemy.shot_flash_intensity / 20)  # Grow light during preparation
+        elif enemy.dash_warning > 0:
+            # Pulsing light during dash warning
+            pulse_factor = math.sin(enemy.dash_warning * 20) * 0.5 + 0.5  # 0-1 pulsing
+            enemy.light_brightness = 50 + int(100 * pulse_factor)
+            enemy.light_size = 3 + int(3 * pulse_factor)
+        elif enemy.stutter_warning > 0:
+            # Flickering light during stutter warning
+            flicker_factor = math.sin(enemy.stutter_warning * 30) * 0.5 + 0.5  # 0-1 flickering
+            enemy.light_brightness = 50 + int(50 * flicker_factor)
         else:
-            enemy.light_brightness = 50 + int(20 * math.sin(enemy.light_flicker_angle))  # Normal flicker
+            # Normal flicker with more variation
+            enemy.light_brightness = 50 + int(30 * math.sin(enemy.light_flicker_angle))
         
-        enemy.light_position = (enemy.rect.centerx, enemy.rect.centery - 5)  # Update light position
+        # Update engine glow based on speed
+        if enemy.is_dashing:
+            enemy.engine_glow = min(1.0, enemy.engine_glow + delta_time * 5)  # Quickly increase
+        else:
+            target_glow = 0.3 if enemy.is_stuttering else 0.7  # Lower glow when stuttering
+            if enemy.engine_glow < target_glow:
+                enemy.engine_glow += delta_time * 2  # Gradually increase
+            elif enemy.engine_glow > target_glow:
+                enemy.engine_glow -= delta_time * 2  # Gradually decrease
+        
+        # Update hit flash
+        if enemy.hit_flash > 0:
+            enemy.hit_flash -= delta_time * 5
+        
+        # Update light position
+        enemy.light_position = (enemy.rect.centerx, enemy.rect.centery - 5)
         
         # Keep within screen bounds
         if enemy.rect.top < 10:
