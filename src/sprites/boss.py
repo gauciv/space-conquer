@@ -134,9 +134,16 @@ class Boss(pygame.sprite.Sprite):
         self.rect.x = SCREEN_WIDTH + 50  # Start off-screen
         self.rect.centery = SCREEN_HEIGHT // 2
         
-        # Create a custom hitbox based on boss type (85% of sprite size for better gameplay)
-        hitbox_width = int(self.rect.width * 0.85)
-        hitbox_height = int(self.rect.height * 0.85)
+        # Create a custom hitbox based on boss type
+        if boss_type == 'mini':
+            # Mini-boss has a smaller hitbox (75% of sprite size) for better gameplay
+            hitbox_width = int(self.rect.width * 0.75)
+            hitbox_height = int(self.rect.height * 0.75)
+        else:
+            # Main boss has a standard hitbox (85% of sprite size)
+            hitbox_width = int(self.rect.width * 0.85)
+            hitbox_height = int(self.rect.height * 0.85)
+            
         self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
         self.hitbox.center = self.rect.center
         
@@ -791,6 +798,9 @@ class Boss(pygame.sprite.Sprite):
         self.health -= damage
         self.sound_manager.play_sound('explosion')
         
+        # Set hit flash effect
+        self.hit_flash = 10
+        
         # Update attack phase based on health percentage
         health_percent = self.health / self.max_health
         
@@ -1027,8 +1037,67 @@ class Boss(pygame.sprite.Sprite):
             warning_text = font.render("CHARGING!", True, (255, 50, 50))
             surface.blit(warning_text, (self.rect.centerx - warning_text.get_width()//2, self.rect.top - 25))
         
-        # Draw the boss
-        surface.blit(self.image, self.rect)
+        # Draw dash effect for mini-boss
+        if self.boss_type == 'mini' and self.is_dashing:
+            # Draw dash trail
+            for i in range(5):  # 5 trail segments
+                alpha = 150 - i * 30
+                
+                # Blue trail for dash
+                trail_color = (50, 100, 255, alpha)
+                trail_rect = self.rect.copy()
+                trail_rect.x += i * 10  # Trail behind the boss
+                
+                # Create a surface for the trail
+                trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
+                trail_surface.fill(trail_color)
+                
+                # Draw trail
+                surface.blit(trail_surface, trail_rect)
+            
+            # Draw dash text
+            font = pygame.font.SysFont('Arial', 16)
+            dash_text = font.render("DASH", True, (50, 150, 255))
+            surface.blit(dash_text, (self.rect.centerx - dash_text.get_width()//2, self.rect.top - 25))
+        
+        # Create a copy of the image for effects
+        display_image = self.image.copy()
+        
+        # Apply hit flash effect
+        if self.hit_flash > 0:
+            # Create white flash overlay
+            flash_overlay = pygame.Surface(display_image.get_size(), pygame.SRCALPHA)
+            flash_intensity = min(255, self.hit_flash * 25)
+            flash_overlay.fill((flash_intensity, flash_intensity, flash_intensity, 0))
+            display_image.blit(flash_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            
+            # Decrease hit flash
+            self.hit_flash -= 1
+        
+        # Apply pattern change flash effect
+        if hasattr(self, 'flash_effect') and self.flash_effect > 0:
+            # Create colored flash overlay based on attack pattern
+            flash_overlay = pygame.Surface(display_image.get_size(), pygame.SRCALPHA)
+            
+            if self.attack_pattern == "spread":
+                # Red for spread
+                flash_color = (255, 100, 100, 0)
+            elif self.attack_pattern == "aimed":
+                # Blue for aimed
+                flash_color = (100, 100, 255, 0)
+            else:  # barrage
+                # Yellow for barrage
+                flash_color = (255, 255, 100, 0)
+                
+            flash_intensity = min(100, self.flash_effect * 10)
+            flash_overlay.fill((flash_color[0], flash_color[1], flash_color[2], flash_intensity))
+            display_image.blit(flash_overlay, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            
+            # Decrease flash effect
+            self.flash_effect -= 1
+        
+        # Draw the boss with effects applied
+        surface.blit(display_image, self.rect)
         
         # Draw hitbox if debug mode is enabled
         if DEBUG_HITBOXES:
