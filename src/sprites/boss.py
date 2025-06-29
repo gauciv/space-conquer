@@ -42,11 +42,14 @@ class Boss(pygame.sprite.Sprite):
             self.is_dashing = False
             self.dash_target_y = 0
             self.dash_speed = 8
-            self.bullet_patterns = ["spread", "aimed", "barrage"]
+            self.bullet_patterns = ["spread", "aimed", "barrage", "special"]  # Added special attack
             self.current_pattern_index = 0
             self.pattern_shots = 0  # Count shots in current pattern
             self.max_pattern_shots = 3  # Maximum shots before changing pattern
             self.player_ref = None  # Will be set by game manager
+            self.special_attack_cooldown = 0  # Cooldown for special attack
+            self.is_charging_special = False  # Whether currently charging special attack
+            self.special_charge_time = 0  # Time when special attack charging started
             
         else:  # main boss
             original_image = asset_loader.get_image('main_boss')
@@ -704,6 +707,54 @@ class Boss(pygame.sprite.Sprite):
                         
                     # Increment pattern shots counter
                     self.pattern_shots += 1
+                    
+                elif self.attack_pattern == "special":
+                    # Special attack - circular burst of bullets
+                    if not self.is_charging_special:
+                        # Start charging special attack
+                        self.is_charging_special = True
+                        self.special_charge_time = now
+                        # Visual effect for charging
+                        self.flash_effect = 20
+                        # Play charging sound
+                        self.sound_manager.play_sound('shoot')
+                    else:
+                        # Check if charging is complete
+                        charge_time = now - self.special_charge_time
+                        if charge_time >= 1000:  # 1 second charge time
+                            # Fire circular burst of bullets
+                            num_bullets = 8 + self.attack_phase * 2  # 10, 12, or 14 bullets based on phase
+                            
+                            for i in range(num_bullets):
+                                # Calculate angle for this bullet
+                                angle = (i / num_bullets) * 2 * math.pi
+                                
+                                # Calculate velocity components
+                                speed = abs(self.bullet_speed) * 0.8  # Slightly slower for balance
+                                vx = math.cos(angle) * speed
+                                vy = math.sin(angle) * speed
+                                
+                                # Create bullet
+                                bullet = BossBullet(
+                                    self.rect.centerx, 
+                                    self.rect.centery, 
+                                    vx, 
+                                    self.bullet_damage
+                                )
+                                bullet.vy = vy
+                                bullet.color_shift = (255, 200, 0)  # Golden bullets for special attack
+                                bullet.is_special = True  # Mark as special for rendering
+                                self.bullets.add(bullet)
+                            
+                            # Reset special attack state
+                            self.is_charging_special = False
+                            self.special_attack_cooldown = 5000  # 5 second cooldown
+                            
+                            # Play special attack sound
+                            self.sound_manager.play_sound('explosion')
+                            
+                            # Increment pattern shots counter
+                            self.pattern_shots += 1
             
             else:  # Main boss
                 # Main boss has different attack patterns based on phase
