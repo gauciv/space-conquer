@@ -168,6 +168,10 @@ class Boss(pygame.sprite.Sprite):
         self.death_animation_start = 0
         self.death_animation_duration = 1500  # 1.5 seconds
         self.explosion_particles = []
+        
+        # Visual effect properties
+        self.flash_effect = 0  # Used for visual feedback
+        self.hit_flash = 0  # Flash when taking damage
     
     def update(self):
         """Update the boss state."""
@@ -796,14 +800,30 @@ class Boss(pygame.sprite.Sprite):
                 self.attack_phase = 3
                 self.shoot_delay = 700  # Faster shooting
                 self.attack_change_delay = 3000  # Faster pattern changes
+                self.max_pattern_shots = 2  # Change patterns more frequently
                 self.amplitude = 150  # Wider movement
                 self.frequency = 0.03  # Faster movement
+                self.dash_speed = 12  # Faster dashes
+                
+                # Clear bullets on phase change for cleaner transition
+                self.bullets.empty()
+                
+                # Play phase transition sound
+                self.sound_manager.play_sound('explosion')
                 
             elif health_percent <= 0.66 and self.attack_phase < 2:
                 # Phase 2: More aggressive
                 self.attack_phase = 2
                 self.shoot_delay = 850  # Faster shooting
                 self.attack_change_delay = 4000  # Faster pattern changes
+                self.max_pattern_shots = 3  # Change patterns more frequently
+                self.dash_speed = 10  # Enable dashing
+                
+                # Clear bullets on phase change for cleaner transition
+                self.bullets.empty()
+                
+                # Play phase transition sound
+                self.sound_manager.play_sound('explosion')
         
         elif self.boss_type == 'main':
             # Check if we're skipping a phase (e.g., from 1 to 3)
