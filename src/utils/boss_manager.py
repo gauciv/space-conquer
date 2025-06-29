@@ -44,6 +44,9 @@ class BossManager:
         if boss_type == 'mini':
             # Create mini boss
             self.mini_boss = Boss('mini', self.game_manager.asset_loader, self.game_manager.sound_manager)
+            # Set player reference for targeting
+            if hasattr(self.game_manager, 'player'):
+                self.mini_boss.player_ref = self.game_manager.player
             # Add to all sprites group
             self.game_manager.all_sprites.add(self.mini_boss)
             self.mini_boss_spawned = True

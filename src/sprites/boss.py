@@ -44,6 +44,9 @@ class Boss(pygame.sprite.Sprite):
             self.dash_speed = 8
             self.bullet_patterns = ["spread", "aimed", "barrage"]
             self.current_pattern_index = 0
+            self.pattern_shots = 0  # Count shots in current pattern
+            self.max_pattern_shots = 3  # Maximum shots before changing pattern
+            self.player_ref = None  # Will be set by game manager
             
         else:  # main boss
             original_image = asset_loader.get_image('main_boss')
@@ -202,6 +205,62 @@ class Boss(pygame.sprite.Sprite):
                 # Sine wave movement
                 self.movement_timer += 1
                 self.rect.centery = self.center_y + math.sin(self.movement_timer * 0.05) * self.amplitude
+                
+                # For mini-boss, handle attack pattern transitions and dash
+                if self.boss_type == 'mini':
+                    # Update attack timer
+                    self.attack_timer += 16  # Approximately 16ms per frame at 60fps
+                    
+                    # Check if it's time to change attack pattern based on shots fired
+                    if self.pattern_shots >= self.max_pattern_shots:
+                        # Reset pattern shots counter
+                        self.pattern_shots = 0
+                        
+                        # Move to next attack pattern
+                        self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
+                        self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
+                        
+                        # Visual effect for pattern change
+                        self.flash_effect = 10  # Will be used in draw method
+                    
+                    # Handle dash functionality
+                    if self.dash_cooldown > 0:
+                        self.dash_cooldown -= 16  # Decrease cooldown (16ms per frame)
+                    elif not self.is_dashing and self.attack_phase >= 2:  # Only dash in phase 2+
+                        # Check if player is in a good position for dash
+                        should_dash = False
+                        if self.player_ref and hasattr(self.player_ref, 'rect'):
+                            # Calculate horizontal distance to player
+                            dx = self.rect.centerx - self.player_ref.rect.centerx
+                            # Only dash if player is at a good horizontal distance
+                            if 100 < dx < 300:
+                                should_dash = True
+                                self.dash_target_y = self.player_ref.rect.centery
+                            
+                        if should_dash or random.random() < 0.005:  # Small random chance to dash anyway
+                            # Start dash
+                            self.is_dashing = True
+                            if not hasattr(self, 'dash_target_y') or self.dash_target_y == 0:
+                                self.dash_target_y = random.randint(100, SCREEN_HEIGHT - 100)
+                            self.dash_duration = 500  # 500ms dash
+                            # Play dash sound
+                            self.sound_manager.play_sound('shoot')
+                    
+                    # Handle active dash
+                    if self.is_dashing:
+                        # Move quickly toward target y position
+                        dy = self.dash_target_y - self.rect.centery
+                        if abs(dy) > 5:
+                            # Move toward target at dash speed
+                            direction = 1 if dy > 0 else -1
+                            self.rect.y += direction * self.dash_speed
+                        
+                        # Decrease dash duration
+                        self.dash_duration -= 16  # 16ms per frame
+                        if self.dash_duration <= 0:
+                            # End dash
+                            self.is_dashing = False
+                            self.dash_cooldown = 2000  # 2 second cooldown before next dash
             
             elif self.movement_pattern == "complex":
                 # More complex movement with occasional direction changes
@@ -574,14 +633,32 @@ class Boss(pygame.sprite.Sprite):
                     bullet3.vy = 1.5
                     
                     self.bullets.add(bullet1, bullet2, bullet3)
+                    
+                    # Increment pattern shots counter
+                    self.pattern_shots += 1
                 
                 elif self.attack_pattern == "aimed":
                     # Aimed shot - try to predict player position
-                    # This would normally use the player's position, but we'll simulate it
-                    target_y = random.randint(100, SCREEN_HEIGHT - 100)
+                    target_y = self.rect.centery  # Default to boss's position
+                    target_x = 100  # Default player x position
+                    
+                    # Use actual player position if available
+                    if self.player_ref and hasattr(self.player_ref, 'rect'):
+                        target_y = self.player_ref.rect.centery
+                        target_x = self.player_ref.rect.centerx
+                        
+                        # If player is moving, try to predict where they'll be
+                        if hasattr(self.player_ref, 'last_y'):
+                            # Calculate vertical movement
+                            player_vy = self.player_ref.rect.centery - self.player_ref.last_y
+                            # Predict position in ~500ms (rough bullet travel time)
+                            prediction_factor = 30  # Frames of prediction (30 frames ≈ 500ms at 60fps)
+                            target_y += player_vy * prediction_factor
+                            # Keep within screen bounds
+                            target_y = max(50, min(SCREEN_HEIGHT - 50, target_y))
                     
                     # Calculate angle to target
-                    dx = -200  # Assume player is 200 pixels to the left
+                    dx = target_x - self.rect.left
                     dy = target_y - self.rect.centery
                     angle = math.atan2(dy, dx)
                     
@@ -590,9 +667,15 @@ class Boss(pygame.sprite.Sprite):
                     vx = math.cos(angle) * speed
                     vy = math.sin(angle) * speed
                     
+                    # Create a special aimed bullet with a trail effect
                     bullet = BossBullet(self.rect.left, self.rect.centery, vx, self.bullet_damage)
                     bullet.vy = vy
+                    bullet.color_shift = (0, 200, 255)  # Blue color for aimed shots
+                    bullet.is_aimed = True  # Mark as an aimed shot for special rendering
                     self.bullets.add(bullet)
+                    
+                    # Increment pattern shots counter
+                    self.pattern_shots += 1
                 
                 elif self.attack_pattern == "barrage":
                     # Barrage - multiple bullets in quick succession
@@ -607,6 +690,9 @@ class Boss(pygame.sprite.Sprite):
                         )
                         bullet.vy = random.uniform(-0.5, 0.5)  # Slight vertical drift
                         self.bullets.add(bullet)
+                        
+                    # Increment pattern shots counter
+                    self.pattern_shots += 1
             
             else:  # Main boss
                 # Main boss has different attack patterns based on phase
