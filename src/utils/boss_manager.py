@@ -159,8 +159,14 @@ class BossManager:
         # Check player bullets against boss
         for bullet in list(player.bullets):
             if bullet.hitbox.colliderect(boss.hitbox):
+                # Get bullet position for weak point detection
+                hit_position = (bullet.rect.centerx, bullet.rect.centery)
+                
+                # Remove the bullet
                 bullet.kill()
-                if boss.take_damage(1):
+                
+                # Apply damage to boss with hit position
+                if boss.take_damage(1, hit_position):
                     # Boss defeated
                     points = boss.score_value * player.score_multiplier
                     self.game_manager.score += points

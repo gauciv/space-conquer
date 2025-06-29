@@ -51,6 +51,14 @@ class Boss(pygame.sprite.Sprite):
             self.is_charging_special = False  # Whether currently charging special attack
             self.special_charge_time = 0  # Time when special attack charging started
             
+            # Weak point system
+            self.has_weak_point = True
+            self.weak_point_active = False
+            self.weak_point_cooldown = 0
+            self.weak_point_duration = 0
+            self.weak_point_position = (0, 0)  # Will be updated during gameplay
+            self.weak_point_radius = 15
+            
         else:  # main boss
             original_image = asset_loader.get_image('main_boss')
             self.name = "Dreadnought"
@@ -275,6 +283,31 @@ class Boss(pygame.sprite.Sprite):
                             # End dash
                             self.is_dashing = False
                             self.dash_cooldown = 2000  # 2 second cooldown before next dash
+                    
+                    # Handle weak point system
+                    if self.has_weak_point:
+                        if self.weak_point_active:
+                            # Update weak point duration
+                            self.weak_point_duration -= 16  # 16ms per frame
+                            if self.weak_point_duration <= 0:
+                                # Deactivate weak point
+                                self.weak_point_active = False
+                                self.weak_point_cooldown = 3000  # 3 second cooldown
+                        elif self.weak_point_cooldown > 0:
+                            # Update cooldown
+                            self.weak_point_cooldown -= 16  # 16ms per frame
+                        else:
+                            # Activate weak point
+                            self.weak_point_active = True
+                            self.weak_point_duration = 2000  # 2 second duration
+                            
+                            # Choose a random position on the boss for the weak point
+                            offset_x = random.randint(-self.rect.width//4, self.rect.width//4)
+                            offset_y = random.randint(-self.rect.height//4, self.rect.height//4)
+                            self.weak_point_position = (
+                                self.rect.centerx + offset_x,
+                                self.rect.centery + offset_y
+                            )
             
             elif self.movement_pattern == "complex":
                 # More complex movement with occasional direction changes
@@ -836,11 +869,32 @@ class Boss(pygame.sprite.Sprite):
             # Play sound
             self.sound_manager.play_sound('shoot')
     
-    def take_damage(self, damage=1):
+    def take_damage(self, damage=1, hit_position=None):
         """Handle boss taking damage."""
         # Prevent damage during entrance
         if not self.entry_complete:
             return False
+            
+        # Check for weak point hit for mini-boss
+        if self.boss_type == 'mini' and self.has_weak_point and self.weak_point_active and hit_position:
+            # Calculate distance to weak point
+            weak_point_x = self.rect.centerx + (self.weak_point_position[0] - self.rect.centerx)
+            weak_point_y = self.rect.centery + (self.weak_point_position[1] - self.rect.centery)
+            
+            dx = hit_position[0] - weak_point_x
+            dy = hit_position[1] - weak_point_y
+            distance = math.sqrt(dx*dx + dy*dy)
+            
+            if distance <= self.weak_point_radius:
+                # Hit the weak point - triple damage!
+                damage *= 3
+                # Deactivate weak point
+                self.weak_point_active = False
+                self.weak_point_cooldown = 5000  # Longer cooldown after being hit
+                # Special effect for weak point hit
+                self.flash_effect = 20
+                # Play critical hit sound
+                self.sound_manager.play_sound('explosion')
             
         # Store previous health for phase transition check
         previous_health = self.health
@@ -1150,6 +1204,68 @@ class Boss(pygame.sprite.Sprite):
         # Draw the boss with effects applied
         surface.blit(display_image, self.rect)
         
+        # Draw special attack charging effect for mini-boss
+        if self.boss_type == 'mini' and self.is_charging_special:
+            # Calculate charge progress
+            now = pygame.time.get_ticks()
+            charge_progress = min(1.0, (now - self.special_charge_time) / 1000)
+            
+            # Draw expanding circle
+            circle_radius = int(30 * charge_progress)
+            circle_surface = pygame.Surface((circle_radius * 2, circle_radius * 2), pygame.SRCALPHA)
+            
+            # Pulsing effect
+            pulse = (math.sin(now * 0.01) + 1) / 2
+            
+            # Draw multiple circles for glow effect
+            for i in range(3):
+                alpha = 150 - i * 40
+                size = circle_radius - i * 3
+                pygame.draw.circle(circle_surface, (255, 200, 0, alpha), 
+                                 (circle_radius, circle_radius), size)
+            
+            # Draw inner bright core
+            core_size = int(circle_radius * 0.5 * (0.8 + 0.2 * pulse))
+            pygame.draw.circle(circle_surface, (255, 255, 200, 200), 
+                             (circle_radius, circle_radius), core_size)
+            
+            # Position and draw the charging effect
+            circle_rect = circle_surface.get_rect(center=self.rect.center)
+            surface.blit(circle_surface, circle_rect)
+            
+            # Draw charging text
+            font = pygame.font.SysFont('Arial', 16)
+            charge_text = font.render("CHARGING SPECIAL", True, (255, 200, 0))
+            surface.blit(charge_text, (self.rect.centerx - charge_text.get_width()//2, self.rect.top - 25))
+        
+        # Draw weak point for mini-boss
+        if self.boss_type == 'mini' and self.has_weak_point and self.weak_point_active:
+            # Update weak point position to follow the boss
+            weak_point_x = self.rect.centerx + (self.weak_point_position[0] - self.rect.centerx)
+            weak_point_y = self.rect.centery + (self.weak_point_position[1] - self.rect.centery)
+            
+            # Pulsing effect
+            now = pygame.time.get_ticks()
+            pulse = (math.sin(now * 0.01) + 1) / 2
+            
+            # Draw outer glow
+            glow_radius = int(self.weak_point_radius * (1.2 + 0.3 * pulse))
+            pygame.draw.circle(surface, (255, 50, 50, 100), (weak_point_x, weak_point_y), glow_radius)
+            
+            # Draw weak point
+            pygame.draw.circle(surface, (255, 50, 50), (weak_point_x, weak_point_y), self.weak_point_radius)
+            
+            # Draw inner highlight
+            highlight_radius = int(self.weak_point_radius * 0.5)
+            pygame.draw.circle(surface, (255, 200, 200), (weak_point_x, weak_point_y), highlight_radius)
+            
+            # Draw "WEAK POINT" text
+            font = pygame.font.SysFont('Arial', 12)
+            weak_text = font.render("WEAK POINT", True, (255, 50, 50))
+            surface.blit(weak_text, (weak_point_x - weak_text.get_width()//2, weak_point_y - 30))
+        
+        # Draw hitbox if debug mode is enabled
+        
         # Draw hitbox if debug mode is enabled
         if DEBUG_HITBOXES:
             pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
@@ -1334,6 +1450,8 @@ class BossBullet(pygame.sprite.Sprite):
         
         # Color properties
         self.color_shift = None  # Can be set to tint the bullet
+        self.is_aimed = False  # Whether this is an aimed shot
+        self.is_special = False  # Whether this is a special attack bullet
         self.create_bullet_image()
         
         self.rect = self.image.get_rect()
@@ -1433,6 +1551,28 @@ class BossBullet(pygame.sprite.Sprite):
             
             # Draw trail segment
             pygame.draw.circle(surface, trail_color, (int(x), int(y)), max(1, size))
+        
+        # Draw special effects for aimed or special bullets
+        if self.is_aimed:
+            # Draw targeting line
+            pygame.draw.line(surface, (100, 200, 255, 100), 
+                           (self.rect.centerx, self.rect.centery), 
+                           (self.rect.centerx + self.vx * 10, self.rect.centery + self.vy * 10), 
+                           2)
+        
+        if self.is_special:
+            # Draw pulsing glow for special bullets
+            pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) / 2
+            glow_size = int(self.width * (1.2 + 0.4 * pulse))
+            glow_surface = pygame.Surface((glow_size * 2, glow_size * 2), pygame.SRCALPHA)
+            
+            # Golden glow
+            glow_color = (255, 200, 0, 100)
+            pygame.draw.circle(glow_surface, glow_color, (glow_size, glow_size), glow_size)
+            
+            # Position and draw glow
+            glow_rect = glow_surface.get_rect(center=self.rect.center)
+            surface.blit(glow_surface, glow_rect)
         
         # Draw bullet
         surface.blit(self.image, self.rect)
