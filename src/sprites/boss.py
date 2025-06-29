@@ -72,10 +72,46 @@ class Boss(pygame.sprite.Sprite):
             self.is_charging = False
             self.charge_duration = 0
             self.charge_direction = 0
-            self.bullet_patterns = ["spread", "focused", "barrage"]
+            self.bullet_patterns = ["spread", "laser", "focused", "charge", "laser"]  # Added laser twice for higher frequency
             self.current_pattern_index = 0
             self.pattern_shots = 0  # Count shots in current pattern
             self.max_pattern_shots = 3  # Maximum shots before changing pattern
+            
+            # Charge attack properties
+            self.is_charging = False
+            self.charge_start_time = 0
+            self.charge_duration = 1000  # 1 second charge
+            self.charge_cooldown = 0
+            self.charge_target_x = 0
+            self.charge_target_y = 0
+            self.charge_speed = 12
+            self.charge_retreat = False
+            self.charge_retreat_time = 0
+            
+            # Player tracking
+            self.player_ref = None  # Will be set by game manager
+            self.tracking_player = True  # Whether to follow player's y position
+            self.tracking_speed = 2.0  # Speed to follow player
+            self.target_y = SCREEN_HEIGHT // 2  # Target y position (will be updated to player's position)
+            
+            # Laser attack properties
+            self.laser_charging = False
+            self.laser_charge_time = 0
+            self.laser_charge_duration = 1200  # Reduced from 1500 to 1200ms for faster charging
+            self.laser_firing = False
+            self.laser_fire_time = 0
+            self.laser_fire_duration = 1500  # Increased from 1000 to 1500ms for longer firing
+            self.laser_width = 0  # Grows during charging
+            self.laser_target_y = 0  # Y position to aim laser
+            self.laser_damage = 2  # Damage per frame when in contact
+            self.laser_color = (255, 50, 50)  # Red laser
+            self.is_aiming = False  # Whether the boss is currently aiming
+            self.aiming_time = 0  # Time when aiming started
+            self.aiming_duration = 400  # Reduced from 500 to 400ms for faster aiming
+            
+            # Target position for shooting
+            self.target_y_for_shooting = SCREEN_HEIGHT // 2  # Default to middle
+            self.moving_to_position = False
             
             # Movement parameters
             self.movement_timer = 0
@@ -85,6 +121,7 @@ class Boss(pygame.sprite.Sprite):
             self.hover_position = None
             self.hover_timer = 0
             self.hover_duration = 0
+            self.movement_paused = False  # Whether movement is paused for aiming/firing
             
         # Scale the image to the calculated size
         self.image = pygame.transform.scale(original_image, (new_width, new_height))
@@ -99,6 +136,13 @@ class Boss(pygame.sprite.Sprite):
         hitbox_height = int(self.rect.height * 0.85)
         self.hitbox = pygame.Rect(0, 0, hitbox_width, hitbox_height)
         self.hitbox.center = self.rect.center
+        
+        # Now that rect is initialized, set tactical positioning
+        if boss_type == 'main':
+            # Tactical positioning
+            self.preferred_distance = SCREEN_WIDTH - self.battle_distance - self.rect.width - 30  # Default distance
+            self.close_combat_distance = SCREEN_WIDTH // 2  # Distance for close combat
+            self.current_tactic = "ranged"  # Current tactical approach
         
         self.bullets = pygame.sprite.Group()
         self.last_shot = pygame.time.get_ticks()
@@ -130,13 +174,29 @@ class Boss(pygame.sprite.Sprite):
             animation_complete = self.update_death_animation()
             return animation_complete
             
+        # Get current time for timing-based actions
+        now = pygame.time.get_ticks()
+        
         # Entry movement - move from right edge to battle position
         if not self.entry_complete:
             self.rect.x -= 3
             if self.rect.right < SCREEN_WIDTH - self.battle_distance:
                 self.entry_complete = True
-                self.last_shot = pygame.time.get_ticks()  # Reset shot timer when entry is complete
+                self.last_shot = now  # Reset shot timer when entry is complete
         else:
+            # Ensure bullets are properly managed
+            # Remove bullets that have gone off-screen
+            for bullet in list(self.bullets):
+                if bullet.rect.right < 0 or bullet.rect.left > SCREEN_WIDTH or \
+                   bullet.rect.bottom < 0 or bullet.rect.top > SCREEN_HEIGHT:
+                    bullet.kill()
+            
+            # Force shooting if no bullets are active and not in special attack
+            if len(self.bullets) == 0 and not (self.is_charging or self.laser_charging or self.laser_firing or self.is_aiming):
+                # If no bullets are active, force a shot soon
+                if now - self.last_shot > 500:  # At least 500ms since last shot
+                    self.last_shot = now - self.shoot_delay + 100  # Force a shot soon
+            
             # Different movement patterns based on boss type
             if self.movement_pattern == "sine":
                 # Sine wave movement
@@ -173,11 +233,50 @@ class Boss(pygame.sprite.Sprite):
                     self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
                     self.pattern_shots = 0
                     
-                    # Chance to change position after pattern change
-                    if random.random() < 0.7:
+                    # Set target position based on new attack pattern
+                    if self.attack_pattern == "charge":
+                        # For charge attack, prepare to charge
+                        if self.player_ref:
+                            # Store original position
+                            self.original_x = self.rect.x
+                            self.original_y = self.rect.y
+                            
+                            # Target directly at player with slight lead
+                            self.charge_target_x = max(50, self.player_ref.rect.x - 20)  # Don't go too far left
+                            self.charge_target_y = self.player_ref.rect.y
+                            self.is_charging = True
+                            self.charge_start_time = now
+                            self.movement_paused = True  # Pause normal movement during charge
+                            self.current_tactic = "aggressive"
+                            self.charge_speed = 18  # Even faster charge speed
+                            self.charge_duration = 1200  # Longer charge duration (1.2 seconds)
+                            # Play warning sound
+                            self.sound_manager.play_sound('explosion')  # Use explosion sound for more impact
+                    elif self.attack_pattern == "laser":
+                        # For laser attack, move closer to player first
+                        if self.player_ref:
+                            # Set position closer to player for laser attack
+                            self.hover_position = (
+                                SCREEN_WIDTH // 2,  # Move to middle of screen
+                                self.player_ref.rect.centery  # Match player's y position
+                            )
+                            self.hover_timer = 0
+                            self.hover_duration = 30  # frames - shorter duration
+                            # Will start aiming after reaching position
+                            self.current_tactic = "close_combat"
+                        else:
+                            # Skip laser if no player reference
+                            self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
+                            self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
+                    else:
+                        # For other attacks, use standard positioning
+                        self.target_y_for_shooting = SCREEN_HEIGHT // 2
+                        self.current_tactic = "ranged"
+                        
+                        # Set hover position to move to target position
                         self.hover_position = (
-                            SCREEN_WIDTH - self.battle_distance - self.rect.width - random.randint(0, 30),
-                            random.randint(100, SCREEN_HEIGHT - 100)
+                            self.preferred_distance,
+                            self.target_y_for_shooting
                         )
                         self.hover_timer = 0
                         self.hover_duration = random.randint(60, 120)  # frames
@@ -201,59 +300,186 @@ class Boss(pygame.sprite.Sprite):
                         self.hover_timer += 1
                         if self.hover_timer >= self.hover_duration:
                             self.hover_position = None
-                else:
-                    # Different movement based on phase
+                elif not self.movement_paused:  # Only move if not paused for aiming/firing
+                    # ALWAYS track player if available - this is the key change
+                    if self.player_ref:
+                        # Calculate target y position (player's y position)
+                        self.target_y = self.player_ref.rect.centery
+                        
+                        # Move toward target y position with increased tracking speed
+                        dy = self.target_y - self.rect.centery
+                        if abs(dy) > 3:  # Reduced threshold for more responsive tracking
+                            # Move toward player with tracking speed
+                            tracking_speed = self.tracking_speed
+                            if self.attack_phase > 1:
+                                tracking_speed *= 1.2  # Faster tracking in later phases
+                            self.rect.y += math.copysign(min(abs(dy) * 0.15, tracking_speed), dy)
+                    
+                    # Different movement based on phase - only horizontal movement
                     if self.attack_phase == 1:
-                        # Phase 1: Figure-8 pattern
+                        # Phase 1: Gentle horizontal movement
                         self.movement_timer += 1
                         t = self.movement_timer * self.figure8_frequency
-                        self.rect.centery = self.figure8_center_y + math.sin(t) * self.figure8_amplitude
                         
                         # Add slight horizontal movement
                         self.rect.x = (SCREEN_WIDTH - self.battle_distance - self.rect.width) + math.sin(t * 0.5) * 15
                     
                     elif self.attack_phase == 2:
-                        # Phase 2: More aggressive vertical movement
+                        # Phase 2: More aggressive horizontal movement
                         self.movement_timer += 1
                         
-                        # Change direction occasionally
-                        if self.movement_timer % self.movement_change_delay == 0:
-                            self.movement_direction = random.choice([-1, 1])
-                            self.movement_change_delay = random.randint(30, 90)  # Faster direction changes
-                        
-                        # Move up/down faster
-                        self.rect.y += self.speed * 1.5 * self.movement_direction
-                        
-                        # Add slight horizontal movement
+                        # Add horizontal movement
                         self.rect.x = (SCREEN_WIDTH - self.battle_distance - self.rect.width) + math.sin(self.movement_timer * 0.02) * 25
-                        
-                        # Ensure boss stays on screen
-                        if self.rect.top < 50:
-                            self.rect.top = 50
-                            self.movement_direction = 1
-                        elif self.rect.bottom > SCREEN_HEIGHT - 50:
-                            self.rect.bottom = SCREEN_HEIGHT - 50
-                            self.movement_direction = -1
                     
                     elif self.attack_phase == 3:
-                        # Phase 3: Erratic movement
+                        # Phase 3: Erratic horizontal movement
                         self.movement_timer += 1
                         
-                        # Combine sine wave and random movements
-                        t = self.movement_timer * 0.04  # Faster frequency
-                        self.rect.centery = self.figure8_center_y + math.sin(t) * self.figure8_amplitude * 1.2
-                        
                         # More aggressive horizontal movement
-                        self.rect.x = (SCREEN_WIDTH - self.battle_distance - self.rect.width - 10) + math.sin(t * 0.7) * 35
+                        self.rect.x = (SCREEN_WIDTH - self.battle_distance - self.rect.width - 10) + math.sin(self.movement_timer * 0.03) * 35
                         
                         # Add occasional jitter
                         if self.movement_timer % 10 == 0:
                             self.rect.x += random.randint(-5, 5)
-                            self.rect.y += random.randint(-5, 5)
                 
                 # Handle special attack cooldown
                 if self.special_attack_cooldown > 0:
-                    self.special_attack_cooldown -= 16  # Approximately 16ms per frame at 60 FPS
+                    self.special_attack_cooldown -= 16  # Approximately 16ms per frame
+                
+                # Handle charge attack
+                if self.is_charging:
+                    charge_progress = (now - self.charge_start_time) / self.charge_duration
+                    
+                    if not self.charge_retreat:
+                        # Pre-charge warning
+                        if charge_progress < 0.3:  # 30% of time is warning
+                            # Just show warning effect, don't move yet
+                            pass
+                        # Charging toward player
+                        elif charge_progress < 1.0:
+                            # Calculate direction to target
+                            dx = self.charge_target_x - self.rect.x
+                            dy = self.charge_target_y - self.rect.y
+                            distance = math.sqrt(dx*dx + dy*dy)
+                            
+                            # Accelerating charge speed
+                            actual_charge_speed = self.charge_speed * min(2.0, (charge_progress - 0.3) * 3)
+                            
+                            if distance > 10:
+                                # Move toward target at charge speed
+                                self.rect.x += dx * actual_charge_speed / distance
+                                self.rect.y += dy * actual_charge_speed / distance
+                        else:
+                            # Charge complete, start retreat
+                            self.charge_retreat = True
+                            self.charge_retreat_time = now
+                            
+                            # Store original position to return to
+                            self.original_x = SCREEN_WIDTH - self.battle_distance - self.rect.width
+                            self.original_y = self.rect.centery
+                    else:
+                        # Retreating after charge
+                        retreat_progress = (now - self.charge_retreat_time) / (self.charge_duration * 0.7)
+                        
+                        if retreat_progress < 1.0:
+                            # Move back to original position
+                            dx = self.original_x - self.rect.x
+                            dy = self.original_y - self.rect.y
+                            distance = math.sqrt(dx*dx + dy*dy)
+                            
+                            if distance > 10:
+                                # Move toward original position with smooth deceleration
+                                retreat_speed = self.charge_speed * 0.7 * (1 - retreat_progress)
+                                self.rect.x += dx * retreat_speed / distance
+                                self.rect.y += dy * retreat_speed / distance
+                        else:
+                            # Retreat complete
+                            self.is_charging = False
+                            self.charge_retreat = False
+                            self.movement_paused = False
+                            self.charge_cooldown = 3000  # 3 seconds cooldown
+                            
+                            # Reset bullet management to ensure bullets continue to appear
+                            self.last_shot = now - self.shoot_delay + 100  # Force a shot soon after charge
+                            
+                            # Move to next attack pattern
+                            self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
+                            self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
+                
+                # Handle hover position reached for laser attack
+                if self.attack_pattern == "laser" and self.hover_position is None and not self.is_aiming and not self.laser_charging and not self.laser_firing:
+                    # Start aiming sequence when in position
+                    self.is_aiming = True
+                    self.aiming_time = now
+                    self.movement_paused = True  # Pause movement during aiming
+                
+                # Handle aiming for laser
+                if self.is_aiming:
+                    # Update aiming
+                    aim_progress = (now - self.aiming_time) / self.aiming_duration
+                    
+                    # Update target position continuously during aiming
+                    if self.player_ref:
+                        self.laser_target_y = self.player_ref.rect.centery
+                    
+                    # Check if aiming is complete
+                    if aim_progress >= 1.0:
+                        self.is_aiming = False
+                        # Start laser charging sequence
+                        self.laser_charging = True
+                        self.laser_charge_time = now
+                        self.laser_width = 2  # Initial width
+                        
+                        # Lock in the final target position
+                        if self.player_ref:
+                            self.laser_target_y = self.player_ref.rect.centery
+                        else:
+                            # Fallback to random position if no player reference
+                            self.laser_target_y = random.randint(100, SCREEN_HEIGHT - 100)
+                
+                # Handle laser attack
+                if self.laser_charging:
+                    # Update laser charging
+                    charge_progress = (now - self.laser_charge_time) / self.laser_charge_duration
+                    
+                    # Grow laser width during charging
+                    self.laser_width = int(2 + charge_progress * 10)  # Grows from 2 to 12
+                    
+                    # Play charging sound occasionally
+                    if random.random() < 0.05:  # 5% chance per frame
+                        self.sound_manager.play_sound('shoot')
+                    
+                    # Check if charging is complete
+                    if charge_progress >= 1.0:
+                        self.laser_charging = False
+                        self.laser_firing = True
+                        self.laser_fire_time = now
+                        self.laser_width = 15  # Full width when firing
+                        # Play laser fire sound
+                        self.sound_manager.play_sound('explosion')
+                
+                elif self.laser_firing:
+                    # Update laser firing
+                    fire_progress = (now - self.laser_fire_time) / self.laser_fire_duration
+                    
+                    # Check if firing is complete
+                    if fire_progress >= 1.0:
+                        self.laser_firing = False
+                        self.movement_paused = False  # Resume movement after firing
+                        
+                        # Return to preferred distance
+                        self.hover_position = (
+                            self.preferred_distance,
+                            self.figure8_center_y
+                        )
+                        self.hover_timer = 0
+                        self.hover_duration = 60
+                        self.current_tactic = "ranged"
+                        
+                        # Move to next attack pattern
+                        self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
+                        self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
+                        self.pattern_shots = 0
             
             # Shoot bullets based on current attack pattern
             self.shoot()
@@ -268,6 +494,19 @@ class Boss(pygame.sprite.Sprite):
     
     def shoot(self):
         now = pygame.time.get_ticks()
+        
+        # Skip shooting if laser is active or charging
+        if self.boss_type == 'main' and (self.laser_charging or self.laser_firing or self.is_aiming):
+            return
+            
+        # Skip shooting if charging
+        if self.boss_type == 'main' and self.is_charging:
+            return
+            
+        # Force shooting if no bullets are active for too long
+        if self.boss_type == 'main' and len(self.bullets) == 0 and now - self.last_shot > 1500:
+            self.last_shot = now - self.shoot_delay  # Force immediate shot
+            
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
             
@@ -323,21 +562,22 @@ class Boss(pygame.sprite.Sprite):
                 if self.attack_pattern == "spread":
                     # Spread shot - number of bullets depends on phase
                     num_bullets = 3 + (self.attack_phase - 1)  # 3, 4, or 5 bullets
-                    spread_angle = 60  # Total spread angle in degrees
                     
+                    # Calculate angles for a forward-facing spread
                     for i in range(num_bullets):
-                        # Calculate angle for this bullet
-                        angle_rad = math.radians(-90 + spread_angle/2 - (spread_angle / (num_bullets-1)) * i)
+                        # Calculate angle for this bullet (all horizontal or slightly angled)
+                        angle_offset = 10  # Maximum angle offset in degrees
+                        angle_rad = math.radians(180 + (angle_offset * (i - (num_bullets-1)/2)))
                         
                         # Calculate velocity components
                         speed = abs(self.bullet_speed)
                         vx = math.cos(angle_rad) * speed
-                        vy = math.sin(angle_rad) * speed
+                        vy = math.sin(angle_rad) * speed * 0.2  # Reduce vertical component
                         
                         # Create bullet
                         bullet = BossBullet(
                             self.rect.left, 
-                            self.rect.centery, 
+                            self.rect.centery + random.randint(-5, 5), 
                             vx, 
                             self.bullet_damage
                         )
@@ -352,17 +592,33 @@ class Boss(pygame.sprite.Sprite):
                         self.bullets.add(bullet)
                 
                 elif self.attack_pattern == "focused":
-                    # Focused attack - straight line of bullets
+                    # Focused attack - straight line of bullets aimed at player
                     num_bullets = 2 + self.attack_phase  # 3, 4, or 5 bullets
                     
+                    # Calculate aim direction if player reference exists
+                    target_y = self.rect.centery
+                    if self.player_ref:
+                        target_y = self.player_ref.rect.centery
+                    
+                    # Calculate angle to target
+                    dx = -200  # Aim ahead of the player
+                    dy = target_y - self.rect.centery
+                    angle = math.atan2(dy, dx)
+                    
                     for i in range(num_bullets):
-                        # Create bullet with slight vertical offset
-                        offset = 5 * (i - (num_bullets-1)/2)  # Centered around 0
+                        # Create bullet with slight offset
+                        offset_x = -i*10  # Staggered horizontally
+                        offset_y = 0
+                        
+                        # Calculate velocity components
+                        speed = abs(self.bullet_speed) * 1.2  # Faster than normal
+                        vx = math.cos(angle) * speed
+                        vy = math.sin(angle) * speed
                         
                         bullet = BossBullet(
-                            self.rect.left - i*10,  # Staggered horizontally
-                            self.rect.centery + offset,
-                            self.bullet_speed * 1.2,  # Faster than normal
+                            self.rect.left + offset_x,
+                            self.rect.centery + offset_y,
+                            vx,
                             self.bullet_damage
                         )
                         
@@ -374,38 +630,9 @@ class Boss(pygame.sprite.Sprite):
                             
                         self.bullets.add(bullet)
                 
-                elif self.attack_pattern == "barrage":
-                    # Barrage - random spread of bullets
-                    num_bullets = 3 + (self.attack_phase * 2)  # 5, 7, or 9 bullets
-                    
-                    for i in range(num_bullets):
-                        # Random position within a cone
-                        offset_y = random.randint(-30, 30)
-                        offset_x = random.randint(-10, 10)
-                        
-                        # Random speed variation
-                        speed_var = random.uniform(0.85, 1.15)
-                        
-                        bullet = BossBullet(
-                            self.rect.left + offset_x,
-                            self.rect.centery + offset_y,
-                            self.bullet_speed * speed_var,
-                            self.bullet_damage
-                        )
-                        
-                        # Add slight vertical drift
-                        bullet.vy = random.uniform(-1.0, 1.0)
-                        
-                        # Set color based on phase
-                        if self.attack_phase == 2:
-                            bullet.color_shift = (255, 255, 0)  # Yellow tint for phase 2
-                        elif self.attack_phase == 3:
-                            bullet.color_shift = (255, 50, 50)  # Red tint for phase 3
-                            
-                        self.bullets.add(bullet)
-                
-                # Increment pattern shots counter
-                self.pattern_shots += 1
+                # Increment pattern shots counter (except for laser and charge patterns)
+                if self.attack_pattern not in ["laser", "charge"]:
+                    self.pattern_shots += 1
             
             # Play sound
             self.sound_manager.play_sound('shoot')
@@ -540,12 +767,42 @@ class Boss(pygame.sprite.Sprite):
         """Draw the boss and its bullets."""
         if self.dying:
             self.draw_death_animation(surface)
-        else:
-            surface.blit(self.image, self.rect)
+            return
             
-            # Draw hitbox if debug mode is enabled
-            if DEBUG_HITBOXES:
-                pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        # Draw charge effect if charging
+        if self.boss_type == 'main' and self.is_charging and not self.charge_retreat:
+            # Draw charge trail with improved visuals
+            for i in range(8):  # More trail segments
+                alpha = 180 - i * 20
+                
+                # Pulse the trail color
+                pulse = (math.sin(pygame.time.get_ticks() * 0.01) + 1) / 2
+                r = 255
+                g = int(100 + 50 * pulse)
+                b = int(50 * pulse)
+                
+                trail_color = (r, g, b, alpha)
+                trail_rect = self.rect.copy()
+                trail_rect.x += i * 8  # Trail behind the boss
+                
+                # Create a surface for the trail
+                trail_surface = pygame.Surface((trail_rect.width, trail_rect.height), pygame.SRCALPHA)
+                trail_surface.fill(trail_color)
+                
+                # Draw trail
+                surface.blit(trail_surface, trail_rect)
+                
+            # Draw charge warning
+            font = pygame.font.SysFont('Arial', 16)
+            warning_text = font.render("CHARGING!", True, (255, 50, 50))
+            surface.blit(warning_text, (self.rect.centerx - warning_text.get_width()//2, self.rect.top - 25))
+        
+        # Draw the boss
+        surface.blit(self.image, self.rect)
+        
+        # Draw hitbox if debug mode is enabled
+        if DEBUG_HITBOXES:
+            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
         
         # Draw bullets with custom draw method
         for bullet in self.bullets:
@@ -554,9 +811,146 @@ class Boss(pygame.sprite.Sprite):
             else:
                 surface.blit(bullet.image, bullet.rect)
         
+        # Draw laser if active (draw last to ensure it's on top)
+        if self.boss_type == 'main':
+            if self.is_aiming:
+                self.draw_laser_warning(surface)
+            elif self.laser_charging:
+                self.draw_laser_warning(surface)
+            elif self.laser_firing:
+                self.draw_laser_beam(surface)
+        
         # Draw health bar if not dying
         if not self.dying:
             self.draw_health_bar(surface)
+    
+    def draw_laser_warning(self, surface):
+        """Draw the laser warning indicator."""
+        # Calculate warning line properties
+        now = pygame.time.get_ticks()
+        
+        # If in aiming mode, draw a targeting reticle
+        if self.is_aiming:
+            aim_progress = (now - self.aiming_time) / self.aiming_duration
+            
+            # Target position (player's position if available)
+            target_y = self.rect.centery
+            if self.player_ref:
+                target_y = self.player_ref.rect.centery
+            
+            # Draw targeting reticle
+            reticle_radius = 20 + int(10 * math.sin(aim_progress * 10))
+            reticle_color = (255, 0, 0, 150)
+            
+            # Draw outer circle
+            pygame.draw.circle(surface, reticle_color, (self.rect.left - 20, target_y), reticle_radius, 2)
+            
+            # Draw crosshairs
+            pygame.draw.line(surface, reticle_color, 
+                            (self.rect.left - 20 - reticle_radius, target_y), 
+                            (self.rect.left - 20 + reticle_radius, target_y), 2)
+            pygame.draw.line(surface, reticle_color, 
+                            (self.rect.left - 20, target_y - reticle_radius), 
+                            (self.rect.left - 20, target_y + reticle_radius), 2)
+            
+            # Draw text warning
+            font = pygame.font.SysFont('Arial', 16)
+            warning_text = font.render("LASER CHARGING", True, (255, 0, 0))
+            surface.blit(warning_text, (self.rect.left - 100, target_y - 40))
+            
+            return
+        
+        # For charging laser, draw warning line
+        charge_progress = (now - self.laser_charge_time) / self.laser_charge_duration
+        
+        # Warning line color pulses from white to red
+        pulse_rate = 10  # Higher value = faster pulse
+        pulse_factor = (math.sin(charge_progress * pulse_rate) + 1) / 2  # 0 to 1
+        
+        r = 255
+        g = int(255 * (1 - pulse_factor))
+        b = int(100 * (1 - pulse_factor))
+        
+        # Draw warning line
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
+        
+        # Draw dashed line with increasing width as charging progresses
+        dash_length = 10
+        gap_length = 5
+        x = start_pos[0]
+        
+        # Width increases with charge progress
+        warning_width = int(2 + charge_progress * 10)
+        
+        while x > end_pos[0]:
+            # Calculate dash start and end
+            dash_start = (x, start_pos[1])
+            dash_end = (max(x - dash_length, end_pos[0]), start_pos[1])
+            
+            # Draw dash
+            pygame.draw.line(surface, (r, g, b), dash_start, dash_end, warning_width)
+            
+            # Move to next dash position
+            x -= (dash_length + gap_length)
+        
+        # Draw warning text that pulses
+        font = pygame.font.SysFont('Arial', 18)
+        warning_text = font.render("!!! LASER IMMINENT !!!", True, (r, g, b))
+        text_x = SCREEN_WIDTH // 2 - warning_text.get_width() // 2
+        text_y = self.laser_target_y - 40
+        surface.blit(warning_text, (text_x, text_y))
+        
+        # Draw warning indicators at both ends of the laser path
+        indicator_radius = 10 + int(5 * pulse_factor)
+        pygame.draw.circle(surface, (r, g, b), (0, self.laser_target_y), indicator_radius, 2)
+        pygame.draw.circle(surface, (r, g, b), (self.rect.left, self.laser_target_y), indicator_radius, 2)
+    
+    def draw_laser_beam(self, surface):
+        """Draw the laser beam."""
+        # Laser beam properties - start from the boss's left side
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
+        
+        # Draw main beam with pulsing effect
+        now = pygame.time.get_ticks()
+        pulse_factor = (math.sin(now * 0.01) + 1) / 2  # 0 to 1
+        
+        # Pulse the width slightly
+        pulse_width = int(self.laser_width * (0.9 + 0.2 * pulse_factor))
+        
+        # Draw multiple layers for a more intense effect
+        # Outer glow (semi-transparent)
+        for i in range(3):
+            glow_width = pulse_width + i * 4
+            alpha = 100 - i * 30
+            glow_color = (255, 100, 100, alpha)
+            
+            # Draw wider lines for glow effect
+            pygame.draw.line(surface, glow_color, start_pos, end_pos, glow_width)
+        
+        # Main beam (solid)
+        pygame.draw.line(surface, self.laser_color, start_pos, end_pos, pulse_width)
+        
+        # Bright core
+        core_color = (255, 200, 200)
+        pygame.draw.line(surface, core_color, start_pos, end_pos, pulse_width // 3)
+        
+        # Add impact effect at the left edge
+        impact_x = 0
+        impact_y = self.laser_target_y
+        impact_radius = pulse_width + int(5 * pulse_factor)
+        
+        # Draw impact circles
+        pygame.draw.circle(surface, (255, 200, 200), (impact_x, impact_y), impact_radius // 2)
+        pygame.draw.circle(surface, (255, 100, 100, 150), (impact_x, impact_y), impact_radius)
+        
+        # Add small particles around the impact point
+        for _ in range(3):
+            particle_x = impact_x + random.randint(-impact_radius, impact_radius//2)
+            particle_y = impact_y + random.randint(-impact_radius, impact_radius)
+            particle_size = random.randint(1, 3)
+            pygame.draw.circle(surface, (255, 200, 200), (particle_x, particle_y), particle_size)
             
     def draw_death_animation(self, surface):
         """Draw the death animation."""
@@ -607,11 +1001,15 @@ class BossBullet(pygame.sprite.Sprite):
         self.damage = damage
         
         # Create a smaller hitbox for more precise collision detection
-        self.hitbox = self.rect.inflate(-2, -1)  # 2px smaller on width, 1px smaller on height
+        self.hitbox = pygame.Rect(0, 0, self.width-2, self.height-1)  # 2px smaller on width, 1px smaller on height
+        self.hitbox.center = self.rect.center
         
         # Add trail effect properties
         self.trail = []
         self.max_trail_length = 5
+        
+        # Time tracking for visual effects
+        self.creation_time = pygame.time.get_ticks()
     
     def create_bullet_image(self):
         """Create the bullet image with optional color shift."""
@@ -684,7 +1082,7 @@ class BossBullet(pygame.sprite.Sprite):
                 trail_color = (255, 100, 100, alpha)
             
             # Draw trail segment
-            pygame.draw.circle(surface, trail_color, (x, y), size)
+            pygame.draw.circle(surface, trail_color, (int(x), int(y)), max(1, size))
         
         # Draw bullet
         surface.blit(self.image, self.rect)

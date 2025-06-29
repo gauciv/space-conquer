@@ -378,7 +378,7 @@ class GameManager:
                         for i, phase in enumerate(self.phase_manager.phases):
                             if hasattr(phase, 'rect') and phase.rect.collidepoint(event.pos):
                                 self.phase_manager.skip_to_phase(i)
-                                print(f"Skipped to phase: {phase.name} (Score: {phase.score_threshold})")
+                                print(f"Skipped to phase: {phase.name} (Time: {phase.time_threshold})")
                                 break
             
             elif event.type == pygame.MOUSEBUTTONUP:

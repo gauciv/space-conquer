@@ -64,6 +64,11 @@ class UIManager:
         self.show_player_coords = False
         self.show_fps = True
         
+        # Initialize button rectangles for testing panel
+        self.god_mode_button_rect = None
+        self.player_coords_button_rect = None
+        self.fps_button_rect = None
+        
         # Player respawn in test mode
         self.respawning = False
         self.respawn_timer = 0

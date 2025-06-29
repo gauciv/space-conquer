@@ -52,6 +52,9 @@ class BossManager:
         elif boss_type == 'main':
             # Create main boss
             self.main_boss = Boss('main', self.game_manager.asset_loader, self.game_manager.sound_manager)
+            # Set player reference for targeting
+            if hasattr(self.game_manager, 'player'):
+                self.main_boss.player_ref = self.game_manager.player
             # Add to all sprites group
             self.game_manager.all_sprites.add(self.main_boss)
             self.main_boss_spawned = True
@@ -117,6 +120,21 @@ class BossManager:
         # Only process if boss is properly initialized
         if not hasattr(boss, 'hitbox'):
             return
+        
+        # Handle laser collision with player
+        if boss.boss_type == 'main' and boss.laser_firing:
+            # Check if player is in the laser beam
+            laser_rect = pygame.Rect(0, boss.laser_target_y - boss.laser_width//2, 
+                                    boss.rect.left, boss.laser_width)
+            
+            if player.hitbox.colliderect(laser_rect):
+                # Apply damage to player with cooldown
+                source_id = f"laser_{boss.laser_fire_time}"
+                player.take_damage(
+                    False,  # No god mode for laser
+                    source_id=source_id,
+                    damage=1  # 1 damage per frame
+                )
             
         # Check player bullets against boss
         for bullet in list(player.bullets):
