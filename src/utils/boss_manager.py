@@ -64,6 +64,9 @@ class BossManager:
     
     def update(self):
         """Update all active bosses."""
+        # Update player reference for all bosses
+        self.update_player_references()
+        
         # Update mini boss
         if self.mini_boss:
             # Update boss and check if death animation is complete
@@ -93,6 +96,20 @@ class BossManager:
                 # Notify phase manager that main boss is defeated
                 if hasattr(self.game_manager.phase_manager, 'handle_boss_defeated'):
                     self.game_manager.phase_manager.handle_boss_defeated('main')
+    
+    def update_player_references(self):
+        """Update player references for all bosses."""
+        player = None
+        if hasattr(self.game_manager, 'player'):
+            player = self.game_manager.player
+            
+        # Update mini boss player reference
+        if self.mini_boss and hasattr(self.mini_boss, 'update_player_reference'):
+            self.mini_boss.update_player_reference(player)
+            
+        # Update main boss player reference
+        if self.main_boss and hasattr(self.main_boss, 'update_player_reference'):
+            self.main_boss.update_player_reference(player)
     
     def draw(self, surface):
         """Draw all active bosses."""

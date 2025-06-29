@@ -145,7 +145,7 @@ class Boss(pygame.sprite.Sprite):
             self.current_tactic = "ranged"  # Current tactical approach
         
         self.bullets = pygame.sprite.Group()
-        self.last_shot = pygame.time.get_ticks()
+        self.last_shot = pygame.time.get_ticks()  # Time in milliseconds
         self.entry_complete = False
         self.movement_direction = 1  # 1 for down, -1 for up
         self.movement_change_delay = 120  # frames before changing direction
@@ -229,9 +229,20 @@ class Boss(pygame.sprite.Sprite):
                 
                 # Update attack pattern based on shots fired
                 if self.pattern_shots >= self.max_pattern_shots:
+                    # Reset pattern shots counter
+                    self.pattern_shots = 0
+                    
+                    # Move to next attack pattern
                     self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
                     self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
-                    self.pattern_shots = 0
+                    
+                    # Reset any active attack states to prevent conflicts
+                    self.is_charging = False
+                    self.charge_retreat = False
+                    self.laser_charging = False
+                    self.laser_firing = False
+                    self.is_aiming = False
+                    self.movement_paused = False
                     
                     # Set target position based on new attack pattern
                     if self.attack_pattern == "charge":
@@ -291,8 +302,19 @@ class Boss(pygame.sprite.Sprite):
                     distance = math.sqrt(dx*dx + dy*dy)
                     
                     if distance > 5:
-                        # Move toward position
-                        speed = min(distance * 0.1, 5)  # Speed based on distance, max 5
+                        # Move toward position with improved smoothing
+                        # Use exponential smoothing for more natural movement
+                        # Faster when far, slower when close
+                        base_speed = min(distance * 0.08, 4.0)  # Reduced max speed and factor
+                        
+                        # Apply easing as we get closer to target
+                        if distance < 50:
+                            ease_factor = distance / 50.0  # 0-1 based on distance
+                            speed = base_speed * (0.3 + 0.7 * ease_factor)  # Minimum 30% of base speed
+                        else:
+                            speed = base_speed
+                            
+                        # Apply movement
                         self.rect.x += dx * speed / distance
                         self.rect.y += dy * speed / distance
                     else:
@@ -366,9 +388,22 @@ class Boss(pygame.sprite.Sprite):
                             actual_charge_speed = self.charge_speed * min(2.0, (charge_progress - 0.3) * 3)
                             
                             if distance > 10:
-                                # Move toward target at charge speed
-                                self.rect.x += dx * actual_charge_speed / distance
-                                self.rect.y += dy * actual_charge_speed / distance
+                                # Calculate new position
+                                new_x = self.rect.x + dx * actual_charge_speed / distance
+                                new_y = self.rect.y + dy * actual_charge_speed / distance
+                                
+                                # Apply boundary constraints
+                                new_x = max(50, min(SCREEN_WIDTH - self.rect.width - 10, new_x))
+                                new_y = max(50, min(SCREEN_HEIGHT - self.rect.height - 10, new_y))
+                                
+                                # Update position
+                                self.rect.x = new_x
+                                self.rect.y = new_y
+                                
+                                # If we hit a boundary, end the charge early
+                                if new_x <= 50 or new_x >= SCREEN_WIDTH - self.rect.width - 10:
+                                    self.charge_retreat = True
+                                    self.charge_retreat_time = now
                         else:
                             # Charge complete, start retreat
                             self.charge_retreat = True
@@ -397,7 +432,7 @@ class Boss(pygame.sprite.Sprite):
                             self.is_charging = False
                             self.charge_retreat = False
                             self.movement_paused = False
-                            self.charge_cooldown = 3000  # 3 seconds cooldown
+                            self.charge_cooldown = 3000  # 3000 milliseconds (3 seconds) cooldown
                             
                             # Reset bullet management to ensure bullets continue to appear
                             self.last_shot = now - self.shoot_delay + 100  # Force a shot soon after charge
@@ -419,8 +454,21 @@ class Boss(pygame.sprite.Sprite):
                     aim_progress = (now - self.aiming_time) / self.aiming_duration
                     
                     # Update target position continuously during aiming
-                    if self.player_ref:
-                        self.laser_target_y = self.player_ref.rect.centery
+                    if self.player_ref and hasattr(self.player_ref, 'rect'):
+                        # Calculate player's vertical movement direction and speed
+                        if hasattr(self.player_ref, 'last_y'):
+                            player_vy = self.player_ref.rect.centery - self.player_ref.last_y
+                            # Predict player position at end of aiming
+                            remaining_time = self.aiming_duration * (1.0 - aim_progress)
+                            predicted_y = self.player_ref.rect.centery + player_vy * (remaining_time / 16.67)  # Assuming 60fps (16.67ms per frame)
+                            # Limit prediction to screen bounds
+                            predicted_y = max(50, min(SCREEN_HEIGHT - 50, predicted_y))
+                            self.laser_target_y = predicted_y
+                        else:
+                            self.laser_target_y = self.player_ref.rect.centery
+                    else:
+                        # Use current position if no player reference
+                        self.laser_target_y = self.rect.centery
                     
                     # Check if aiming is complete
                     if aim_progress >= 1.0:
@@ -461,6 +509,9 @@ class Boss(pygame.sprite.Sprite):
                 elif self.laser_firing:
                     # Update laser firing
                     fire_progress = (now - self.laser_fire_time) / self.laser_fire_duration
+                    
+                    # Check for collision with player
+                    self.check_laser_collision()
                     
                     # Check if firing is complete
                     if fire_progress >= 1.0:
@@ -643,6 +694,10 @@ class Boss(pygame.sprite.Sprite):
         if not self.entry_complete:
             return False
             
+        # Store previous health for phase transition check
+        previous_health = self.health
+        previous_phase = self.attack_phase
+            
         self.health -= damage
         self.sound_manager.play_sound('explosion')
         
@@ -665,26 +720,47 @@ class Boss(pygame.sprite.Sprite):
                 self.attack_change_delay = 4000  # Faster pattern changes
         
         elif self.boss_type == 'main':
-            if health_percent <= 0.33 and self.attack_phase < 3:
-                # Phase 3: Most aggressive
-                self.attack_phase = 3
-                self.shoot_delay = 1000  # Faster shooting but still nerfed from original
-                self.figure8_amplitude = 150  # Wider movement
-                self.figure8_frequency = 0.025  # Faster movement
-                self.max_pattern_shots = 2  # Change patterns more frequently
+            # Check if we're skipping a phase (e.g., from 1 to 3)
+            new_phase = 1
+            if health_percent <= 0.33:
+                new_phase = 3
+            elif health_percent <= 0.66:
+                new_phase = 2
                 
-                # Play phase transition sound
-                self.sound_manager.play_sound('explosion')
+            # If phase changed, apply phase-specific changes
+            if new_phase != previous_phase:
+                self.attack_phase = new_phase
                 
-            elif health_percent <= 0.66 and self.attack_phase < 2:
-                # Phase 2: More aggressive
-                self.attack_phase = 2
-                self.shoot_delay = 1100  # Faster shooting but still nerfed from original
-                self.figure8_amplitude = 130  # Wider movement
-                self.max_pattern_shots = 3  # Change patterns more frequently
-                
-                # Play phase transition sound
-                self.sound_manager.play_sound('explosion')
+                # Apply phase-specific changes
+                if new_phase == 3:
+                    # Phase 3: Most aggressive
+                    self.shoot_delay = 1000  # Faster shooting but still nerfed from original
+                    self.figure8_amplitude = 150  # Wider movement
+                    self.figure8_frequency = 0.025  # Faster movement
+                    self.max_pattern_shots = 2  # Change patterns more frequently
+                    
+                    # Play phase transition sound
+                    self.sound_manager.play_sound('explosion')
+                    
+                    # Clear bullets on phase change for cleaner transition
+                    self.bullets.empty()
+                    
+                    # If we skipped phase 2, ensure we get all phase 2 benefits as well
+                    if previous_phase == 1:
+                        self.figure8_amplitude = 130  # From phase 2
+                        self.max_pattern_shots = 3  # From phase 2
+                        
+                elif new_phase == 2:
+                    # Phase 2: More aggressive
+                    self.shoot_delay = 1100  # Faster shooting but still nerfed from original
+                    self.figure8_amplitude = 130  # Wider movement
+                    self.max_pattern_shots = 3  # Change patterns more frequently
+                    
+                    # Play phase transition sound
+                    self.sound_manager.play_sound('explosion')
+                    
+                    # Clear bullets on phase change for cleaner transition
+                    self.bullets.empty()
         
         # Check if boss is defeated
         if self.health <= 0 and not self.dying:
@@ -698,6 +774,11 @@ class Boss(pygame.sprite.Sprite):
         self.dying = True
         self.death_animation_start = pygame.time.get_ticks()
         self.explosion_particles = []
+        
+        # Clear all active bullets immediately
+        for bullet in list(self.bullets):
+            bullet.kill()
+        self.bullets.empty()
         
         # Create explosion particles
         for _ in range(20):
@@ -736,6 +817,49 @@ class Boss(pygame.sprite.Sprite):
             return True  # Animation complete, boss can be removed
         return False
     
+    def check_laser_collision(self):
+        """Check if the laser beam is colliding with the player and apply damage."""
+        if not self.player_ref:
+            return
+            
+        # Create a collision rectangle for the laser beam
+        laser_height = self.laser_width  # Use laser width as height for the collision rect
+        laser_rect = pygame.Rect(
+            0,  # Left edge of screen
+            self.laser_target_y - laser_height // 2,
+            self.rect.left,  # Extends to the boss's left edge
+            laser_height
+        )
+        
+        # Check for collision with player
+        if laser_rect.colliderect(self.player_ref.hitbox):
+            # Apply damage to player (once per frame)
+            self.player_ref.take_damage(self.laser_damage)
+            
+            # Visual effect for player hit
+            if hasattr(self.player_ref, 'hit_flash'):
+                self.player_ref.hit_flash = 10
+                
+            # Play hit sound
+            self.sound_manager.play_sound('hit')
+            
+            # Add knockback effect
+            if hasattr(self.player_ref, 'knockback'):
+                # Knockback to the left
+                self.player_ref.knockback = -5
+                
+    def get_player_position(self):
+        """Safely get player position with fallback values."""
+        if self.player_ref and hasattr(self.player_ref, 'rect'):
+            return self.player_ref.rect.centerx, self.player_ref.rect.centery
+        else:
+            # Default to middle of left side of screen if no player reference
+            return SCREEN_WIDTH // 4, SCREEN_HEIGHT // 2
+            
+    def update_player_reference(self, player):
+        """Update the player reference safely."""
+        self.player_ref = player
+        
     def draw_health_bar(self, surface):
         """Draw the boss health bar at the top of the screen."""
         # Don't draw health bar if dying
