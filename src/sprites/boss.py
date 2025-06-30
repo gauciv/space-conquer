@@ -21,7 +21,7 @@ class Boss(pygame.sprite.Sprite):
             self.max_health = 50  # Doubled from 25 to 50
             self.health = self.max_health
             self.speed = 2.5  # Increased from 2 to 2.5
-            self.shoot_delay = 300  # Reduced to 300ms for faster shooting
+            self.shoot_delay = 800  # Increased to 800ms for burst pattern
             self.bullet_speed = -8  # Negative because bullets move left
             self.bullet_damage = 1
             self.score_value = 750  # Increased from 250 to 750 (3x)
@@ -42,10 +42,15 @@ class Boss(pygame.sprite.Sprite):
             self.is_dashing = False
             self.dash_target_y = 0
             self.dash_speed = 8
-            self.bullet_patterns = ["spread", "aimed", "barrage"]  # Simplified patterns
-            self.current_pattern_index = 0
-            self.pattern_shots = 0  # Count shots in current pattern
-            self.max_pattern_shots = 2  # Reduced from 3 to 2 for faster pattern changes
+            # Burst firing pattern
+            self.burst_mode = True
+            self.burst_shots = 0
+            self.max_burst_shots = 3  # Fire 3 bullets per burst
+            self.burst_delay = 200  # 200ms between shots in burst
+            self.burst_cooldown = 2000  # 2 second cooldown between bursts
+            self.in_burst = False
+            self.last_burst_shot = 0
+            self.burst_finished_time = 0
             self.player_ref = None  # Will be set by game manager
             
 
@@ -246,17 +251,7 @@ class Boss(pygame.sprite.Sprite):
                     # Update attack timer
                     self.attack_timer += 16  # Approximately 16ms per frame at 60fps
                     
-                    # Check if it's time to change attack pattern based on shots fired
-                    if self.pattern_shots >= self.max_pattern_shots:
-                        # Reset pattern shots counter
-                        self.pattern_shots = 0
-                        
-                        # Move to next attack pattern
-                        self.current_pattern_index = (self.current_pattern_index + 1) % len(self.bullet_patterns)
-                        self.attack_pattern = self.bullet_patterns[self.current_pattern_index]
-                        
-                        # Visual effect for pattern change
-                        self.flash_effect = 10  # Will be used in draw method
+                    # Mini-boss uses burst pattern, no need for pattern changes
                     
                     # Handle dash functionality
                     if self.dash_cooldown > 0:
@@ -671,41 +666,74 @@ class Boss(pygame.sprite.Sprite):
         if len(self.bullets) == 0 and now - self.last_shot > 800:
             self.last_shot = now - self.shoot_delay  # Force immediate shot
             
-        # Debug: Always try to shoot for mini-boss after entry
+        # Mini-boss burst firing pattern
         if self.boss_type == 'mini' and self.entry_complete:
-            if now - self.last_shot > self.shoot_delay:
-                self.last_shot = now
-                # Create highly visible bullet
-                bullet = BossBullet(self.rect.left, self.rect.centery, self.bullet_speed, self.bullet_damage)
-                # Make bullet much larger and brighter
-                bullet.width = 20
-                bullet.height = 12
-                bullet.image = pygame.Surface((bullet.width, bullet.height))
-                bullet.image.fill((255, 0, 0))  # Bright red
-                bullet.rect = bullet.image.get_rect()
-                bullet.rect.right = self.rect.left
-                bullet.rect.centery = self.rect.centery
-                self.bullets.add(bullet)
-                self.sound_manager.play_sound('shoot')
-                return
+            if not self.in_burst:
+                # Check if cooldown is over to start new burst
+                if now - self.burst_finished_time > self.burst_cooldown:
+                    self.in_burst = True
+                    self.burst_shots = 0
+                    self.last_burst_shot = now
+            else:
+                # In burst mode - fire shots with burst delay
+                if self.burst_shots < self.max_burst_shots:
+                    if now - self.last_burst_shot > self.burst_delay:
+                        # Fire a bullet
+                        bullet = BossBullet(self.rect.left, self.rect.centery, self.bullet_speed, self.bullet_damage)
+                        bullet.color_shift = (255, 100, 100)  # Light red
+                        self.bullets.add(bullet)
+                        self.sound_manager.play_sound('shoot')
+                        
+                        self.burst_shots += 1
+                        self.last_burst_shot = now
+                else:
+                    # Burst finished
+                    self.in_burst = False
+                    self.burst_finished_time = now
+            return
         
         if now - self.last_shot > self.shoot_delay and self.entry_complete:
             self.last_shot = now
             
             if self.boss_type == 'mini':
-                # Mini boss has different attack patterns
+                # Mini boss uses burst pattern handled above
+                pass
+            
+            else:  # Main boss
+                # Main boss has different attack patterns based on phase
                 if self.attack_pattern == "spread":
-                    # Spread shot - 3 bullets in a fan pattern with better visibility
-                    for i in range(3):
-                        y_offset = (i - 1) * 20  # -20, 0, 20
-                        bullet = BossBullet(self.rect.left, self.rect.centery + y_offset, self.bullet_speed, self.bullet_damage)
-                        bullet.vy = y_offset * 0.08  # Add vertical movement
-                        bullet.color_shift = (255, 150, 150)  # Light red for visibility
-                        self.bullets.add(bullet)
+                    # Spread shot - number of bullets depends on phase
+                    num_bullets = 3 + (self.attack_phase - 1)  # 3, 4, or 5 bullets
                     
-                    self.pattern_shots += 1
+                    # Calculate angles for a forward-facing spread
+                    for i in range(num_bullets):
+                        # Calculate angle for this bullet (all horizontal or slightly angled)
+                        angle_offset = 10  # Maximum angle offset in degrees
+                        angle_rad = math.radians(180 + (angle_offset * (i - (num_bullets-1)/2)))
+                        
+                        # Calculate velocity components
+                        speed = abs(self.bullet_speed)
+                        vx = math.cos(angle_rad) * speed
+                        vy = math.sin(angle_rad) * speed * 0.2  # Reduce vertical component
+                        
+                        # Create bullet
+                        bullet = BossBullet(
+                            self.rect.left, 
+                            self.rect.centery + random.randint(-5, 5), 
+                            vx, 
+                            self.bullet_damage
+                        )
+                        bullet.vy = vy
+                        
+                        # Set color based on phase
+                        if self.attack_phase == 2:
+                            bullet.color_shift = (0, 100, 255)  # Blue tint for phase 2
+                        elif self.attack_phase == 3:
+                            bullet.color_shift = (255, 0, 100)  # Purple tint for phase 3
+                            
+                        self.bullets.add(bullet)
                 
-                elif self.attack_pattern == "aimed":
+                elif self.attack_pattern == "focused":
                     # Aimed shot - try to predict player position
                     target_y = self.rect.centery  # Default to boss's position
                     target_x = 100  # Default player x position
@@ -760,86 +788,8 @@ class Boss(pygame.sprite.Sprite):
                         self.bullets.add(bullet)
                         
                     # Increment pattern shots counter
-                    self.pattern_shots += 1
-                    
-
-            
-            else:  # Main boss
-                # Main boss has different attack patterns based on phase
-                if self.attack_pattern == "spread":
-                    # Spread shot - number of bullets depends on phase
-                    num_bullets = 3 + (self.attack_phase - 1)  # 3, 4, or 5 bullets
-                    
-                    # Calculate angles for a forward-facing spread
-                    for i in range(num_bullets):
-                        # Calculate angle for this bullet (all horizontal or slightly angled)
-                        angle_offset = 10  # Maximum angle offset in degrees
-                        angle_rad = math.radians(180 + (angle_offset * (i - (num_bullets-1)/2)))
-                        
-                        # Calculate velocity components
-                        speed = abs(self.bullet_speed)
-                        vx = math.cos(angle_rad) * speed
-                        vy = math.sin(angle_rad) * speed * 0.2  # Reduce vertical component
-                        
-                        # Create bullet
-                        bullet = BossBullet(
-                            self.rect.left, 
-                            self.rect.centery + random.randint(-5, 5), 
-                            vx, 
-                            self.bullet_damage
-                        )
-                        bullet.vy = vy
-                        
-                        # Set color based on phase
-                        if self.attack_phase == 2:
-                            bullet.color_shift = (0, 100, 255)  # Blue tint for phase 2
-                        elif self.attack_phase == 3:
-                            bullet.color_shift = (255, 0, 100)  # Purple tint for phase 3
-                            
-                        self.bullets.add(bullet)
-                
-                elif self.attack_pattern == "focused":
-                    # Focused attack - straight line of bullets aimed at player
-                    num_bullets = 2 + self.attack_phase  # 3, 4, or 5 bullets
-                    
-                    # Calculate aim direction if player reference exists
-                    target_y = self.rect.centery
-                    if self.player_ref:
-                        target_y = self.player_ref.rect.centery
-                    
-                    # Calculate angle to target
-                    dx = -200  # Aim ahead of the player
-                    dy = target_y - self.rect.centery
-                    angle = math.atan2(dy, dx)
-                    
-                    for i in range(num_bullets):
-                        # Create bullet with slight offset
-                        offset_x = -i*10  # Staggered horizontally
-                        offset_y = 0
-                        
-                        # Calculate velocity components
-                        speed = abs(self.bullet_speed) * 1.2  # Faster than normal
-                        vx = math.cos(angle) * speed
-                        vy = math.sin(angle) * speed
-                        
-                        bullet = BossBullet(
-                            self.rect.left + offset_x,
-                            self.rect.centery + offset_y,
-                            vx,
-                            self.bullet_damage
-                        )
-                        
-                        # Set color based on phase
-                        if self.attack_phase == 2:
-                            bullet.color_shift = (0, 255, 100)  # Green tint for phase 2
-                        elif self.attack_phase == 3:
-                            bullet.color_shift = (255, 100, 0)  # Orange tint for phase 3
-                            
-                        self.bullets.add(bullet)
-                
-                # Increment pattern shots counter (except for laser and charge patterns)
-                if self.attack_pattern not in ["laser", "charge"]:
-                    self.pattern_shots += 1
+                    if hasattr(self, 'pattern_shots'):
+                        self.pattern_shots += 1
             
             # Play sound
             self.sound_manager.play_sound('shoot')
