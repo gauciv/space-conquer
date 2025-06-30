@@ -217,7 +217,14 @@ class Boss(pygame.sprite.Sprite):
                     bullet.kill()
             
             # Force shooting if no bullets are active and not in special attack
-            if len(self.bullets) == 0 and not (self.is_charging or self.laser_charging or self.laser_firing or self.is_aiming):
+            # Check for active special states based on boss type
+            special_states_active = False
+            if self.boss_type == 'main':
+                special_states_active = (self.is_charging or self.laser_charging or self.laser_firing or self.is_aiming)
+            elif self.boss_type == 'mini':
+                special_states_active = (self.is_charging_special or self.is_dashing)
+            
+            if len(self.bullets) == 0 and not special_states_active:
                 # If no bullets are active, force a shot soon
                 if now - self.last_shot > 500:  # At least 500ms since last shot
                     self.last_shot = now - self.shoot_delay + 100  # Force a shot soon
