@@ -1,0 +1,9 @@
+2025-06-29 22:53:51,324 - SpaceConquer - INFO - Logger initialized. Log file: logs/space_conquer_2025-06-29_22-53-51.log
+2025-06-29 22:53:51,324 - SpaceConquer - INFO - Starting Space Conquer
+2025-06-29 22:53:51,324 - SpaceConquer - INFO - Python version: 3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]
+2025-06-29 22:53:51,324 - SpaceConquer - INFO - Pygame version: 2.6.1
+2025-06-29 22:53:51,325 - SpaceConquer - INFO - Working directory: /home/gauciv/CodingProjects/Python/space-impact
+2025-06-29 22:53:51,325 - SpaceConquer - INFO - Initializing GameManager
+2025-06-29 22:53:51,656 - SpaceConquer - INFO - GameManager initialization complete
+2025-06-29 22:53:51,656 - SpaceConquer - INFO - Starting game loop
+2025-06-29 22:54:24,318 - SpaceConquer - INFO - Exiting game

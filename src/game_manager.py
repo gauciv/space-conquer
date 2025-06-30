@@ -99,8 +99,8 @@ class GameManager:
         # Initialize phase manager
         self.phase_manager = PhaseManager(self)
         
-        # Start background music
-        self.sound_manager.play_music()
+        # Start menu music
+        self.sound_manager.play_music('menu')
     
     def start_new_game(self, testing_mode=False):
         """Initialize a new game."""
@@ -109,16 +109,29 @@ class GameManager:
         self.score = 0
         self.testing_mode = testing_mode
         
-        # Play the game start sound
-        if self.sound_manager.sound_enabled and not testing_mode:
-            # Temporarily lower music volume during start sound
-            if self.sound_manager.music_enabled:
-                self.sound_manager.temporarily_lower_music()
+        # Stop menu music before switching to gameplay music
+        self.sound_manager.stop_music()
+        print(f"[DEBUG] After stop_music, current_music: {self.sound_manager.current_music}")
+        
+        # DEBUG: Print which music track is about to be played
+        print(f"[DEBUG] Map: {self.maps[self.current_map] if hasattr(self, 'maps') and self.maps else 'Unknown'}, Music: starlight_end")
+        
+        # Switch to map-specific music (starlight_end) and play start sound
+        if not testing_mode:
+            self.sound_manager.play_music('starlight_end')
             
-            self.sound_manager.play_sound('game_start')
-            
-            # Schedule music volume restoration after start sound finishes
-            pygame.time.set_timer(pygame.USEREVENT, 600)  # 0.6 second timer
+            if self.sound_manager.sound_enabled:
+                # Temporarily lower music volume during start sound
+                if self.sound_manager.music_enabled:
+                    self.sound_manager.temporarily_lower_music()
+                
+                self.sound_manager.play_sound('game_start')
+                
+                # Schedule music volume restoration after start sound finishes
+                pygame.time.set_timer(pygame.USEREVENT, 600)  # 0.6 second timer
+        else:
+            # In testing mode, just switch music without sound effects
+            self.sound_manager.play_music('starlight_end')
         
         # Create sprite groups
         self.all_sprites = pygame.sprite.Group()
@@ -320,10 +333,10 @@ class GameManager:
                             self.enemies.empty()
                             self.powerups.empty()
                             self.all_sprites.empty()
-                            self.mini_boss = None
-                            self.main_boss = None
-                            self.mini_boss_spawned = False
-                            self.main_boss_spawned = False
+                            # Reset boss manager
+                            self.boss_manager.reset()
+                            # Switch back to menu music
+                            self.sound_manager.switch_music('menu')
                             # Play a menu sound if available
                             if 'menu' in self.sound_manager.sounds:
                                 self.sound_manager.play_sound('menu')
@@ -352,10 +365,8 @@ class GameManager:
                             self.enemies.empty()
                             self.powerups.empty()
                             self.all_sprites.empty()
-                            self.mini_boss = None
-                            self.main_boss = None
-                            self.mini_boss_spawned = False
-                            self.main_boss_spawned = False
+                            # Reset boss manager
+                            self.boss_manager.reset()
                             
                             # Reset testing mode when returning to main menu
                             if not pygame.key.get_mods() & pygame.KMOD_CTRL:  # Only reset if Ctrl is not held
@@ -363,11 +374,8 @@ class GameManager:
                                 self.ui_manager.testing_panel_open = False
                                 self.ui_manager.show_robot_button = False
                             
-                            # Play a menu sound if available
-                            if 'menu' in self.sound_manager.sounds:
-                                self.sound_manager.play_sound('menu')
-                            elif 'select' in self.sound_manager.sounds:
-                                self.sound_manager.play_sound('select')
+                            # Switch back to menu music
+                            self.sound_manager.switch_music('menu')
                             # Play a menu sound if available
                             if 'menu' in self.sound_manager.sounds:
                                 self.sound_manager.play_sound('menu')
@@ -441,7 +449,19 @@ class GameManager:
                 self.debris.update()
                 
                 # Update bosses
-                self.boss_manager.update()
+                boss_spawned = self.boss_manager.update()
+                
+                # Handle boss music
+                if self.boss_manager.has_active_boss():
+                    # Switch to boss music if we're not already playing it
+                    if self.sound_manager.get_current_track() != 'boss_battle':
+                        print("[DEBUG] Switching to boss battle music")
+                        self.sound_manager.switch_music('boss_battle')
+                else:
+                    # Only switch back to gameplay music if we were playing boss music and there's no active boss
+                    if self.sound_manager.get_current_track() == 'boss_battle':
+                        print("[DEBUG] Boss defeated, switching back to gameplay music")
+                        self.sound_manager.switch_music('starlight_end')
                 
                 # Update phase manager based on time
                 self.phase_manager.update()
@@ -575,8 +595,6 @@ class GameManager:
                                 points = enemy.points * self.player.score_multiplier
                                 self.score += points
                                 enemy.kill()
-                                # Play explosion sound
-                                self.sound_manager.play_sound('explosion')
                 
                 # Check for bullet collisions with asteroids
                 for asteroid in self.asteroids:
@@ -605,8 +623,6 @@ class GameManager:
                                 points = debris_obj.points * self.player.score_multiplier
                                 self.score += points
                                 debris_obj.kill()
-                                # Play explosion sound
-                                self.sound_manager.play_sound('explosion')
                 
                 # Handle all boss-related collisions
                 self.boss_manager.handle_collisions(self.player)
@@ -749,36 +765,11 @@ class GameManager:
         self.phase_manager.update(self.score)
     
     def handle_boss_collisions(self):
-        """Handle all boss-related collisions in a robust way."""
-        # Only process if player exists and has bullets
-        if not self.player or not hasattr(self.player, 'bullets'):
-            return
-            
-        # Process mini-boss collisions
-        if self.mini_boss:
-            # Check if mini-boss is properly initialized
-            if hasattr(self.mini_boss, 'hitbox'):
-                # Check player bullets against mini-boss
-                for bullet in list(self.player.bullets):
-                    if bullet.hitbox.colliderect(self.mini_boss.hitbox):
-                        bullet.kill()
-                        if self.mini_boss.take_damage(1):
-                            # Mini-boss defeated
-                            points = self.mini_boss.score_value * self.player.score_multiplier
-                            self.score += points
-                            self.mini_boss = None
-                            self.sound_manager.play_sound('explosion')
-                            break  # Exit loop since mini_boss is now None
-                
-                # Check mini-boss bullets against player
-                if self.mini_boss and hasattr(self.mini_boss, 'bullets'):
-                    for bullet in list(self.mini_boss.bullets):
-                        if self.player.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
-                                if self.player.health <= 0:
-                                    self.game_state = self.GAME_STATE_GAME_OVER
-                                    self.sound_manager.play_sound('game_over')
+        """Handle all boss-related collisions."""
+        # Delegate to the boss manager
+        if self.player:
+            self.boss_manager.handle_collisions(self.player)
+            self.sound_manager.play_sound('game_over')
         
         # Process main-boss collisions
         if self.main_boss:
@@ -986,69 +977,15 @@ class GameManager:
 
     def initialize_boss(self, boss_type):
         """Initialize a boss of the specified type and add it to the game."""
-        if boss_type == 'mini':
-            # Create mini boss
-            mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
-            self.all_sprites.add(mini_boss)
-            self.boss_manager.mini_boss = mini_boss
-            self.boss_manager.mini_boss_spawned = True
-            print("Mini boss initialized!")
-            return mini_boss
-        elif boss_type == 'main':
-            # Create main boss
-            main_boss = Boss('main', self.asset_loader, self.sound_manager)
-            self.all_sprites.add(main_boss)
-            self.boss_manager.main_boss = main_boss
-            self.boss_manager.main_boss_spawned = True
-            print("Main boss initialized!")
-            return main_boss
-        return None
-        if boss_type == 'mini':
-            # Create mini boss
-            self.mini_boss = Boss('mini', self.asset_loader, self.sound_manager)
-            self.all_sprites.add(self.mini_boss)
-            self.mini_boss_spawned = True
-            print("Mini boss initialized!")
-            return self.mini_boss
-        elif boss_type == 'main':
-            # Create main boss
-            self.main_boss = Boss('main', self.asset_loader, self.sound_manager)
-            self.all_sprites.add(self.main_boss)
-            self.main_boss_spawned = True
-            print("Main boss initialized!")
-            return self.main_boss
-        return None
+        # Use the boss manager to spawn the boss
+        return self.boss_manager.spawn_boss(boss_type)
+        
     def handle_boss_collisions(self):
-        """Handle all boss-related collisions in a robust way."""
-        # Only process if player exists and has bullets
-        if not self.player or not hasattr(self.player, 'bullets'):
-            return
-            
-        # Process mini-boss collisions
-        if self.mini_boss:
-            # Check if mini-boss is properly initialized
-            if hasattr(self.mini_boss, 'hitbox'):
-                # Check player bullets against mini-boss
-                for bullet in list(self.player.bullets):
-                    if bullet.hitbox.colliderect(self.mini_boss.hitbox):
-                        bullet.kill()
-                        if self.mini_boss.take_damage(1):
-                            # Mini-boss defeated
-                            points = self.mini_boss.score_value * self.player.score_multiplier
-                            self.score += points
-                            self.mini_boss = None
-                            self.sound_manager.play_sound('explosion')
-                            break  # Exit loop since mini_boss is now None
-                
-                # Check mini-boss bullets against player
-                if self.mini_boss and hasattr(self.mini_boss, 'bullets'):
-                    for bullet in list(self.mini_boss.bullets):
-                        if self.player.hitbox.colliderect(bullet.hitbox):
-                            bullet.kill()
-                            if self.player.take_damage(self.ui_manager.god_mode if self.testing_mode else False):
-                                if self.player.health <= 0:
-                                    self.game_state = self.GAME_STATE_GAME_OVER
-                                    self.sound_manager.play_sound('game_over')
+        """Handle all boss-related collisions."""
+        # Delegate to the boss manager
+        if self.player:
+            self.boss_manager.handle_collisions(self.player)
+            self.sound_manager.play_sound('game_over')
         
         # Process main-boss collisions
         if self.main_boss:
@@ -1075,43 +1012,6 @@ class GameManager:
                                 if self.player.health <= 0:
                                     self.game_state = self.GAME_STATE_GAME_OVER
                                     self.sound_manager.play_sound('game_over')
-                # Check for player collision with asteroids
-                for asteroid in self.asteroids:
-                    if self.player.hitbox.colliderect(asteroid.hitbox):
-                        # Use the same approach as enemy collisions
-                        source_id = f"asteroid_{asteroid.rect.x}_{asteroid.rect.y}"
-                        damage_applied = self.player.take_damage(
-                            self.testing_mode and self.ui_manager.god_mode,
-                            source_id=source_id,
-                            damage=asteroid.collision_damage
-                        )
-                        
-                        # Only damage the asteroid if damage was applied to player
-                        if damage_applied:
-                            if asteroid.take_damage(1):
-                                # Asteroid destroyed, check if it should drop a powerup
-                                if asteroid.should_drop_powerup():
-                                    powerup = PowerUp(self.asset_loader.images, powerup_type=asteroid.powerup_type)
-                                    powerup.rect.center = asteroid.rect.center
-                                    self.powerups.add(powerup)
-                                    self.all_sprites.add(powerup)
-                        
-                        # Check if player died
-                        if damage_applied and self.player.health <= 0:
-                            self.game_state = self.GAME_STATE_GAME_OVER
-                            self.game_active = False
-                            self.sound_manager.play_sound('game_over')
-                        
-                        if damage_applied and self.player.health <= 0:
-                            self.game_state = self.GAME_STATE_GAME_OVER
-                            self.game_active = False
-                            # Play game over sound
-                            self.sound_manager.play_sound('game_over')
-                            # Lower music volume for game over sound
-                            if self.sound_manager.music_enabled:
-                                self.sound_manager.temporarily_lower_music(duration=1500)
-                            # Schedule music volume restoration
-                            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
     def respawn_player(self):
         """Respawn the player in test mode."""
         # Reset player health
@@ -1134,53 +1034,6 @@ class GameManager:
         # Play respawn sound if available
         if 'powerup' in self.sound_manager.sounds:
             self.sound_manager.play_sound('powerup')
-            
-        print("Player respawned in test mode")
-    def handle_player_death(self):
-        """Handle player death based on game mode."""
-        if self.testing_mode and not self.ui_manager.god_mode:
-            # In test mode without god mode, start respawn countdown instead of game over
-            self.ui_manager.start_respawn_countdown()
-            print("Player died in test mode - starting respawn countdown")
-            return True
-        else:
-            # Normal game over
-            self.game_state = self.GAME_STATE_GAME_OVER
-            self.game_active = False
-            # Play game over sound
-            self.sound_manager.play_sound('game_over')
-            # Lower music volume for game over sound
-            if self.sound_manager.music_enabled:
-                self.sound_manager.temporarily_lower_music(duration=1500)
-            # Schedule music volume restoration
-            pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1.5 seconds
-            return False
-    def respawn_player(self):
-        """Respawn the player in test mode."""
-        # Reset player health
-        self.player.health = 3  # Default player health
-        
-        # Reset player position
-        self.player.rect.centerx = 100
-        self.player.rect.centery = SCREEN_HEIGHT // 2
-        
-        # Make player temporarily invulnerable
-        self.player.invulnerable = True
-        self.player.invulnerable_timer = pygame.time.get_ticks()
-        self.player.invulnerable_duration = 3000  # 3 seconds of invulnerability after respawn
-        
-        # Clear nearby enemies for safety
-        for enemy in self.enemies:
-            if enemy.rect.x < SCREEN_WIDTH // 2:
-                enemy.kill()
-                
-        # Play respawn sound if available
-        if 'powerup' in self.sound_manager.sounds:
-            self.sound_manager.play_sound('powerup')
-            
-        # Set game state back to playing
-        self.game_state = self.GAME_STATE_PLAYING
-        self.game_active = True
             
         print("Player respawned in test mode")
     def handle_player_death(self):

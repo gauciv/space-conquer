@@ -17,6 +17,8 @@ class SoundManager:
         self.sfx_volume = DEFAULT_SFX_VOLUME
         self.music_volume = DEFAULT_MUSIC_VOLUME
         self.sounds = {}
+        self.music_tracks = {}
+        self.current_music = None
         
         try:
             self._load_sounds()
@@ -27,11 +29,11 @@ class SoundManager:
             print("Game will run without sound effects.")
         
         try:
-            self._load_music()
-            print("Background music loaded successfully!")
+            self._load_music_tracks()
+            print("Music tracks loaded successfully!")
         except Exception as e:
             self.music_enabled = False
-            print(f"Error loading background music: {e}")
+            print(f"Error loading music tracks: {e}")
             print("Game will run without background music.")
     
     def _load_sounds(self):
@@ -52,14 +54,36 @@ class SoundManager:
             else:
                 print(f"Warning: Sound file not found: {path}")
     
-    def _load_music(self):
-        """Load background music."""
-        music_path = get_asset_path('music', 'background_music.wav')
-        if os.path.exists(music_path):
-            pygame.mixer.music.load(music_path)
-            pygame.mixer.music.set_volume(self.music_volume)
-        else:
-            print(f"Warning: Music file not found: {music_path}")
+    def _load_music_tracks(self):
+        """Load all music tracks from the manifest dynamically."""
+        try:
+            import json
+            import os
+            # Fix: Go up two levels from src/utils to reach project root
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            manifest_path = os.path.join(project_root, 'assets', 'music', 'manifest.json')
+            print(f"[DEBUG] Looking for manifest at: {manifest_path}")
+            
+            with open(manifest_path, 'r') as f:
+                music_manifest = json.load(f)
+                print(f"[DEBUG] Loaded manifest with tracks: {list(music_manifest.keys())}")
+            
+            for track_name, track_info in music_manifest.items():
+                path = get_asset_path('music', track_info['file'])
+                print(f"[DEBUG] Trying to load track {track_name} from {path}")
+                if os.path.exists(path):
+                    self.music_tracks[track_name] = path
+                    print(f"[DEBUG] Successfully loaded music track: {track_name} -> {path}")
+                else:
+                    print(f"[DEBUG] Music file not found: {path}")
+            
+            if not self.music_tracks:
+                print("[DEBUG] No music tracks were loaded!")
+                self.music_enabled = False
+            else:
+                print(f"[DEBUG] Available tracks after loading: {list(self.music_tracks.keys())}")
+        except Exception as e:
+            print(f"[DEBUG] Error loading music tracks: {str(e)}")
             self.music_enabled = False
     
     def play_sound(self, sound_name):
@@ -67,14 +91,26 @@ class SoundManager:
         if self.sound_enabled and sound_name in self.sounds:
             self.sounds[sound_name].play()
     
-    def play_music(self, loop=-1):
-        """Start playing background music."""
-        if self.music_enabled:
+    def play_music(self, track='menu', loop=-1):
+        """Start playing a specific music track."""
+        if self.music_enabled and track in self.music_tracks:
+            # Only load and play if it's a different track
+            if self.current_music != track:
+                print(f"[DEBUG] Loading and playing music track: {track} -> {self.music_tracks[track]}")
+                pygame.mixer.music.load(self.music_tracks[track])
+                pygame.mixer.music.set_volume(self.music_volume)
+                self.current_music = track
             pygame.mixer.music.play(loop)
+            print(f"[DEBUG] Actually playing music track: {track}")
+            print(f"[DEBUG] Current music: {self.current_music}")
+            print(f"[DEBUG] Music is playing: {pygame.mixer.music.get_busy()}, Volume: {pygame.mixer.music.get_volume()}")
+        elif self.music_enabled:
+            print(f"Music track '{track}' not found, available tracks: {list(self.music_tracks.keys())}")
     
     def stop_music(self):
         """Stop background music."""
         pygame.mixer.music.stop()
+        self.current_music = None
     
     def pause_music(self):
         """Pause background music."""
@@ -105,6 +141,23 @@ class SoundManager:
                 pygame.mixer.music.unpause()
                 self.music_enabled = True
             pygame.mixer.music.set_volume(self.music_volume)
+    
+    def switch_music(self, track, loop=-1):
+        """Switch to a different music track smoothly."""
+        if self.music_enabled and track in self.music_tracks:
+            if self.current_music != track:
+                print(f"[DEBUG] Fading out and switching to music track: {track}")
+                pygame.mixer.music.fadeout(500)  # Fade out over 500ms
+                pygame.time.wait(500)  # Wait for fade out
+                self.play_music(track, loop)
+    
+    def get_available_tracks(self):
+        """Get list of available music tracks."""
+        return list(self.music_tracks.keys())
+    
+    def get_current_track(self):
+        """Get the currently playing track name."""
+        return self.current_music
     
     def temporarily_lower_music(self, duration=1000, factor=0.3):
         """Temporarily lower music volume and restore it after duration."""
