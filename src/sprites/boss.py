@@ -21,7 +21,7 @@ class Boss(pygame.sprite.Sprite):
             self.max_health = 50  # Doubled from 25 to 50
             self.health = self.max_health
             self.speed = 2.5  # Increased from 2 to 2.5
-            self.shoot_delay = 1000  # milliseconds
+            self.shoot_delay = 300  # Reduced to 300ms for faster shooting
             self.bullet_speed = -8  # Negative because bullets move left
             self.bullet_damage = 1
             self.score_value = 750  # Increased from 250 to 750 (3x)
@@ -42,14 +42,13 @@ class Boss(pygame.sprite.Sprite):
             self.is_dashing = False
             self.dash_target_y = 0
             self.dash_speed = 8
-            self.bullet_patterns = ["spread", "aimed", "barrage", "special"]  # Added special attack
+            self.bullet_patterns = ["spread", "aimed", "barrage"]  # Simplified patterns
             self.current_pattern_index = 0
             self.pattern_shots = 0  # Count shots in current pattern
-            self.max_pattern_shots = 3  # Maximum shots before changing pattern
+            self.max_pattern_shots = 2  # Reduced from 3 to 2 for faster pattern changes
             self.player_ref = None  # Will be set by game manager
-            self.special_attack_cooldown = 0  # Cooldown for special attack
-            self.is_charging_special = False  # Whether currently charging special attack
-            self.special_charge_time = 0  # Time when special attack charging started
+            
+
             
             # Weak point system
             self.has_weak_point = True
@@ -127,8 +126,7 @@ class Boss(pygame.sprite.Sprite):
             self.target_y_for_shooting = SCREEN_HEIGHT // 2  # Default to middle
             self.moving_to_position = False
             
-            # Movement parameters
-            self.movement_timer = 0
+            # Movement parameters (already initialized above for all bosses)
             self.figure8_center_y = SCREEN_HEIGHT // 2
             self.figure8_amplitude = 120
             self.figure8_frequency = 0.015
@@ -180,6 +178,7 @@ class Boss(pygame.sprite.Sprite):
         self.center_y = SCREEN_HEIGHT // 2
         self.amplitude = 100  # How far up/down the boss moves
         self.frequency = 0.02  # How fast the boss moves up/down
+        self.movement_timer = 0  # Timer for movement calculations
         
         # Death animation properties
         self.dying = False
@@ -217,23 +216,30 @@ class Boss(pygame.sprite.Sprite):
                     bullet.kill()
             
             # Force shooting if no bullets are active and not in special attack
-            # Check for active special states based on boss type
-            special_states_active = False
-            if self.boss_type == 'main':
-                special_states_active = (self.is_charging or self.laser_charging or self.laser_firing or self.is_aiming)
-            elif self.boss_type == 'mini':
-                special_states_active = (self.is_charging_special or self.is_dashing)
-            
-            if len(self.bullets) == 0 and not special_states_active:
-                # If no bullets are active, force a shot soon
-                if now - self.last_shot > 500:  # At least 500ms since last shot
-                    self.last_shot = now - self.shoot_delay + 100  # Force a shot soon
+            # Force shooting if no bullets and entry is complete
+            if len(self.bullets) == 0 and self.entry_complete:
+                self.last_shot = now - self.shoot_delay  # Force immediate shot
             
             # Different movement patterns based on boss type
-            if self.movement_pattern == "sine":
-                # Sine wave movement
+            if self.movement_pattern == "advanced":
+                # Advanced movement for mini-boss
                 self.movement_timer += 1
-                self.rect.centery = self.center_y + math.sin(self.movement_timer * 0.05) * self.amplitude
+                
+                # Vertical sine wave movement
+                base_y = self.center_y + math.sin(self.movement_timer * 0.03) * self.amplitude
+                self.rect.centery = base_y
+                
+                # Add horizontal movement
+                base_x = SCREEN_WIDTH - self.battle_distance - self.rect.width
+                horizontal_offset = math.sin(self.movement_timer * 0.02) * 40
+                self.rect.x = base_x + horizontal_offset
+                
+                # Add phase-specific movement modifications
+                if self.attack_phase >= 2:
+                    # Phase 2+: Add occasional quick movements
+                    if self.movement_timer % 90 == 0:  # Every 1.5 seconds
+                        self.rect.y += random.randint(-40, 40)
+                        self.rect.x += random.randint(-20, 20)
                 
                 # For mini-boss, handle attack pattern transitions and dash
                 if self.boss_type == 'mini':
@@ -256,22 +262,16 @@ class Boss(pygame.sprite.Sprite):
                     if self.dash_cooldown > 0:
                         self.dash_cooldown -= 16  # Decrease cooldown (16ms per frame)
                     elif not self.is_dashing and self.attack_phase >= 2:  # Only dash in phase 2+
-                        # Check if player is in a good position for dash
-                        should_dash = False
-                        if self.player_ref and hasattr(self.player_ref, 'rect'):
-                            # Calculate horizontal distance to player
-                            dx = self.rect.centerx - self.player_ref.rect.centerx
-                            # Only dash if player is at a good horizontal distance
-                            if 100 < dx < 300:
-                                should_dash = True
-                                self.dash_target_y = self.player_ref.rect.centery
-                            
-                        if should_dash or random.random() < 0.005:  # Small random chance to dash anyway
+                        # Increased dash frequency
+                        if random.random() < 0.008:  # Increased from 0.005 to 0.008
                             # Start dash
                             self.is_dashing = True
-                            if not hasattr(self, 'dash_target_y') or self.dash_target_y == 0:
+                            # Target player position if available
+                            if self.player_ref and hasattr(self.player_ref, 'rect'):
+                                self.dash_target_y = self.player_ref.rect.centery
+                            else:
                                 self.dash_target_y = random.randint(100, SCREEN_HEIGHT - 100)
-                            self.dash_duration = 500  # 500ms dash
+                            self.dash_duration = 400  # Reduced from 500ms to 400ms for quicker dashes
                             # Play dash sound
                             self.sound_manager.play_sound('shoot')
                     
@@ -279,7 +279,7 @@ class Boss(pygame.sprite.Sprite):
                     if self.is_dashing:
                         # Move quickly toward target y position
                         dy = self.dash_target_y - self.rect.centery
-                        if abs(dy) > 5:
+                        if abs(dy) > 3:  # Reduced threshold for more responsive movement
                             # Move toward target at dash speed
                             direction = 1 if dy > 0 else -1
                             self.rect.y += direction * self.dash_speed
@@ -289,7 +289,7 @@ class Boss(pygame.sprite.Sprite):
                         if self.dash_duration <= 0:
                             # End dash
                             self.is_dashing = False
-                            self.dash_cooldown = 2000  # 2 second cooldown before next dash
+                            self.dash_cooldown = 1500  # Reduced from 2000ms to 1500ms for more frequent dashes
                     
                     # Handle weak point system
                     if self.has_weak_point:
@@ -659,36 +659,50 @@ class Boss(pygame.sprite.Sprite):
     def shoot(self):
         now = pygame.time.get_ticks()
         
-        # Skip shooting if laser is active or charging
+        # Skip shooting if laser is active or charging (main boss only)
         if self.boss_type == 'main' and (self.laser_charging or self.laser_firing or self.is_aiming):
             return
             
-        # Skip shooting if charging
+        # Skip shooting if charging (main boss only)
         if self.boss_type == 'main' and self.is_charging:
             return
             
         # Force shooting if no bullets are active for too long
-        if self.boss_type == 'main' and len(self.bullets) == 0 and now - self.last_shot > 1500:
+        if len(self.bullets) == 0 and now - self.last_shot > 800:
             self.last_shot = now - self.shoot_delay  # Force immediate shot
             
-        if now - self.last_shot > self.shoot_delay:
+        # Debug: Always try to shoot for mini-boss after entry
+        if self.boss_type == 'mini' and self.entry_complete:
+            if now - self.last_shot > self.shoot_delay:
+                self.last_shot = now
+                # Create highly visible bullet
+                bullet = BossBullet(self.rect.left, self.rect.centery, self.bullet_speed, self.bullet_damage)
+                # Make bullet much larger and brighter
+                bullet.width = 20
+                bullet.height = 12
+                bullet.image = pygame.Surface((bullet.width, bullet.height))
+                bullet.image.fill((255, 0, 0))  # Bright red
+                bullet.rect = bullet.image.get_rect()
+                bullet.rect.right = self.rect.left
+                bullet.rect.centery = self.rect.centery
+                self.bullets.add(bullet)
+                self.sound_manager.play_sound('shoot')
+                return
+        
+        if now - self.last_shot > self.shoot_delay and self.entry_complete:
             self.last_shot = now
             
             if self.boss_type == 'mini':
                 # Mini boss has different attack patterns
                 if self.attack_pattern == "spread":
-                    # Spread shot - 3 bullets in a fan pattern
-                    bullet1 = BossBullet(self.rect.left, self.rect.centery, self.bullet_speed, self.bullet_damage)
-                    bullet2 = BossBullet(self.rect.left, self.rect.centery - 10, self.bullet_speed, self.bullet_damage)
-                    bullet3 = BossBullet(self.rect.left, self.rect.centery + 10, self.bullet_speed, self.bullet_damage)
+                    # Spread shot - 3 bullets in a fan pattern with better visibility
+                    for i in range(3):
+                        y_offset = (i - 1) * 20  # -20, 0, 20
+                        bullet = BossBullet(self.rect.left, self.rect.centery + y_offset, self.bullet_speed, self.bullet_damage)
+                        bullet.vy = y_offset * 0.08  # Add vertical movement
+                        bullet.color_shift = (255, 150, 150)  # Light red for visibility
+                        self.bullets.add(bullet)
                     
-                    # Add vertical velocity to create a spread pattern
-                    bullet2.vy = -1.5
-                    bullet3.vy = 1.5
-                    
-                    self.bullets.add(bullet1, bullet2, bullet3)
-                    
-                    # Increment pattern shots counter
                     self.pattern_shots += 1
                 
                 elif self.attack_pattern == "aimed":
@@ -732,69 +746,23 @@ class Boss(pygame.sprite.Sprite):
                     self.pattern_shots += 1
                 
                 elif self.attack_pattern == "barrage":
-                    # Barrage - multiple bullets in quick succession
-                    # We'll create 5 bullets with slight variations
-                    for i in range(5):
-                        offset_y = random.randint(-20, 20)
+                    # Barrage - rapid fire bullets with better visibility
+                    for i in range(4):  # Reduced from 5 to 4 bullets
+                        offset_y = random.randint(-25, 25)
                         bullet = BossBullet(
                             self.rect.left, 
                             self.rect.centery + offset_y, 
-                            self.bullet_speed * random.uniform(0.9, 1.1),  # Slight speed variation
+                            self.bullet_speed * 1.3,  # Faster bullets for visibility
                             self.bullet_damage
                         )
-                        bullet.vy = random.uniform(-0.5, 0.5)  # Slight vertical drift
+                        bullet.vy = random.uniform(-1.5, 1.5)  # More vertical spread
+                        bullet.color_shift = (255, 150, 0)  # Orange bullets for visibility
                         self.bullets.add(bullet)
                         
                     # Increment pattern shots counter
                     self.pattern_shots += 1
                     
-                elif self.attack_pattern == "special":
-                    # Special attack - circular burst of bullets
-                    if not self.is_charging_special:
-                        # Start charging special attack
-                        self.is_charging_special = True
-                        self.special_charge_time = now
-                        # Visual effect for charging
-                        self.flash_effect = 20
-                        # Play charging sound
-                        self.sound_manager.play_sound('shoot')
-                    else:
-                        # Check if charging is complete
-                        charge_time = now - self.special_charge_time
-                        if charge_time >= 1000:  # 1 second charge time
-                            # Fire circular burst of bullets
-                            num_bullets = 8 + self.attack_phase * 2  # 10, 12, or 14 bullets based on phase
-                            
-                            for i in range(num_bullets):
-                                # Calculate angle for this bullet
-                                angle = (i / num_bullets) * 2 * math.pi
-                                
-                                # Calculate velocity components
-                                speed = abs(self.bullet_speed) * 0.8  # Slightly slower for balance
-                                vx = math.cos(angle) * speed
-                                vy = math.sin(angle) * speed
-                                
-                                # Create bullet
-                                bullet = BossBullet(
-                                    self.rect.centerx, 
-                                    self.rect.centery, 
-                                    vx, 
-                                    self.bullet_damage
-                                )
-                                bullet.vy = vy
-                                bullet.color_shift = (255, 200, 0)  # Golden bullets for special attack
-                                bullet.is_special = True  # Mark as special for rendering
-                                self.bullets.add(bullet)
-                            
-                            # Reset special attack state
-                            self.is_charging_special = False
-                            self.special_attack_cooldown = 5000  # 5 second cooldown
-                            
-                            # Play special attack sound
-                            self.sound_manager.play_sound('explosion')
-                            
-                            # Increment pattern shots counter
-                            self.pattern_shots += 1
+
             
             else:  # Main boss
                 # Main boss has different attack patterns based on phase
@@ -1211,8 +1179,32 @@ class Boss(pygame.sprite.Sprite):
         # Draw the boss with effects applied
         surface.blit(display_image, self.rect)
         
-        # Draw special attack charging effect for mini-boss
-        if self.boss_type == 'mini' and self.is_charging_special:
+        # Draw hitbox if debug mode is enabled
+        if DEBUG_HITBOXES:
+            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        
+        # Draw bullets with custom draw method
+        for bullet in self.bullets:
+            if hasattr(bullet, 'draw'):
+                bullet.draw(surface)
+            else:
+                surface.blit(bullet.image, bullet.rect)
+        
+        # Draw laser if active (draw last to ensure it's on top)
+        if self.boss_type == 'main':
+            if self.is_aiming:
+                self.draw_laser_warning(surface)
+            elif self.laser_charging:
+                self.draw_laser_warning(surface)
+            elif self.laser_firing:
+                self.draw_laser_beam(surface)
+        
+        # Draw health bar if not dying
+        if not self.dying:
+            self.draw_health_bar(surface)
+        
+        # Draw laser charging effect for mini-boss
+        if self.boss_type == 'mini' and hasattr(self, 'laser_charging') and self.laser_charging:
             # Calculate charge progress
             now = pygame.time.get_ticks()
             charge_progress = min(1.0, (now - self.special_charge_time) / 1000)
@@ -1242,7 +1234,7 @@ class Boss(pygame.sprite.Sprite):
             
             # Draw charging text
             font = pygame.font.SysFont('Arial', 16)
-            charge_text = font.render("CHARGING SPECIAL", True, (255, 200, 0))
+            charge_text = font.render("LASER CHARGING", True, (255, 100, 100))
             surface.blit(charge_text, (self.rect.centerx - charge_text.get_width()//2, self.rect.top - 25))
         
         # Draw weak point for mini-boss
@@ -1270,32 +1262,36 @@ class Boss(pygame.sprite.Sprite):
             font = pygame.font.SysFont('Arial', 12)
             weak_text = font.render("WEAK POINT", True, (255, 50, 50))
             surface.blit(weak_text, (weak_point_x - weak_text.get_width()//2, weak_point_y - 30))
+    
+    def draw_mini_laser_warning(self, surface):
+        """Draw laser warning for mini-boss."""
+        # Draw warning line
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
         
-        # Draw hitbox if debug mode is enabled
+        # Pulsing red warning line
+        pulse = (math.sin(pygame.time.get_ticks() * 0.02) + 1) / 2
+        r = 255
+        g = int(100 * (1 - pulse))
+        b = int(100 * (1 - pulse))
         
-        # Draw hitbox if debug mode is enabled
-        if DEBUG_HITBOXES:
-            pygame.draw.rect(surface, (255, 0, 0), self.hitbox, 1)
+        pygame.draw.line(surface, (r, g, b), start_pos, end_pos, self.laser_width)
         
-        # Draw bullets with custom draw method
-        for bullet in self.bullets:
-            if hasattr(bullet, 'draw'):
-                bullet.draw(surface)
-            else:
-                surface.blit(bullet.image, bullet.rect)
+        # Warning text
+        font = pygame.font.SysFont('Arial', 14)
+        warning_text = font.render("LASER CHARGING", True, (255, 100, 100))
+        surface.blit(warning_text, (50, self.laser_target_y - 25))
+    
+    def draw_mini_laser_beam(self, surface):
+        """Draw laser beam for mini-boss."""
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
         
-        # Draw laser if active (draw last to ensure it's on top)
-        if self.boss_type == 'main':
-            if self.is_aiming:
-                self.draw_laser_warning(surface)
-            elif self.laser_charging:
-                self.draw_laser_warning(surface)
-            elif self.laser_firing:
-                self.draw_laser_beam(surface)
+        # Draw main beam
+        pygame.draw.line(surface, (255, 100, 100), start_pos, end_pos, self.laser_width)
         
-        # Draw health bar if not dying
-        if not self.dying:
-            self.draw_health_bar(surface)
+        # Draw bright core
+        pygame.draw.line(surface, (255, 200, 200), start_pos, end_pos, self.laser_width // 2)
     
     def draw_laser_warning(self, surface):
         """Draw the laser warning indicator."""
