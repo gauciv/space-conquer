@@ -55,35 +55,31 @@ class SoundManager:
                 print(f"Warning: Sound file not found: {path}")
     
     def _load_music_tracks(self):
-        """Load all music tracks from the manifest dynamically."""
-        try:
-            import json
-            import os
-            # Fix: Go up two levels from src/utils to reach project root
-            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            manifest_path = os.path.join(project_root, 'assets', 'music', 'manifest.json')
-            print(f"[DEBUG] Looking for manifest at: {manifest_path}")
-            
-            with open(manifest_path, 'r') as f:
-                music_manifest = json.load(f)
-                print(f"[DEBUG] Loaded manifest with tracks: {list(music_manifest.keys())}")
-            
-            for track_name, track_info in music_manifest.items():
-                path = get_asset_path('music', track_info['file'])
-                print(f"[DEBUG] Trying to load track {track_name} from {path}")
-                if os.path.exists(path):
-                    self.music_tracks[track_name] = path
-                    print(f"[DEBUG] Successfully loaded music track: {track_name} -> {path}")
-                else:
-                    print(f"[DEBUG] Music file not found: {path}")
-            
-            if not self.music_tracks:
-                print("[DEBUG] No music tracks were loaded!")
-                self.music_enabled = False
+        """Load all music tracks."""
+        music_files = {
+            'menu': 'background_music.wav',
+            'gameplay': 'starlight_end.wav', 
+            'starlight_end': 'starlight_end.wav',
+            'boss': 'boss_battle.wav',
+            'boss_battle': 'boss_battle.wav'
+        }
+        
+        for track_name, filename in music_files.items():
+            path = get_asset_path('music', filename)
+            if os.path.exists(path):
+                self.music_tracks[track_name] = path
+                print(f"Loaded music track: {track_name}")
             else:
-                print(f"[DEBUG] Available tracks after loading: {list(self.music_tracks.keys())}")
-        except Exception as e:
-            print(f"[DEBUG] Error loading music tracks: {str(e)}")
+                print(f"Music file not found: {path}")
+                # Fallback logic
+                if track_name == 'gameplay' and 'menu' in self.music_tracks:
+                    self.music_tracks[track_name] = self.music_tracks['menu']
+                    print(f"Using menu music as fallback for {track_name}")
+                elif track_name == 'boss' and 'gameplay' in self.music_tracks:
+                    self.music_tracks[track_name] = self.music_tracks['gameplay']
+                    print(f"Using gameplay music as fallback for {track_name}")
+        
+        if not self.music_tracks:
             self.music_enabled = False
     
     def play_sound(self, sound_name):
@@ -96,14 +92,11 @@ class SoundManager:
         if self.music_enabled and track in self.music_tracks:
             # Only load and play if it's a different track
             if self.current_music != track:
-                print(f"[DEBUG] Loading and playing music track: {track} -> {self.music_tracks[track]}")
                 pygame.mixer.music.load(self.music_tracks[track])
                 pygame.mixer.music.set_volume(self.music_volume)
                 self.current_music = track
             pygame.mixer.music.play(loop)
-            print(f"[DEBUG] Actually playing music track: {track}")
-            print(f"[DEBUG] Current music: {self.current_music}")
-            print(f"[DEBUG] Music is playing: {pygame.mixer.music.get_busy()}, Volume: {pygame.mixer.music.get_volume()}")
+            print(f"Playing music track: {track}")
         elif self.music_enabled:
             print(f"Music track '{track}' not found, available tracks: {list(self.music_tracks.keys())}")
     
@@ -146,7 +139,6 @@ class SoundManager:
         """Switch to a different music track smoothly."""
         if self.music_enabled and track in self.music_tracks:
             if self.current_music != track:
-                print(f"[DEBUG] Fading out and switching to music track: {track}")
                 pygame.mixer.music.fadeout(500)  # Fade out over 500ms
                 pygame.time.wait(500)  # Wait for fade out
                 self.play_music(track, loop)
