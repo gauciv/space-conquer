@@ -91,25 +91,25 @@ class EnhancedEnemy(Enemy):
         
         # Number of particles based on enemy type
         if self.enemy_type == 'low':
-            num_particles = 15
+            num_particles = 25  # Increased from 15 to 25
         elif self.enemy_type == 'elite':
-            num_particles = 20
+            num_particles = 30  # Increased from 20 to 30
         elif self.enemy_type == 'super':
-            num_particles = 30
+            num_particles = 40  # Increased from 30 to 40
         else:
-            num_particles = 15
+            num_particles = 25
         
         # Create particles
         for _ in range(num_particles):
             # Random velocity
             angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(50, 150)
+            speed = random.uniform(50, 200)  # Increased max speed from 150 to 200
             vx = math.cos(angle) * speed
             vy = math.sin(angle) * speed
             
             # Random size and lifetime
-            size = random.randint(2, 5)
-            lifetime = random.uniform(0.1, 0.3)
+            size = random.randint(2, 6)  # Increased max size from 5 to 6
+            lifetime = random.uniform(0.1, 0.4)  # Increased max lifetime from 0.3 to 0.4
             
             # Random color variation
             r, g, b = self.explosion_color
@@ -132,6 +132,27 @@ class EnhancedEnemy(Enemy):
                 'lifetime': lifetime,
                 'max_lifetime': lifetime,
                 'color': color
+            })
+            
+        # Add some bright white particles for extra flash effect
+        for _ in range(5):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(100, 250)  # Faster white particles
+            vx = math.cos(angle) * speed
+            vy = math.sin(angle) * speed
+            size = random.randint(3, 7)  # Larger white particles
+            lifetime = random.uniform(0.05, 0.2)  # Shorter lifetime for flash effect
+            
+            # Add white particle
+            self.explosion_particles.append({
+                'x': self.rect.centerx,
+                'y': self.rect.centery,
+                'vx': vx,
+                'vy': vy,
+                'size': size,
+                'lifetime': lifetime,
+                'max_lifetime': lifetime,
+                'color': (255, 255, 255)  # Pure white
             })
     
     def update_death_animation(self):
@@ -197,9 +218,54 @@ class EnhancedEnemy(Enemy):
                              (self.explosion_radius, self.explosion_radius), 
                              inner_radius, 2)
             
+            # Draw innermost ring (brightest)
+            innermost_radius = int(self.explosion_radius * 0.4)
+            pygame.draw.circle(ring_surface, (255, 255, 200, alpha), 
+                             (self.explosion_radius, self.explosion_radius), 
+                             innermost_radius, 1)
+            
             # Position and draw the ring
             ring_rect = ring_surface.get_rect(center=(self.rect.centerx, self.rect.centery))
             surface.blit(ring_surface, ring_rect)
+        
+        # Draw particles
+        for particle in self.explosion_particles:
+            # Calculate alpha based on remaining lifetime
+            alpha = int(255 * (particle['lifetime'] / particle['max_lifetime']))
+            
+            # Create a surface for the particle
+            particle_surface = pygame.Surface((particle['size'] * 2, particle['size'] * 2), pygame.SRCALPHA)
+            
+            # Get particle color with alpha
+            r, g, b = particle['color']
+            color_with_alpha = (r, g, b, alpha)
+            
+            # Draw particle
+            pygame.draw.circle(particle_surface, color_with_alpha, 
+                             (particle['size'], particle['size']), 
+                             particle['size'])
+            
+            # Position and draw the particle
+            particle_rect = particle_surface.get_rect(center=(particle['x'], particle['y']))
+            surface.blit(particle_surface, particle_rect)
+            
+        # Draw bright flash at the center at the beginning of the explosion
+        progress = (time.time() - self.death_start_time) / self.death_duration
+        if progress < 0.3:  # Only during the first 30% of the animation
+            flash_alpha = int(255 * (1 - progress / 0.3))
+            flash_radius = int(self.rect.width * 0.7 * (1 - progress / 0.3))
+            
+            # Create a surface for the flash
+            flash_surface = pygame.Surface((flash_radius * 2, flash_radius * 2), pygame.SRCALPHA)
+            
+            # Draw flash
+            pygame.draw.circle(flash_surface, (255, 255, 255, flash_alpha), 
+                             (flash_radius, flash_radius), 
+                             flash_radius)
+            
+            # Position and draw the flash
+            flash_rect = flash_surface.get_rect(center=(self.rect.centerx, self.rect.centery))
+            surface.blit(flash_surface, flash_rect)
         
         # Draw particles
         for particle in self.explosion_particles:

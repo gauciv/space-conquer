@@ -19,6 +19,7 @@ from .sprites.player import Player
 from .sprites.enemy import Enemy
 from .sprites.enemy_enhanced import EnhancedEnemy
 from .sprites.super_enemy import SuperEnemy
+from .sprites.super_enemy_enhanced import SuperEnemyEnhanced
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
 from .sprites.asteroid import Asteroid
@@ -538,8 +539,8 @@ class GameManager:
                             
                             # Create enemy with behavior manager
                             if enemy_type == 'super':
-                                # Use the specialized SuperEnemy class for super-type enemies
-                                enemy = SuperEnemy(self.asset_loader.images, self.enemy_behavior_manager)
+                                # Use the specialized SuperEnemyEnhanced class for super-type enemies
+                                enemy = SuperEnemyEnhanced(self.asset_loader.images, self.enemy_behavior_manager)
                             else:
                                 # Use the regular Enemy class for other enemy types
                                 enemy = EnhancedEnemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
@@ -635,11 +636,19 @@ class GameManager:
                 # Check for player collision with enemies
                 for enemy in self.enemies:
                     # Check for collision with enemy bullets
-                    if hasattr(enemy, 'get_bullets') and enemy.enemy_type == 'low':
+                    if hasattr(enemy, 'bullets'):
                         for bullet in list(enemy.bullets):
                             # Create a bullet rect for collision detection based on direction
                             if 'direction' in bullet and bullet['direction'] == 'left':
                                 # Horizontal bullet (moving left)
+                                bullet_rect = pygame.Rect(
+                                    bullet['x'] - bullet['width'] // 2,
+                                    bullet['y'] - bullet['height'] // 2,
+                                    bullet['width'],
+                                    bullet['height']
+                                )
+                            elif 'vx' in bullet and 'vy' in bullet:
+                                # Bullet with velocity components (for super enemies)
                                 bullet_rect = pygame.Rect(
                                     bullet['x'] - bullet['width'] // 2,
                                     bullet['y'] - bullet['height'] // 2,
