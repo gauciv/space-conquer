@@ -17,6 +17,7 @@ from .utils.boss_manager import BossManager
 from .utils.enemy_behavior_manager import EnemyBehaviorManager
 from .sprites.player import Player
 from .sprites.enemy import Enemy
+from .sprites.enemy_enhanced import EnhancedEnemy
 from .sprites.super_enemy import SuperEnemy
 from .sprites.powerup import PowerUp
 from .sprites.star import Star
@@ -541,7 +542,7 @@ class GameManager:
                                 enemy = SuperEnemy(self.asset_loader.images, self.enemy_behavior_manager)
                             else:
                                 # Use the regular Enemy class for other enemy types
-                                enemy = Enemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
+                                enemy = EnhancedEnemy(enemy_type, self.asset_loader.images, self.enemy_behavior_manager)
                                 
                             enemy.points = self.enemy_points[enemy_type]  # Set points based on enemy type
                             enemy.speed_multiplier = self.enemy_speed_multiplier  # Apply speed multiplier
@@ -585,16 +586,20 @@ class GameManager:
                         self.enemy_spawn_cooldown -= 1/60  # Decrease by 1 second per 60 frames
                 
                 # Check for bullet collisions with enemies
-                for enemy in self.enemies:
-                    for bullet in self.player.bullets:
+                for enemy in list(self.enemies):  # Use a copy of the list to avoid modification during iteration
+                    for bullet in list(self.player.bullets):  # Use a copy of the list to avoid modification during iteration
                         if enemy.hitbox.colliderect(bullet.hitbox):
-                            enemy.health -= 1
+                            # Apply damage to enemy
                             bullet.kill()
-                            if enemy.health <= 0:
+                            
+                            # Check if enemy is destroyed
+                            if enemy.take_damage(1):
                                 # Apply score multiplier if active
                                 points = enemy.points * self.player.score_multiplier
                                 self.score += points
-                                enemy.kill()
+                                
+                                # The enemy's take_damage method will handle starting the death animation
+                                # The enemy will be removed automatically when the animation completes
                 
                 # Check for bullet collisions with asteroids
                 for asteroid in self.asteroids:
@@ -1034,6 +1039,13 @@ class GameManager:
         # Play respawn sound if available
         if 'powerup' in self.sound_manager.sounds:
             self.sound_manager.play_sound('powerup')
+        
+        # Reset game state to playing
+        self.game_state = self.GAME_STATE_PLAYING
+        self.game_active = True
+        
+        # Reset UI respawn state
+        self.ui_manager.respawning = False
             
         print("Player respawned in test mode")
     def handle_player_death(self):

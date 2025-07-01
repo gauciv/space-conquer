@@ -19,7 +19,7 @@ class SuperEnemy(Enemy):
         self.rect.y = random.randint(80, SCREEN_HEIGHT - 80)
         
         # Shield system
-        self.max_shield = 2
+        self.max_shield = 3  # Increased from 2 to 3 for more durability
         self.shield = self.max_shield
         self.has_shield = True
         self.shield_regen_cooldown = 0
@@ -41,6 +41,17 @@ class SuperEnemy(Enemy):
         self.charge_cooldown = 0
         self.retreat_active = False
         self.berserk_mode = False
+        
+        # Laser attack system
+        self.can_use_laser = True
+        self.laser_active = False
+        self.laser_charging = False
+        self.laser_firing = False
+        self.laser_cooldown = 0
+        self.laser_charge_time = 0
+        self.laser_fire_time = 0
+        self.laser_target_y = 0
+        self.laser_width = 15
         
         # Movement properties
         self.direction = -1  # Start moving left
@@ -82,7 +93,14 @@ class SuperEnemy(Enemy):
         # Use behavior manager if available
         if self.behavior_manager:
             self.behavior_manager.update_behavior(self, delta_time)
-            self.behavior_manager.update_bullets(self)
+            
+            # Update attack behavior based on shield status
+            if not self.has_shield and not self.laser_active:
+                # When shield is down, use laser attacks instead of bullets
+                self.try_laser_attack(delta_time)
+            else:
+                # When shield is up, use normal bullets
+                self.behavior_manager.update_bullets(self)
         else:
             # Fallback to basic movement if no behavior manager
             self.rect.x -= self.speed
@@ -104,6 +122,63 @@ class SuperEnemy(Enemy):
             if not self.shield_break_sound_played and current_time - self.shield_break_time < 0.1:
                 # Play shield break sound (will be implemented in game manager)
                 self.shield_break_sound_played = True
+                
+        # Update laser attack states
+        self.update_laser(delta_time)
+    
+    def try_laser_attack(self, delta_time):
+        """Try to use laser attack when shield is down."""
+        if not self.can_use_laser or self.laser_active:
+            return
+            
+        # 5% chance per second to start laser attack
+        if random.random() < 0.05 * delta_time:
+            self.start_laser_attack()
+    
+    def start_laser_attack(self):
+        """Start the laser attack sequence."""
+        self.laser_active = True
+        self.laser_charging = True
+        self.laser_firing = False
+        self.laser_charge_time = time.time()
+        
+        # Target player if available
+        if hasattr(self, 'game_manager') and self.game_manager and self.game_manager.player:
+            self.laser_target_y = self.game_manager.player.rect.centery
+        else:
+            self.laser_target_y = self.rect.centery
+    
+    def update_laser(self, delta_time):
+        """Update laser attack states."""
+        if not self.laser_active:
+            return
+            
+        current_time = time.time()
+        
+        if self.laser_charging:
+            # Charging phase - 1.5 seconds
+            if current_time - self.laser_charge_time > 1.5:
+                self.laser_charging = False
+                self.laser_firing = True
+                self.laser_fire_time = current_time
+                # Play laser sound if available
+                if hasattr(self, 'game_manager') and self.game_manager and hasattr(self.game_manager, 'sound_manager'):
+                    self.game_manager.sound_manager.play_sound('explosion')
+        
+        elif self.laser_firing:
+            # Firing phase - 0.8 seconds
+            if current_time - self.laser_fire_time > 0.8:
+                self.laser_firing = False
+                self.laser_active = False
+                self.laser_cooldown = current_time
+                # Set cooldown before next laser attack
+                self.can_use_laser = False
+                # Reset after 5 seconds
+                self.laser_reset_timer = current_time + 5.0
+        
+        # Check if laser cooldown is over
+        if not self.can_use_laser and hasattr(self, 'laser_reset_timer') and current_time > self.laser_reset_timer:
+            self.can_use_laser = True
     
     def take_damage(self, damage=1):
         """Handle taking damage with shield logic."""
@@ -124,6 +199,7 @@ class SuperEnemy(Enemy):
                 self.shield_break_sound_played = False
                 self.shield_regen_cooldown = 5.0  # 5 seconds to regenerate shield
             damage_taken = True
+            return damage_taken  # Shield absorbed all damage, don't damage health
         else:
             # No shield, damage health directly
             self.health -= damage
@@ -171,6 +247,13 @@ class SuperEnemy(Enemy):
         if self.is_exploding:
             self.draw_explosion(surface)
             return
+            
+        # Draw laser effects if active
+        if self.laser_active:
+            if self.laser_charging:
+                self.draw_laser_warning(surface)
+            elif self.laser_firing:
+                self.draw_laser_beam(surface)
             
         # Draw shield if active
         if self.has_shield:
@@ -227,17 +310,165 @@ class SuperEnemy(Enemy):
         # Get shield opacity
         shield_opacity = self.shield_opacity
         
-        # Draw shield with gradient effect
+        # Calculate shield health percentage
+        shield_health_percent = self.shield / self.max_shield
+        
+        # Draw shield with gradient effect and color based on health
         for i in range(3):
             thickness = 3 - i
             radius = shield_radius - i * 2
             alpha = min(255, shield_opacity - i*30)
-            shield_color = (100, 150, 255, alpha)  # Blue shield
+            
+            # Color changes based on shield health
+            if shield_health_percent > 0.7:
+                shield_color = (100, 150, 255, alpha)  # Blue shield (healthy)
+            elif shield_health_percent > 0.3:
+                shield_color = (150, 150, 255, alpha)  # Purple-blue shield (damaged)
+            else:
+                shield_color = (200, 100, 255, alpha)  # Purple shield (critical)
+                
             pygame.draw.circle(shield_surface, shield_color, (shield_radius, shield_radius), radius, thickness)
+        
+        # Add pulsing effect
+        current_time = time.time()
+        pulse = (math.sin(current_time * 5) + 1) / 2  # 0 to 1 pulsing
+        
+        # Draw inner glow with pulsing
+        inner_radius = int(shield_radius * 0.7 * (0.9 + 0.1 * pulse))
+        inner_color = (150, 200, 255, 50)  # Light blue, semi-transparent
+        pygame.draw.circle(shield_surface, inner_color, (shield_radius, shield_radius), inner_radius, 1)
         
         # Draw shield on surface
         shield_rect = shield_surface.get_rect(center=self.rect.center)
         surface.blit(shield_surface, shield_rect)
+        
+        # Draw shield health percentage
+        font = pygame.font.SysFont('Arial', 12)
+        shield_text = font.render(f"{int(shield_health_percent * 100)}%", True, (150, 200, 255))
+        text_pos = (self.rect.centerx - shield_text.get_width() // 2, 
+                    self.rect.top - shield_text.get_height() - 5)
+        surface.blit(shield_text, text_pos)
+    
+    def draw_laser_warning(self, surface):
+        """Draw a warning for the laser attack."""
+        # Calculate warning line properties
+        current_time = time.time()
+        charge_progress = (current_time - self.laser_charge_time) / 1.5  # 1.5 seconds charging
+        
+        # Warning line color pulses from white to red
+        pulse_rate = 10  # Higher value = faster pulse
+        pulse_factor = (math.sin(charge_progress * pulse_rate) + 1) / 2  # 0 to 1
+        
+        r = 255
+        g = int(255 * (1 - pulse_factor))
+        b = int(100 * (1 - pulse_factor))
+        
+        # Draw warning line
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
+        
+        # Draw solid line with increasing width as charging progresses
+        warning_width = int(4 + charge_progress * 10)
+        pygame.draw.line(surface, (r, g, b), start_pos, end_pos, warning_width)
+        
+        # Add pulsing glow effect around the line
+        glow_width = warning_width + int(8 * pulse_factor)
+        glow_color = (r, g, b, 100)  # Semi-transparent
+        pygame.draw.line(surface, glow_color, start_pos, end_pos, glow_width)
+        
+        # Draw warning text that pulses
+        font_size = int(16 + 6 * pulse_factor)  # Pulsing font size
+        font = pygame.font.SysFont('Arial', font_size, bold=True)
+        warning_text = font.render("LASER CHARGING", True, (r, g, b))
+        text_x = self.rect.left - warning_text.get_width() - 10
+        text_y = self.laser_target_y - warning_text.get_height() // 2
+        surface.blit(warning_text, (text_x, text_y))
+    
+    def draw_laser_beam(self, surface):
+        """Draw the laser beam."""
+        # Laser beam properties - start from the enemy's left side
+        start_pos = (self.rect.left, self.laser_target_y)
+        end_pos = (0, self.laser_target_y)
+        
+        # Draw main beam with pulsing effect
+        current_time = time.time()
+        pulse_factor = (math.sin(current_time * 20) + 1) / 2  # 0 to 1, faster pulse
+        
+        # Pulse the width slightly
+        laser_width = 20  # Base laser width
+        pulse_width = int(laser_width * (0.9 + 0.3 * pulse_factor))
+        
+        # Draw multiple layers for a more intense effect
+        # Outer glow (semi-transparent)
+        for i in range(4):
+            glow_width = pulse_width + i * 5
+            alpha = 150 - i * 30
+            glow_color = (255, 100, 100, alpha)
+            
+            # Draw wider lines for glow effect
+            pygame.draw.line(surface, glow_color, start_pos, end_pos, glow_width)
+        
+        # Main beam (solid)
+        laser_color = (255, 50, 50)
+        pygame.draw.line(surface, laser_color, start_pos, end_pos, pulse_width)
+        
+        # Bright core
+        core_color = (255, 220, 220)
+        pygame.draw.line(surface, core_color, start_pos, end_pos, pulse_width // 2)
+        
+        # Brightest center
+        center_color = (255, 255, 255)
+        pygame.draw.line(surface, center_color, start_pos, end_pos, pulse_width // 4)
+        
+        # Add impact effect at the left edge
+        impact_x = 0
+        impact_y = self.laser_target_y
+        impact_radius = pulse_width + int(10 * pulse_factor)
+        
+        # Draw impact circles
+        pygame.draw.circle(surface, (255, 200, 200), (impact_x, impact_y), impact_radius // 2)
+        pygame.draw.circle(surface, (255, 100, 100, 200), (impact_x, impact_y), impact_radius)
+        
+        # Add bright center to impact
+        pygame.draw.circle(surface, (255, 255, 255), (impact_x, impact_y), impact_radius // 4)
+        
+        # Add small particles around the impact point
+        for _ in range(5):
+            particle_x = impact_x + random.randint(-impact_radius, impact_radius//2)
+            particle_y = impact_y + random.randint(-impact_radius, impact_radius)
+            particle_size = random.randint(2, 4)
+            pygame.draw.circle(surface, (255, 200, 200), (particle_x, particle_y), particle_size)
+        
+        # Check for collision with player
+        self.check_laser_collision()
+    
+    def check_laser_collision(self):
+        """Check if the laser beam is colliding with the player and apply damage."""
+        if not hasattr(self, 'game_manager') or not self.game_manager or not self.game_manager.player:
+            return
+            
+        # Create a collision rectangle for the laser beam
+        laser_height = self.laser_width
+        laser_rect = pygame.Rect(
+            0,  # Left edge of screen
+            self.laser_target_y - laser_height // 2,
+            self.rect.left,  # Extends to the enemy's left edge
+            laser_height
+        )
+        
+        # Check for collision with player
+        if laser_rect.colliderect(self.game_manager.player.hitbox):
+            # Apply damage to player (once per frame)
+            source_id = f"super_laser_{self.rect.x}_{self.rect.y}"
+            self.game_manager.player.take_damage(
+                self.game_manager.testing_mode and self.game_manager.ui_manager.god_mode,
+                damage=2,  # Laser deals 2 damage
+                source_id=source_id
+            )
+            
+            # Play hit sound
+            if hasattr(self.game_manager, 'sound_manager'):
+                self.game_manager.sound_manager.play_sound('explosion')
     
     def draw_explosion(self, surface):
         """Draw the death explosion effect."""
@@ -304,6 +535,14 @@ class SuperEnemy(Enemy):
             if self.has_shield:
                 shield_percent = self.shield / self.max_shield
                 shield_fill_width = int(health_width * shield_percent)
-                shield_color = (100, 150, 255)  # Blue for shield
+                
+                # Shield color based on percentage
+                if shield_percent > 0.7:
+                    shield_color = (100, 150, 255)  # Blue for healthy shield
+                elif shield_percent > 0.3:
+                    shield_color = (150, 150, 255)  # Purple-blue for damaged shield
+                else:
+                    shield_color = (200, 100, 255)  # Purple for critical shield
+                    
                 pygame.draw.rect(surface, shield_color, 
                                 (health_x, shield_y, shield_fill_width, health_height))

@@ -325,6 +325,7 @@ class Boss(pygame.sprite.Sprite):
                         self.figure8_amplitude = 150
                         self.figure8_frequency = 0.02
                         self.movement_mode_duration = 360  # 6 seconds
+                        print(f"Boss switching to figure8 movement pattern")
                         
                     elif self.movement_mode == "circle":
                         self.circle_center_y = SCREEN_HEIGHT // 2
@@ -333,6 +334,7 @@ class Boss(pygame.sprite.Sprite):
                         self.circle_speed = 0.05
                         self.circle_direction = random.choice([-1, 1])  # Random direction
                         self.movement_mode_duration = 240  # 4 seconds
+                        print(f"Boss switching to circle movement pattern (direction: {self.circle_direction})")
                         
                     elif self.movement_mode == "zigzag":
                         self.zigzag_points = []
@@ -345,10 +347,12 @@ class Boss(pygame.sprite.Sprite):
                         self.zigzag_current_point = 0
                         self.zigzag_speed = 5
                         self.movement_mode_duration = 300  # 5 seconds
+                        print(f"Boss switching to zigzag movement pattern with {num_points} points")
                         
                     elif self.movement_mode == "track_player":
                         self.tracking_speed = 3.0  # Faster tracking
                         self.movement_mode_duration = 180  # 3 seconds
+                        print(f"Boss switching to player tracking movement")
                 
                 # Execute current movement mode
                 if self.movement_mode == "track_player":
@@ -365,27 +369,40 @@ class Boss(pygame.sprite.Sprite):
                             self.rect.centery += move_amount if dy > 0 else -move_amount
                     
                 elif self.movement_mode == "figure8":
-                    # Figure-8 movement
+                    # Figure-8 movement with improved dynamics
                     self.figure8_phase += self.figure8_frequency
+                    
+                    # Calculate x and y offsets using parametric equations for a figure-8
+                    # Using Lissajous curve with frequency ratio 2:1
                     x_offset = int(self.figure8_amplitude * 0.5 * math.sin(self.figure8_phase))
                     y_offset = int(self.figure8_amplitude * 0.5 * math.sin(2 * self.figure8_phase))
                     
-                    # Apply offset
-                    self.rect.x = self.entry_target_x + x_offset
-                    self.rect.centery = self.figure8_center_y + y_offset
+                    # Apply offset with smoother transitions
+                    target_x = self.entry_target_x + x_offset
+                    target_y = self.figure8_center_y + y_offset
+                    
+                    # Move towards target with smooth interpolation
+                    self.rect.x += (target_x - self.rect.x) * 0.1
+                    self.rect.centery += (target_y - self.rect.centery) * 0.1
                     
                 elif self.movement_mode == "circle":
-                    # Circular movement
+                    # Circular movement with improved dynamics
                     self.circle_angle += self.circle_speed * self.circle_direction
+                    
+                    # Calculate position using parametric circle equations
                     x_offset = int(self.circle_radius * 0.5 * math.cos(self.circle_angle))
                     y_offset = int(self.circle_radius * math.sin(self.circle_angle))
                     
-                    # Apply offset
-                    self.rect.x = self.entry_target_x + x_offset
-                    self.rect.centery = self.circle_center_y + y_offset
+                    # Apply offset with smoother transitions
+                    target_x = self.entry_target_x + x_offset
+                    target_y = self.circle_center_y + y_offset
+                    
+                    # Move towards target with smooth interpolation
+                    self.rect.x += (target_x - self.rect.x) * 0.1
+                    self.rect.centery += (target_y - self.rect.centery) * 0.1
                     
                 elif self.movement_mode == "zigzag":
-                    # Zigzag movement between points
+                    # Zigzag movement between points with improved dynamics
                     if self.zigzag_current_point < len(self.zigzag_points):
                         target_x, target_y = self.zigzag_points[self.zigzag_current_point]
                         
@@ -395,15 +412,23 @@ class Boss(pygame.sprite.Sprite):
                         distance = math.sqrt(dx*dx + dy*dy)
                         
                         if distance > self.zigzag_speed:
-                            # Move towards target
+                            # Move towards target with easing
                             angle = math.atan2(dy, dx)
-                            self.rect.centerx += int(math.cos(angle) * self.zigzag_speed)
-                            self.rect.centery += int(math.sin(angle) * self.zigzag_speed)
+                            move_x = math.cos(angle) * self.zigzag_speed
+                            move_y = math.sin(angle) * self.zigzag_speed
+                            
+                            # Apply easing for smoother movement
+                            self.rect.centerx += int(move_x)
+                            self.rect.centery += int(move_y)
                         else:
                             # Reached target, move to next point
                             self.rect.centerx = target_x
                             self.rect.centery = target_y
                             self.zigzag_current_point += 1
+                            
+                            # Add a small pause at each point
+                            if random.random() < 0.5:  # 50% chance to pause
+                                self.zigzag_pause = 10  # Pause for 10 frames
                     else:
                         # Reset to first point
                         self.zigzag_current_point = 0
@@ -607,7 +632,7 @@ class Boss(pygame.sprite.Sprite):
         
         # Switch patterns every 3 shots, with a higher chance for laser attack when shield is down
         if self.shot_counter % 3 == 0:
-            # 70% chance to use laser attack when shield is down, 40% otherwise
+            # 70% chance to use laser attack when shield is down (increased from 40%), 40% otherwise
             laser_chance = 0.7 if shield_down else 0.4
             
             if random.random() < laser_chance:
@@ -1212,14 +1237,14 @@ class Boss(pygame.sprite.Sprite):
         pulse_factor = (math.sin(now * 0.02) + 1) / 2  # 0 to 1, faster pulse
         
         # Pulse the width slightly
-        laser_width = 30  # Increased base laser width significantly
+        laser_width = 35  # Increased base laser width even more for better visibility
         pulse_width = int(laser_width * (0.9 + 0.3 * pulse_factor))
         
         # Draw multiple layers for a more intense effect
         # Outer glow (semi-transparent)
-        for i in range(5):  # Increased from 4 to 5 layers
-            glow_width = pulse_width + i * 8  # Increased from i*5 to i*8
-            alpha = 150 - i * 25  # Increased alpha from 120 to 150
+        for i in range(6):  # Increased from 5 to 6 layers for more pronounced effect
+            glow_width = pulse_width + i * 10  # Increased from i*8 to i*10
+            alpha = 180 - i * 25  # Increased alpha from 150 to 180
             glow_color = (255, 100, 100, alpha)
             
             # Draw wider lines for glow effect
@@ -1240,32 +1265,54 @@ class Boss(pygame.sprite.Sprite):
         # Add impact effect at the left edge
         impact_x = 0
         impact_y = self.laser_target_y
-        impact_radius = pulse_width + int(15 * pulse_factor)  # Increased from 8 to 15
+        impact_radius = pulse_width + int(20 * pulse_factor)  # Increased from 15 to 20
+        
+        # Draw impact circles with pulsing effect
+        pulse_intensity = abs(math.sin(now * 0.01)) * 0.5 + 0.5  # 0.5 to 1.0
+        impact_color1 = (255, int(150 + 50 * pulse_intensity), int(150 * pulse_intensity))
+        impact_color2 = (255, int(50 + 50 * pulse_intensity), int(50 * pulse_intensity))
         
         # Draw impact circles
-        pygame.draw.circle(surface, (255, 200, 200), (impact_x, impact_y), impact_radius // 2)
-        pygame.draw.circle(surface, (255, 100, 100, 200), (impact_x, impact_y), impact_radius)  # Increased alpha
+        pygame.draw.circle(surface, impact_color1, (impact_x, impact_y), impact_radius // 2)
+        pygame.draw.circle(surface, (impact_color2[0], impact_color2[1], impact_color2[2], 200), (impact_x, impact_y), impact_radius)
         
         # Add bright center to impact
         pygame.draw.circle(surface, (255, 255, 255), (impact_x, impact_y), impact_radius // 4)
         
         # Add small particles around the impact point
-        for _ in range(10):  # Increased from 5 to 10 particles
+        for _ in range(15):  # Increased from 10 to 15 particles
             particle_x = impact_x + random.randint(-impact_radius, impact_radius//2)
             particle_y = impact_y + random.randint(-impact_radius, impact_radius)
-            particle_size = random.randint(2, 6)  # Increased from 2-4 to 2-6
-            pygame.draw.circle(surface, (255, 200, 200), (particle_x, particle_y), particle_size)
+            particle_size = random.randint(2, 8)  # Increased from 2-6 to 2-8
+            
+            # Randomize particle color for more visual interest
+            r = random.randint(200, 255)
+            g = random.randint(100, 200)
+            b = random.randint(50, 150)
+            pygame.draw.circle(surface, (r, g, b), (particle_x, particle_y), particle_size)
             
         # Add streaking effect along the beam
-        for _ in range(5):
+        for _ in range(8):  # Increased from 5 to 8 streaks
             streak_x = random.randint(0, self.rect.left)
-            streak_y = self.laser_target_y + random.randint(-3, 3)
-            streak_length = random.randint(20, 50)
-            streak_width = random.randint(1, 3)
-            pygame.draw.line(surface, (255, 255, 255), 
+            streak_y = self.laser_target_y + random.randint(-5, 5)  # Wider variation
+            streak_length = random.randint(20, 60)  # Longer potential streaks
+            streak_width = random.randint(1, 4)  # Thicker potential streaks
+            
+            # Randomize streak brightness
+            brightness = random.randint(200, 255)
+            pygame.draw.line(surface, (brightness, brightness, brightness), 
                             (streak_x, streak_y), 
                             (streak_x + streak_length, streak_y), 
                             streak_width)
+            
+        # Add secondary impact particles that fly outward from the impact point
+        for _ in range(5):  # Add 5 flying particles
+            angle = random.uniform(0, 2 * math.pi)
+            distance = random.randint(impact_radius//2, impact_radius*2)
+            particle_x = impact_x + int(math.cos(angle) * distance)
+            particle_y = impact_y + int(math.sin(angle) * distance)
+            size = random.randint(2, 5)
+            pygame.draw.circle(surface, (255, 200, 100), (particle_x, particle_y), size)
             
         # Check for collision with player
         self.check_laser_collision()

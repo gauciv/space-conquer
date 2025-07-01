@@ -41,6 +41,7 @@ class SoundManager:
         sound_files = {
             'shoot': 'shoot.wav',
             'explosion': 'explosion.wav',
+            'enemy_death': 'enemy_death.wav',  # New sound for enemy death
             'powerup': 'powerup.wav',
             'game_start': 'game_start.wav',
             'game_over': 'game_over.wav'
@@ -53,6 +54,10 @@ class SoundManager:
                 self.sounds[name].set_volume(self.sfx_volume)
             else:
                 print(f"Warning: Sound file not found: {path}")
+                # For enemy_death, fall back to explosion sound if not found
+                if name == 'enemy_death' and 'explosion' in self.sounds:
+                    self.sounds[name] = self.sounds['explosion']
+                    print(f"Using explosion sound as fallback for {name}")
     
     def _load_music_tracks(self):
         """Load all music tracks."""
@@ -84,8 +89,13 @@ class SoundManager:
     
     def play_sound(self, sound_name):
         """Play a sound effect by name."""
-        if self.sound_enabled and sound_name in self.sounds:
-            self.sounds[sound_name].play()
+        if self.sound_enabled:
+            if sound_name in self.sounds:
+                self.sounds[sound_name].play()
+            elif sound_name == 'enemy_death' and 'explosion' in self.sounds:
+                # Fall back to explosion sound if enemy_death is requested but not available
+                self.sounds['explosion'].play()
+                print("Using explosion sound as fallback for enemy_death")
     
     def play_music(self, track='menu', loop=-1):
         """Start playing a specific music track."""
