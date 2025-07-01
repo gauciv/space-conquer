@@ -134,9 +134,10 @@ class Boss(pygame.sprite.Sprite):
             self.charge_retreat = False
             self.charge_retreat_time = 0
             
-            # Shield system
+            # Shield system - ENHANCED
             self.has_shield = True
-            self.shield_health = 50  # Additional 50 health in shield
+            self.max_shield_health = self.max_health // 2  # Shield is half of max health
+            self.shield_health = self.max_shield_health
             self.shield_active = True
             self.shield_regen_rate = 0.05  # Shield regenerates slowly
             self.shield_regen_delay = 5000  # 5 seconds delay before shield starts regenerating
@@ -437,22 +438,97 @@ class Boss(pygame.sprite.Sprite):
             print(f"Updating {len(self.bullets)} bullets")
         self.bullets.update()
         
+        # Handle shield regeneration for main boss
+        if self.boss_type == 'main' and hasattr(self, 'has_shield') and self.has_shield and not self.shield_active:
+            # Check if enough time has passed since last hit
+            if pygame.time.get_ticks() - self.last_shield_hit > self.shield_regen_delay:
+                # Start regenerating shield
+                self.shield_health += self.shield_regen_rate
+                
+                # Visual feedback for shield regeneration
+                if self.movement_timer % 30 == 0:  # Every half second
+                    print(f"Shield regenerating: {self.shield_health:.1f}/{self.max_shield_health}")
+                
+                # Reactivate shield when it reaches 25% health
+                if self.shield_health >= self.max_shield_health * 0.25:
+                    self.shield_active = True
+                    self.flash_effect = 15  # Visual feedback
+                    print(f"Shield reactivated at {self.shield_health:.1f} health")
+                    self.sound_manager.play_sound('powerup')  # Play shield reactivation sound
+        
         return False  # Not finished dying
     
     def shoot(self):
-        """Shoot bullets."""
-        # SUPER SIMPLIFIED SHOOTING - Just create a bullet
-        bullet = BossBullet(
-            self.rect.left, 
-            self.rect.centery, 
-            -8,  # Fixed leftward velocity
-            2    # Fixed damage
-        )
-        self.bullets.add(bullet)
-        print(f"Created bullet at ({bullet.rect.x}, {bullet.rect.y})")
+        """Shoot bullets with alternating patterns and reasonable fire rate."""
+        now = pygame.time.get_ticks()
+        
+        # Only shoot if enough time has passed since last shot (fire rate control)
+        if not hasattr(self, 'last_shot_time'):
+            self.last_shot_time = 0
+            self.shot_pattern = 'cone'  # Start with cone pattern
+            self.shot_counter = 0
+        
+        # Set a slower fire rate (2000ms = 2 seconds between shots)
+        fire_rate = 2000  # milliseconds between shots
+        
+        if now - self.last_shot_time < fire_rate:
+            return  # Don't shoot yet
+            
+        self.last_shot_time = now
+        self.shot_counter += 1
+        
+        # Switch patterns every 3 shots
+        if self.shot_counter % 3 == 0:
+            self.shot_pattern = 'line' if self.shot_pattern == 'cone' else 'cone'
+            print(f"Switching to {self.shot_pattern} pattern")
         
         # Play sound
         self.sound_manager.play_sound('shoot')
+        
+        if self.shot_pattern == 'cone':
+            # V-shaped cone pattern (shotgun spread)
+            num_bullets = 5
+            spread_angle = 30  # Total spread angle in degrees
+            
+            for i in range(num_bullets):
+                # Calculate angle for this bullet in the spread
+                angle_offset = spread_angle / (num_bullets - 1)
+                angle = 180 + (i - (num_bullets-1)/2) * angle_offset
+                angle_rad = math.radians(angle)
+                
+                # Calculate velocity components
+                speed = 5  # Slower bullet speed
+                vx = math.cos(angle_rad) * speed
+                vy = math.sin(angle_rad) * speed
+                
+                # Create bullet
+                bullet = BossBullet(
+                    self.rect.left, 
+                    self.rect.centery, 
+                    vx,
+                    1  # Lower damage per bullet since there are multiple
+                )
+                bullet.vy = vy
+                self.bullets.add(bullet)
+                print(f"Created cone bullet at angle {angle:.1f}°")
+        else:
+            # Horizontal line pattern
+            num_bullets = 3
+            vertical_spacing = 40  # pixels between bullets
+            
+            for i in range(num_bullets):
+                # Calculate vertical position
+                y_offset = (i - (num_bullets-1)/2) * vertical_spacing
+                
+                # Create bullet
+                bullet = BossBullet(
+                    self.rect.left,
+                    self.rect.centery + y_offset,
+                    -6,  # Straight left, slower
+                    2    # Higher damage for line shots
+                )
+                self.bullets.add(bullet)
+                print(f"Created line bullet at y-offset {y_offset}")
     
     def take_damage(self, damage=1, hit_position=None):
         """Handle boss taking damage."""
@@ -465,6 +541,7 @@ class Boss(pygame.sprite.Sprite):
         if self.boss_type == 'main' and hasattr(self, 'has_shield') and self.has_shield and self.shield_active:
             self.last_shield_hit = pygame.time.get_ticks()
             self.shield_health -= damage
+            print(f"Boss shield damaged! Shield health: {self.shield_health}/{self.max_shield_health}")
             
             # Visual feedback
             self.hit_flash = 5  # Shorter flash for shield hit
@@ -474,11 +551,129 @@ class Boss(pygame.sprite.Sprite):
                 self.shield_active = False
                 self.sound_manager.play_sound('explosion')  # Shield break sound
                 self.hit_flash = 15  # Longer flash for shield break
+                print(f"Boss shield BROKEN!")
                 return False  # Shield absorbed all damage
                 
             # Shield absorbed damage
             self.sound_manager.play_sound('shoot')  # Lighter sound for shield hit
             return False
+            
+        # Check for weak point hit for mini-boss
+        if self.boss_type == 'mini' and self.has_weak_point and self.weak_point_active and hit_position:
+            # Calculate distance to weak point
+            weak_point_x = self.rect.centerx + (self.weak_point_position[0] - self.rect.centerx)
+            weak_point_y = self.rect.centery + (self.weak_point_position[1] - self.rect.centery)
+            
+            dx = hit_position[0] - weak_point_x
+            dy = hit_position[1] - weak_point_y
+            distance = math.sqrt(dx*dx + dy*dy)
+            
+            if distance <= self.weak_point_radius:
+                # Hit the weak point - triple damage!
+                damage *= 3
+                # Deactivate weak point
+                self.weak_point_active = False
+                self.weak_point_cooldown = 5000  # Longer cooldown after being hit
+                # Special effect for weak point hit
+                self.flash_effect = 20
+                # Play critical hit sound
+                self.sound_manager.play_sound('explosion')
+            
+        # Store previous health for phase transition check
+        previous_health = self.health
+        previous_phase = self.attack_phase
+            
+        self.health -= damage
+        print(f"Boss health reduced to {self.health}/{self.max_health}")
+        self.sound_manager.play_sound('explosion')
+        
+        # Set hit flash effect
+        self.hit_flash = 10
+        
+        # Update attack phase based on health percentage
+        health_percent = self.health / self.max_health
+        
+        if self.boss_type == 'mini':
+            if health_percent <= 0.33 and self.attack_phase < 3:
+                # Phase 3: Most aggressive
+                self.attack_phase = 3
+                self.shoot_delay = 700  # Faster shooting
+                self.attack_change_delay = 3000  # Faster pattern changes
+                self.max_pattern_shots = 2  # Change patterns more frequently
+                self.amplitude = 150  # Wider movement
+                self.frequency = 0.03  # Faster movement
+                self.dash_speed = 12  # Faster dashes
+                
+                # Clear bullets on phase change for cleaner transition
+                self.bullets.empty()
+                
+                # Play phase transition sound
+                self.sound_manager.play_sound('explosion')
+                
+            elif health_percent <= 0.66 and self.attack_phase < 2:
+                # Phase 2: More aggressive
+                self.attack_phase = 2
+                self.shoot_delay = 850  # Faster shooting
+                self.attack_change_delay = 4000  # Faster pattern changes
+                self.max_pattern_shots = 3  # Change patterns more frequently
+                self.dash_speed = 10  # Enable dashing
+                
+                # Clear bullets on phase change for cleaner transition
+                self.bullets.empty()
+                
+                # Play phase transition sound
+                self.sound_manager.play_sound('explosion')
+        
+        elif self.boss_type == 'main':
+            # Check if we're skipping a phase (e.g., from 1 to 3)
+            new_phase = 1
+            if health_percent <= 0.33:
+                new_phase = 3
+            elif health_percent <= 0.66:
+                new_phase = 2
+                
+            # If phase changed, apply phase-specific changes
+            if new_phase != previous_phase:
+                self.attack_phase = new_phase
+                print(f"Boss entering phase {new_phase}!")
+                
+                # Apply phase-specific changes
+                if new_phase == 3:
+                    # Phase 3: Most aggressive
+                    self.shoot_delay = 1000  # Faster shooting but still nerfed from original
+                    self.figure8_amplitude = 150  # Wider movement
+                    self.figure8_frequency = 0.025  # Faster movement
+                    self.max_pattern_shots = 2  # Change patterns more frequently
+                    
+                    # Play phase transition sound
+                    self.sound_manager.play_sound('explosion')
+                    
+                    # Clear bullets on phase change for cleaner transition
+                    self.bullets.empty()
+                    
+                    # If we skipped phase 2, ensure we get all phase 2 benefits as well
+                    if previous_phase == 1:
+                        self.figure8_amplitude = 130  # From phase 2
+                        self.max_pattern_shots = 3  # From phase 2
+                        
+                elif new_phase == 2:
+                    # Phase 2: More aggressive
+                    self.shoot_delay = 1100  # Faster shooting but still nerfed from original
+                    self.figure8_amplitude = 130  # Wider movement
+                    self.max_pattern_shots = 3  # Change patterns more frequently
+                    
+                    # Play phase transition sound
+                    self.sound_manager.play_sound('explosion')
+                    
+                    # Clear bullets on phase change for cleaner transition
+                    self.bullets.empty()
+        
+        # Check if boss is defeated
+        if self.health <= 0 and not self.dying:
+            print(f"Boss defeated!")
+            self.destroy()
+            return True
+        return False
             
         # Check for weak point hit for mini-boss
         if self.boss_type == 'mini' and self.has_weak_point and self.weak_point_active and hit_position:
@@ -712,6 +907,29 @@ class Boss(pygame.sprite.Sprite):
         font = pygame.font.SysFont('Arial', 16)
         text = font.render(f"{self.name}: {self.health}/{self.max_health}", True, (255, 255, 255))
         surface.blit(text, (bar_x + (self.health_bar_bg.get_width() - text.get_width()) // 2, bar_y + 16))
+        
+        # Draw shield bar for main boss
+        if self.boss_type == 'main' and hasattr(self, 'has_shield') and self.has_shield:
+            # Position shield bar below health bar
+            shield_bar_y = bar_y + 30
+            
+            # Draw shield bar background (slightly smaller than health bar)
+            shield_bg_rect = pygame.Rect(bar_x, shield_bar_y, self.health_bar_bg.get_width(), 10)
+            pygame.draw.rect(surface, (50, 50, 100), shield_bg_rect)
+            pygame.draw.rect(surface, (100, 100, 150), shield_bg_rect, 1)  # Border
+            
+            # Calculate shield fill width
+            shield_fill_width = int((self.shield_health / self.max_shield_health) * (self.health_bar_bg.get_width() - 2))
+            
+            # Draw shield fill
+            if shield_fill_width > 0:
+                shield_fill_rect = pygame.Rect(bar_x + 1, shield_bar_y + 1, shield_fill_width, 8)
+                shield_color = (100, 150, 255)  # Blue shield
+                pygame.draw.rect(surface, shield_color, shield_fill_rect)
+            
+            # Draw shield text
+            shield_text = font.render(f"Shield: {int(self.shield_health)}/{self.max_shield_health}", True, (200, 200, 255))
+            surface.blit(shield_text, (bar_x + (self.health_bar_bg.get_width() - shield_text.get_width()) // 2, shield_bar_y + 12))
     
     def draw(self, surface):
         """Draw the boss and its bullets."""
@@ -804,8 +1022,8 @@ class Boss(pygame.sprite.Sprite):
         # Draw shield for main boss
         if self.boss_type == 'main' and hasattr(self, 'has_shield') and self.has_shield and self.shield_active:
             # Calculate shield size based on health percentage
-            shield_health_percent = self.shield_health / 50  # 50 is max shield health
-            shield_size = int(max(self.rect.width, self.rect.height) * (1.0 + 0.1 * shield_health_percent))
+            shield_health_percent = self.shield_health / self.max_shield_health
+            shield_size = int(max(self.rect.width, self.rect.height) * (1.0 + 0.15 * shield_health_percent))
             
             # Pulsing effect
             pulse = (math.sin(pygame.time.get_ticks() * 0.005) + 1) / 2
@@ -814,8 +1032,17 @@ class Boss(pygame.sprite.Sprite):
             # Create shield surface
             shield_surface = pygame.Surface((shield_size, shield_size), pygame.SRCALPHA)
             
-            # Draw shield circle
-            shield_color = (100, 150, 255, shield_alpha)  # Blue shield
+            # Draw shield circle with color based on health percentage
+            if shield_health_percent > 0.7:
+                # Strong shield - blue
+                shield_color = (100, 150, 255, shield_alpha)
+            elif shield_health_percent > 0.3:
+                # Medium shield - purple
+                shield_color = (150, 100, 255, shield_alpha)
+            else:
+                # Weak shield - red
+                shield_color = (255, 100, 100, shield_alpha)
+                
             pygame.draw.circle(shield_surface, shield_color, (shield_size//2, shield_size//2), shield_size//2, 3)
             
             # Draw inner glow
@@ -825,6 +1052,13 @@ class Boss(pygame.sprite.Sprite):
             # Position and draw shield
             shield_rect = shield_surface.get_rect(center=self.rect.center)
             surface.blit(shield_surface, shield_rect)
+            
+            # Draw shield percentage near the boss
+            font = pygame.font.SysFont('Arial', 14)
+            shield_text = font.render(f"{int(shield_health_percent * 100)}%", True, shield_color[:3])
+            text_pos = (self.rect.centerx - shield_text.get_width() // 2, 
+                        self.rect.top - shield_text.get_height() - 5)
+            surface.blit(shield_text, text_pos)
         
         # Draw hitbox if debug mode is enabled
         if DEBUG_HITBOXES:
@@ -1101,6 +1335,13 @@ class BossBullet(pygame.sprite.Sprite):
         self.color_shift = None  # Can be set to tint the bullet
         self.is_aimed = False  # Whether this is an aimed shot
         self.is_special = False  # Whether this is a special attack bullet
+        
+        # Set color based on damage
+        if damage >= 2:
+            self.color_shift = (255, 100, 0)  # Orange for higher damage
+        else:
+            self.color_shift = (0, 150, 255)  # Blue for lower damage
+            
         self.create_bullet_image()
         
         self.rect = self.image.get_rect()
@@ -1159,6 +1400,14 @@ class BossBullet(pygame.sprite.Sprite):
                 min(255, 200 + self.color_shift[1] // 4),
                 min(255, 200 + self.color_shift[2] // 4)
             )
+            
+        pygame.draw.rect(self.image, core_color, (0, self.height//4, self.width//2, self.height//2))
+        
+        # Rotate the bullet based on its velocity
+        if hasattr(self, 'vy') and self.vy != 0:
+            angle = math.degrees(math.atan2(self.vy, self.vx))
+            self.image = pygame.transform.rotate(self.image, -angle)
+            self.rect = self.image.get_rect(center=self.rect.center)
             
         pygame.draw.rect(self.image, core_color, (0, self.height//4, self.width//2, self.height//2))
     
