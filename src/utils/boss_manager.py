@@ -40,6 +40,7 @@ class BossManager:
         """Spawn a boss of the specified type."""
         # First, clear any existing bosses
         self.reset()
+        print(f"Spawning {boss_type} boss after reset")
         
         if boss_type == 'mini':
             # Create mini boss
@@ -61,7 +62,12 @@ class BossManager:
             # Add to all sprites group
             self.game_manager.all_sprites.add(self.main_boss)
             self.main_boss_spawned = True
-            print(f"Main boss spawned!")
+            print(f"Main boss spawned! ID: {id(self.main_boss)}")
+            # Force initialization of critical attributes
+            self.main_boss.entry_complete = False
+            self.main_boss.movement_timer = 0
+            self.main_boss.pattern_shots = 0
+            self.main_boss.attack_pattern = "spread"
             return self.main_boss
         return None
     
@@ -87,6 +93,8 @@ class BossManager:
         
         # Update main boss
         if self.main_boss:
+            # Debug main boss state
+            print(f"Main boss update: entry={self.main_boss.entry_complete}, pos=({self.main_boss.rect.x}, {self.main_boss.rect.y})")
             # Update boss and check if death animation is complete
             animation_complete = self.main_boss.update()
             if animation_complete:
@@ -141,6 +149,8 @@ class BossManager:
         if not hasattr(boss, 'hitbox'):
             return
         
+        print(f"Checking collisions for {boss.boss_type} boss")
+        
         # Handle laser collision with player
         if boss.boss_type == 'main' and boss.laser_firing:
             # Check if player is in the laser beam
@@ -159,6 +169,7 @@ class BossManager:
         # Check player bullets against boss
         for bullet in list(player.bullets):
             if bullet.hitbox.colliderect(boss.hitbox):
+                print(f"Player bullet hit {boss.boss_type} boss!")
                 # Get bullet position for weak point detection
                 hit_position = (bullet.rect.centerx, bullet.rect.centery)
                 
