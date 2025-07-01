@@ -42,9 +42,13 @@ class BossManager:
         self.reset()
         print(f"Spawning {boss_type} boss after reset")
         
+        # Set spawn position at right edge of screen, centered vertically
+        x = self.game_manager.screen.get_width()
+        y = self.game_manager.screen.get_height() // 2
+        
         if boss_type == 'mini':
             # Create mini boss
-            self.mini_boss = Boss('mini', self.game_manager.asset_loader, self.game_manager.sound_manager)
+            self.mini_boss = Boss(x, y, 'mini', self.game_manager.asset_loader, self.game_manager.sound_manager)
             # Set player reference for targeting
             if hasattr(self.game_manager, 'player'):
                 self.mini_boss.player_ref = self.game_manager.player
@@ -55,11 +59,17 @@ class BossManager:
             return self.mini_boss
         elif boss_type == 'main':
             # Create main boss
-            self.main_boss = Boss('main', self.game_manager.asset_loader, self.game_manager.sound_manager)
+            self.main_boss = Boss(x, y, 'main', self.game_manager.asset_loader, self.game_manager.sound_manager)
             # Set player reference for targeting
             if hasattr(self.game_manager, 'player'):
                 self.main_boss.player_ref = self.game_manager.player
             # Add to all sprites group
+            # Debug boss attributes
+            print(f"Boss attributes: entry_complete={self.main_boss.entry_complete}, " +
+                  f"entry_speed={self.main_boss.entry_speed}, " +
+                  f"entry_target_x={self.main_boss.entry_target_x}, " +
+                  f"last_shot={self.main_boss.last_shot}, " +
+                  f"shoot_delay={self.main_boss.shoot_delay}")
             self.game_manager.all_sprites.add(self.main_boss)
             self.main_boss_spawned = True
             print(f"Main boss spawned! ID: {id(self.main_boss)}")
@@ -69,7 +79,6 @@ class BossManager:
             self.main_boss.pattern_shots = 0
             self.main_boss.attack_pattern = "spread"
             return self.main_boss
-        return None
     
     def update(self):
         """Update all active bosses."""
@@ -94,7 +103,7 @@ class BossManager:
         # Update main boss
         if self.main_boss:
             # Debug main boss state
-            print(f"Main boss update: entry={self.main_boss.entry_complete}, pos=({self.main_boss.rect.x}, {self.main_boss.rect.y})")
+            print(f"Main boss update: entry={self.main_boss.entry_complete}, pos=({self.main_boss.rect.x}, {self.main_boss.rect.y}), last_shot={self.main_boss.last_shot}, shoot_delay={self.main_boss.shoot_delay}")
             # Update boss and check if death animation is complete
             animation_complete = self.main_boss.update()
             if animation_complete:
@@ -152,19 +161,28 @@ class BossManager:
         print(f"Checking collisions for {boss.boss_type} boss")
         
         # Handle laser collision with player
-        if boss.boss_type == 'main' and boss.laser_firing:
-            # Check if player is in the laser beam
-            laser_rect = pygame.Rect(0, boss.laser_target_y - boss.laser_width//2, 
-                                    boss.rect.left, boss.laser_width)
-            
-            if player.hitbox.colliderect(laser_rect):
-                # Apply damage to player with cooldown
-                source_id = f"laser_{boss.laser_fire_time}"
-                player.take_damage(
-                    False,  # No god mode for laser
-                    source_id=source_id,
-                    damage=1  # 1 damage per frame
-                )
+        if boss.boss_type == 'main' and hasattr(boss, 'laser_active') and boss.laser_active:
+            if hasattr(boss, 'laser_phase') and boss.laser_phase == 'firing':
+                # Check if player is in the laser beam
+                laser_width = 30  # Increased from 20 to 30
+                if hasattr(boss, 'laser_width'):
+                    laser_width = boss.laser_width
+                
+                laser_target_y = boss.rect.centery
+                if hasattr(boss, 'laser_target_y'):
+                    laser_target_y = boss.laser_target_y
+                
+                laser_rect = pygame.Rect(0, laser_target_y - laser_width//2, 
+                                        boss.rect.left, laser_width)
+                
+                if player.hitbox.colliderect(laser_rect):
+                    # Apply damage to player with cooldown
+                    source_id = f"laser_{boss.laser_fire_time}"
+                    player.take_damage(
+                        False,  # No god mode for laser
+                        source_id=source_id,
+                        damage=3  # Increased from 2 to 3 damage per frame
+                    )
             
         # Check player bullets against boss
         for bullet in list(player.bullets):

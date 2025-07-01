@@ -7,7 +7,7 @@ import sys
 import random
 import math
 import time
-from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, POWERUP_SPAWN_DELAY, DEBUG_HITBOXES
+from .config import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BLACK, ENEMY_SPAWN_DELAY, POWERUP_SPAWN_DELAY, DEBUG_HITBOXES, PLAYER_INITIAL_HEALTH
 from .utils.sound_manager import SoundManager
 from .utils.asset_loader import AssetLoader
 from .utils.ui_manager import UIManager
