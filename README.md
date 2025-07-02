@@ -1,6 +1,6 @@
 # Space Conquer
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/yourusername/space-conquer/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/yourusername/space-conquer/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Python recreation of the classic Space Impact game that was popular on Nokia phones.
@@ -18,6 +18,48 @@ Space Conquer is a side-scrolling shooter game where you control a spaceship and
 - Background music with separate volume control
 - Settings menu
 
+
+## What's New in Version 2.0.0
+
+### Enhanced Enemy Experience
+- **Death Animations**: Low-type enemies now have satisfying death animations with particle effects, rings, and flash effects
+- **Custom Sound Effects**: Unique sound effects for enemy destruction
+- **Visual Feedback**: Different explosion colors based on enemy type
+
+### Super-Type Enemy Improvements
+- **Shield System**: Super enemies now have shields that protect their health until depleted
+- **Dynamic Attack Patterns**: 
+  - Fires bullets when shield is active
+  - Fires powerful lasers with 3-second cooldown when shield is broken
+- **Visual Indicators**: Clear visual feedback for shield status and laser attacks
+- **Strategic Combat**: Enemies now stop moving when firing lasers, creating tactical gameplay moments
+
+### Technical Improvements
+- Improved collision detection for all bullet types
+- Enhanced visual effects with gradient colors and rotation
+- Optimized codebase with removal of redundant files
+- Fixed various bugs and glitches
+
+## What's New in Version 2.0.0
+
+### Enhanced Enemy Experience
+- **Death Animations**: Low-type enemies now have satisfying death animations with particle effects, rings, and flash effects
+- **Custom Sound Effects**: Unique sound effects for enemy destruction
+- **Visual Feedback**: Different explosion colors based on enemy type
+
+### Super-Type Enemy Improvements
+- **Shield System**: Super enemies now have shields that protect their health until depleted
+- **Dynamic Attack Patterns**: 
+  - Fires bullets when shield is active
+  - Fires powerful lasers with 3-second cooldown when shield is broken
+- **Visual Indicators**: Clear visual feedback for shield status and laser attacks
+- **Strategic Combat**: Enemies now stop moving when firing lasers, creating tactical gameplay moments
+
+### Technical Improvements
+- Improved collision detection for all bullet types
+- Enhanced visual effects with gradient colors and rotation
+- Optimized codebase with removal of redundant files
+- Fixed various bugs and glitches
 ## How to Play
 
 ### Pre-built Executables (Recommended for Non-Technical Users)
