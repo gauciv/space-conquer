@@ -1,11 +1,11 @@
-# Release Process for Space Impact
+# Release Process for Space Conquer
 
-This document outlines the process for creating and publishing releases of Space Impact.
+This document outlines the process for creating and publishing releases of Space Conquer.
 
 ## 1. Update Version Numbers
 
 1. Update version in `setup.py`
-2. Update version in `space_impact/version.py`
+2. Update version in `src/version.py` (if exists)
 3. Update version in README badges
 
 ## 2. Update CHANGELOG.md

@@ -147,17 +147,23 @@ space-conquer/
 ├── run_game.bat             # Windows launcher
 ├── setup.py                 # Setup script for installation
 ├── tools/                   # Utility scripts for development
-├── images/                  # Original game images
-├── sounds/                  # Original sound effects
-├── music/                   # Original background music
-└── space_impact/            # Main package
+├── assets/                  # Game assets
+│   ├── images/              # Game images
+│   │   ├── player/          # Player ship images
+│   │   ├── powerups/        # Power-up images
+│   │   ├── ui/              # UI elements
+│   │   ├── crimson_frontier/# Level 1 assets
+│   │   ├── oblivion_veil/   # Level 2 assets
+│   │   └── starlights_end/  # Level 3 assets
+│   ├── sounds/              # Sound effects
+│   ├── music/               # Background music
+│   ├── maps/                # Level maps
+│   └── themes/              # Game themes
+├── logs/                    # Game logs
+└── src/                     # Source code
     ├── __init__.py
-    ├── config.py            # Game configuration
     ├── game_manager.py      # Main game manager
     ├── version.py           # Version information
-    ├── assets/              # Game images
-    ├── sounds/              # Sound effects
-    ├── music/               # Background music
     ├── sprites/             # Game sprites
     │   ├── __init__.py
     │   ├── player.py        # Player sprite

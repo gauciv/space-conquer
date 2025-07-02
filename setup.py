@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="space_conquer",
-    version="1.0.0",  # Initial release version
+    version="2.0.0",  # Updated to version 2.0.0
     packages=find_packages(),
     install_requires=[
         "pygame",
@@ -10,7 +10,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "space-conquer=space_impact.game_manager:main",
+            "space-conquer=src.game_manager:main",  # Updated path
         ],
     },
     author="Gauciv",
